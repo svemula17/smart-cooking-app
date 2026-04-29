@@ -1,0 +1,114 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cooking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/migrations
+      - ./database/seeds:/seeds
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [cooking-net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: cooking-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [cooking-net]
+
+  user-service:
+    build: ./backend/user-service
+    container_name: cooking-user-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: ${USER_SERVICE_PORT}
+    ports:
+      - "${USER_SERVICE_PORT}:${USER_SERVICE_PORT}"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [cooking-net]
+
+  recipe-service:
+    build: ./backend/recipe-service
+    container_name: cooking-recipe-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: ${RECIPE_SERVICE_PORT}
+    ports:
+      - "${RECIPE_SERVICE_PORT}:${RECIPE_SERVICE_PORT}"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [cooking-net]
+
+  nutrition-service:
+    build: ./backend/nutrition-service
+    container_name: cooking-nutrition-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: ${NUTRITION_SERVICE_PORT}
+    ports:
+      - "${NUTRITION_SERVICE_PORT}:${NUTRITION_SERVICE_PORT}"
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [cooking-net]
+
+  ai-service:
+    build: ./backend/ai-service
+    container_name: cooking-ai-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: ${AI_SERVICE_PORT}
+    ports:
+      - "${AI_SERVICE_PORT}:${AI_SERVICE_PORT}"
+    depends_on:
+      redis: { condition: service_healthy }
+    networks: [cooking-net]
+
+  shopping-service:
+    build: ./backend/shopping-service
+    container_name: cooking-shopping-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: ${SHOPPING_SERVICE_PORT}
+    ports:
+      - "${SHOPPING_SERVICE_PORT}:${SHOPPING_SERVICE_PORT}"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [cooking-net]
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  cooking-net:
+    driver: bridge

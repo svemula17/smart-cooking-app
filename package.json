@@ -1,0 +1,30 @@
+{
+  "name": "smart-cooking-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered cooking assistant with nutrition tracking",
+  "workspaces": [
+    "mobile",
+    "backend/user-service",
+    "backend/recipe-service",
+    "backend/shopping-service"
+  ],
+  "scripts": {
+    "dev:user": "npm --workspace backend/user-service run dev",
+    "dev:recipe": "npm --workspace backend/recipe-service run dev",
+    "dev:shopping": "npm --workspace backend/shopping-service run dev",
+    "dev:mobile": "npm --workspace mobile run start",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
