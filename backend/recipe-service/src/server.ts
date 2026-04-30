@@ -1,21 +1,28 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import pinoHttp from 'pino-http';
-import pino from 'pino';
-import { recipesRouter } from './routes/recipes';
+import { createApp } from './app';
+import { closePool } from './config/database';
+import { env } from './config/env';
 
-const logger = pino({ base: { service: 'recipe-service' } });
-const app = express();
-const PORT = Number(process.env.RECIPE_SERVICE_PORT ?? 4002);
+function startServer(): void {
+  const app = createApp();
+  const server = app.listen(env.port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`[recipe-service] listening on :${env.port} (${env.nodeEnv})`);
+  });
 
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(pinoHttp({ logger }));
+  function shutdown(signal: NodeJS.Signals): void {
+    // eslint-disable-next-line no-console
+    console.log(`[recipe-service] received ${signal}, shutting down...`);
+    server.close(async () => {
+      await closePool();
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  }
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'recipe-service' }));
-app.use('/recipes', recipesRouter);
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}
 
-app.listen(PORT, () => logger.info(`recipe-service listening on :${PORT}`));
+if (require.main === module) {
+  startServer();
+}
