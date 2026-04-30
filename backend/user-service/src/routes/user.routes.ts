@@ -1,20 +1,22 @@
 import { Router } from 'express';
 import {
-  getMe,
-  goalsSchema,
-  restrictionsSchema,
-  setGoals,
-  setRestrictions,
-  updateMe,
-  updateProfileSchema,
+  getProfile,
+  updateGoals,
+  updateProfile,
+  updateRestrictions,
 } from '../controllers/user.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
+import {
+  macroGoalsSchema,
+  restrictionsSchema,
+  updateProfileSchema,
+} from '../utils/validation.schemas';
 
 export const userRouter = Router();
 
-userRouter.use(authMiddleware);
-userRouter.get('/me', getMe);
-userRouter.put('/me', validate(updateProfileSchema), updateMe);
-userRouter.put('/me/goals', validate(goalsSchema), setGoals);
-userRouter.put('/me/restrictions', validate(restrictionsSchema), setRestrictions);
+userRouter.use(authenticate);
+userRouter.get('/me', getProfile);
+userRouter.put('/me', validate(updateProfileSchema), updateProfile);
+userRouter.put('/me/goals', validate(macroGoalsSchema), updateGoals);
+userRouter.put('/me/restrictions', validate(restrictionsSchema), updateRestrictions);

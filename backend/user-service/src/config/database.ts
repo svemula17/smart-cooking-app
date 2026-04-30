@@ -1,29 +1,50 @@
-import { Pool, PoolConfig } from 'pg';
+import { Pool, PoolClient } from 'pg';
+import { env } from './env';
 
 /**
- * PostgreSQL connection pool. Reads `DATABASE_URL` if set, otherwise falls
- * back to discrete `POSTGRES_*` env vars. The pool is shared across the
- * service for the process lifetime.
+ * Shared PostgreSQL connection pool.
+ *
+ * All queries should go through this pool — never instantiate ad-hoc Clients.
+ * For multi-statement work, wrap callers in `withTransaction` so BEGIN/COMMIT/
+ * ROLLBACK is handled correctly even on thrown errors.
  */
-const config: PoolConfig = process.env.DATABASE_URL
-  ? { connectionString: process.env.DATABASE_URL }
-  : {
-      host: process.env.POSTGRES_HOST ?? 'localhost',
-      port: Number(process.env.POSTGRES_PORT ?? 5432),
-      database: process.env.POSTGRES_DB ?? 'smart_cooking_app',
-      user: process.env.POSTGRES_USER ?? 'postgres',
-      password: process.env.POSTGRES_PASSWORD,
-    };
-
-export const db = new Pool({
-  ...config,
+export const pool = new Pool({
+  connectionString: env.databaseUrl,
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
 });
 
-db.on('error', (err) => {
-  // Surface idle-client errors; pg won't crash the process by default.
+pool.on('error', (err) => {
   // eslint-disable-next-line no-console
-  console.error('Unexpected pg pool error', err);
+  console.error('[pg pool] unexpected error on idle client', err);
 });
+
+/**
+ * Run `fn` inside a transaction. The client is released even if `fn` throws.
+ *
+ * @example
+ *   await withTransaction(async (client) => {
+ *     await client.query('INSERT INTO users ...');
+ *     await client.query('INSERT INTO user_preferences ...');
+ *   });
+ */
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Closes the pool. Useful in tests and graceful shutdown. */
+export async function closePool(): Promise<void> {
+  await pool.end();
+}

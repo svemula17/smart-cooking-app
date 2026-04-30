@@ -1,138 +1,71 @@
-import { db } from '../config/database';
+import type { PoolClient } from 'pg';
+import { pool } from '../config/database';
+import type { PublicUser, User } from '../types';
 
-export interface UserRecord {
-  id: string;
-  email: string;
-  name: string | null;
-  passwordHash: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+const FULL_COLUMNS = 'id, email, password_hash, name, created_at, updated_at';
+const PUBLIC_COLUMNS = 'id, email, name, created_at, updated_at';
 
-export interface UserPreferences {
-  userId: string;
-  dailyCalories: number;
-  dailyProtein: number;
-  dailyCarbs: number;
-  dailyFat: number;
-  dietaryRestrictions: string[];
-  favoriteCuisines: string[];
-}
-
-const USER_COLUMNS = `
-  id, email, name,
-  password_hash AS "passwordHash",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt"
-`;
-
-const PREF_COLUMNS = `
-  user_id AS "userId",
-  daily_calories AS "dailyCalories",
-  daily_protein AS "dailyProtein",
-  daily_carbs AS "dailyCarbs",
-  daily_fat AS "dailyFat",
-  dietary_restrictions AS "dietaryRestrictions",
-  favorite_cuisines AS "favoriteCuisines"
-`;
-
+/**
+ * Data-access layer for the `users` table. All queries are parameterized.
+ * Optionally accepts a `PoolClient` so callers can run inside a transaction.
+ */
 export const UserModel = {
-  /** Insert a user. Throws on email collision (unique violation, code 23505). */
-  async create(input: { email: string; name: string | null; passwordHash: string }): Promise<UserRecord> {
-    const { rows } = await db.query<UserRecord>(
-      `INSERT INTO users (email, name, password_hash)
+  /**
+   * Insert a new user. Throws pg error 23505 on email conflict — the error
+   * middleware translates that into a 409 EMAIL_EXISTS response.
+   */
+  async create(
+    input: { email: string; passwordHash: string; name: string | null },
+    client: PoolClient | typeof pool = pool,
+  ): Promise<User> {
+    const { rows } = await client.query<User>(
+      `INSERT INTO users (email, password_hash, name)
        VALUES ($1, $2, $3)
-       RETURNING ${USER_COLUMNS}`,
-      [input.email, input.name, input.passwordHash],
+       RETURNING ${FULL_COLUMNS}`,
+      [input.email, input.passwordHash, input.name],
     );
     return rows[0];
   },
 
-  async findById(id: string): Promise<UserRecord | null> {
-    const { rows } = await db.query<UserRecord>(
-      `SELECT ${USER_COLUMNS} FROM users WHERE id = $1`,
+  async findById(id: string): Promise<User | null> {
+    const { rows } = await pool.query<User>(
+      `SELECT ${FULL_COLUMNS} FROM users WHERE id = $1`,
       [id],
     );
     return rows[0] ?? null;
   },
 
-  async findByEmail(email: string): Promise<UserRecord | null> {
-    const { rows } = await db.query<UserRecord>(
-      `SELECT ${USER_COLUMNS} FROM users WHERE email = $1`,
+  async findByEmail(email: string): Promise<User | null> {
+    const { rows } = await pool.query<User>(
+      `SELECT ${FULL_COLUMNS} FROM users WHERE email = $1`,
       [email],
     );
     return rows[0] ?? null;
   },
 
-  async updateName(id: string, name: string): Promise<UserRecord | null> {
-    const { rows } = await db.query<UserRecord>(
-      `UPDATE users SET name = $2 WHERE id = $1 RETURNING ${USER_COLUMNS}`,
-      [id, name],
+  /**
+   * Patch a user's profile. Only `name` and/or `email` may be updated; both
+   * are optional. Returns the post-update row, or null if the user was deleted
+   * concurrently.
+   */
+  async update(
+    id: string,
+    patch: { name?: string; email?: string },
+  ): Promise<PublicUser | null> {
+    const { rows } = await pool.query<PublicUser>(
+      `UPDATE users
+          SET name  = COALESCE($2, name),
+              email = COALESCE($3, email)
+        WHERE id = $1
+        RETURNING ${PUBLIC_COLUMNS}`,
+      [id, patch.name ?? null, patch.email ?? null],
     );
     return rows[0] ?? null;
   },
 
-  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
-    await db.query(
-      `UPDATE users SET password_hash = $2 WHERE id = $1`,
-      [id, passwordHash],
-    );
-  },
-
-  /** Upsert preferences row; goals fall back to defaults when first created. */
-  async upsertGoals(input: {
-    userId: string;
-    dailyCalories: number;
-    dailyProtein: number;
-    dailyCarbs: number;
-    dailyFat: number;
-  }): Promise<UserPreferences> {
-    const { rows } = await db.query<UserPreferences>(
-      `INSERT INTO user_preferences (user_id, daily_calories, daily_protein, daily_carbs, daily_fat)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (user_id) DO UPDATE SET
-         daily_calories = EXCLUDED.daily_calories,
-         daily_protein = EXCLUDED.daily_protein,
-         daily_carbs = EXCLUDED.daily_carbs,
-         daily_fat = EXCLUDED.daily_fat,
-         updated_at = NOW()
-       RETURNING ${PREF_COLUMNS}`,
-      [input.userId, input.dailyCalories, input.dailyProtein, input.dailyCarbs, input.dailyFat],
-    );
-    return rows[0];
-  },
-
-  async upsertRestrictions(input: {
-    userId: string;
-    dietaryRestrictions: string[];
-    favoriteCuisines?: string[];
-  }): Promise<UserPreferences> {
-    const { rows } = await db.query<UserPreferences>(
-      `INSERT INTO user_preferences (user_id, dietary_restrictions, favorite_cuisines)
-       VALUES ($1, $2::jsonb, COALESCE($3::jsonb, '[]'::jsonb))
-       ON CONFLICT (user_id) DO UPDATE SET
-         dietary_restrictions = EXCLUDED.dietary_restrictions,
-         favorite_cuisines = COALESCE(EXCLUDED.favorite_cuisines, user_preferences.favorite_cuisines),
-         updated_at = NOW()
-       RETURNING ${PREF_COLUMNS}`,
-      [
-        input.userId,
-        JSON.stringify(input.dietaryRestrictions),
-        input.favoriteCuisines ? JSON.stringify(input.favoriteCuisines) : null,
-      ],
-    );
-    return rows[0];
-  },
-
-  async getPreferences(userId: string): Promise<UserPreferences | null> {
-    const { rows } = await db.query<UserPreferences>(
-      `SELECT ${PREF_COLUMNS} FROM user_preferences WHERE user_id = $1`,
-      [userId],
-    );
-    return rows[0] ?? null;
+  toPublicUser(user: User): PublicUser {
+    const { password_hash, ...rest } = user;
+    void password_hash;
+    return rest;
   },
 };
-
-export function toPublicUser(u: UserRecord) {
-  return { id: u.id, email: u.email, name: u.name, createdAt: u.createdAt, updatedAt: u.updatedAt };
-}

@@ -1,29 +1,32 @@
-import type { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt.util';
-import { HttpError } from './error.middleware';
-
-declare module 'express-serve-static-core' {
-  interface Request {
-    userId?: string;
-  }
-}
+import type { NextFunction, Request, Response } from 'express';
+import { verifyAccessToken } from '../utils/jwt.util';
+import { Errors } from './error.middleware';
 
 /**
- * Require a valid `Bearer <access-token>` header. Populates `req.userId`.
- * Throws 401 on missing/invalid/expired token.
+ * Authenticate a request via the `Authorization: Bearer <token>` header.
+ *
+ * On success, attaches `req.auth = { userId, email, jti }`.
+ * On failure (missing/malformed/invalid/expired token), throws 401/403.
  */
-export function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
+export function authenticate(req: Request, _res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    return next(new HttpError(401, 'unauthorized', 'Missing or malformed Authorization header'));
+  if (!header) {
+    return next(Errors.unauthorized('Authorization header is required'));
+  }
+  if (!header.startsWith('Bearer ')) {
+    return next(Errors.unauthorized('Authorization header must use Bearer scheme'));
   }
 
   const token = header.slice('Bearer '.length).trim();
+  if (!token) {
+    return next(Errors.unauthorized('Bearer token is empty'));
+  }
+
   try {
-    const payload = verifyToken(token, 'access');
-    req.userId = payload.sub;
+    const payload = verifyAccessToken(token);
+    req.auth = { userId: payload.userId, email: payload.email, jti: payload.jti };
     next();
   } catch {
-    next(new HttpError(401, 'unauthorized', 'Invalid or expired access token'));
+    next(Errors.invalidToken());
   }
 }

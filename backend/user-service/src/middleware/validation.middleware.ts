@@ -1,15 +1,17 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { ObjectSchema } from 'joi';
+import { Errors } from './error.middleware';
 
 type Source = 'body' | 'query' | 'params';
 
 /**
  * Build middleware that validates `req[source]` against a Joi schema.
+ *
  * On success, the parsed (and stripped) value replaces `req[source]`.
- * On failure, responds 400 with the Joi error details.
+ * On failure, throws a 400 AppError with structured field details.
  */
 export function validate(schema: ObjectSchema, source: Source = 'body') {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const { value, error } = schema.validate(req[source], {
       abortEarly: false,
       stripUnknown: true,
@@ -17,11 +19,11 @@ export function validate(schema: ObjectSchema, source: Source = 'body') {
     });
 
     if (error) {
-      res.status(400).json({
-        error: 'validation_error',
-        details: error.details.map((d) => ({ path: d.path.join('.'), message: d.message })),
-      });
-      return;
+      const details = error.details.map((d) => ({
+        field: d.path.join('.'),
+        message: d.message,
+      }));
+      return next(Errors.validationError(details));
     }
 
     (req as unknown as Record<Source, unknown>)[source] = value;

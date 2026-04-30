@@ -1,53 +1,35 @@
-import 'dotenv/config';
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import pinoHttp from 'pino-http';
-import pino from 'pino';
-
-import { authRouter } from './routes/auth.routes';
-import { userRouter } from './routes/user.routes';
-import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
-
-const logger = pino({ base: { service: 'user-service' }, level: process.env.LOG_LEVEL ?? 'info' });
-const app = express();
-const PORT = Number(process.env.USER_SERVICE_PORT ?? process.env.PORT ?? 4001);
-
-app.set('trust proxy', 1);
-app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN ?? '*', credentials: true }));
-app.use(express.json({ limit: '256kb' }));
-// pino + pino-http have a stale type mismatch; cast through unknown.
-app.use(pinoHttp({ logger } as unknown as Parameters<typeof pinoHttp>[0]));
-
-// 100 requests / 15 min / IP across the whole service.
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'rate_limited', message: 'Too many requests, please try again later' },
-  }),
-);
+import { createApp } from './app';
+import { closePool } from './config/database';
+import { env } from './config/env';
 
 /**
- * @route GET /health
- * @returns 200 { status, service, timestamp }
+ * Bootstrap the user-service HTTP server.
+ *
+ * Handles SIGTERM/SIGINT gracefully so in-flight requests can finish and the
+ * pg pool is drained before the process exits.
  */
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'user-service', timestamp: new Date().toISOString() });
-});
+function startServer(): void {
+  const app = createApp();
+  const server = app.listen(env.port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`[user-service] listening on :${env.port} (${env.nodeEnv})`);
+  });
 
-app.use('/auth', authRouter);
-app.use('/users', userRouter);
+  function shutdown(signal: NodeJS.Signals): void {
+    // eslint-disable-next-line no-console
+    console.log(`[user-service] received ${signal}, shutting down...`);
+    server.close(async () => {
+      await closePool();
+      process.exit(0);
+    });
+    // Force exit if cleanup hangs.
+    setTimeout(() => process.exit(1), 10_000).unref();
+  }
 
-app.use(notFoundMiddleware);
-app.use(errorMiddleware);
-
-if (require.main === module) {
-  app.listen(PORT, () => logger.info(`user-service listening on :${PORT}`));
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
-export { app };
+if (require.main === module) {
+  startServer();
+}

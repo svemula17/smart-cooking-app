@@ -1,148 +1,154 @@
-import type { Request, Response, NextFunction } from 'express';
-import Joi from 'joi';
-import { UserModel, toPublicUser } from '../models/user.model';
-import { hashPassword, validatePasswordStrength, verifyPassword } from '../utils/password.util';
-import { issueTokenPair, signToken, verifyToken } from '../utils/jwt.util';
-import { HttpError } from '../middleware/error.middleware';
-
-// ===== Validation schemas =====
-
-export const registerSchema = Joi.object({
-  email: Joi.string().email().max(255).required(),
-  password: Joi.string().min(8).max(128).required(),
-  name: Joi.string().min(1).max(255).optional(),
-});
-
-export const loginSchema = Joi.object({
-  email: Joi.string().email().max(255).required(),
-  password: Joi.string().min(1).max(128).required(),
-});
-
-export const refreshSchema = Joi.object({
-  refreshToken: Joi.string().required(),
-});
-
-export const forgotPasswordSchema = Joi.object({
-  email: Joi.string().email().max(255).required(),
-});
-
-export const resetPasswordSchema = Joi.object({
-  token: Joi.string().required(),
-  newPassword: Joi.string().min(8).max(128).required(),
-});
-
-// ===== Handlers =====
+import type { NextFunction, Request, Response } from 'express';
+import { withTransaction } from '../config/database';
+import { UserModel } from '../models/user.model';
+import { RefreshTokenDenylist } from '../models/userPreferences.model';
+import { Errors } from '../middleware/error.middleware';
+import {
+  generateAccessToken,
+  generateTokenPair,
+  getTokenExpiry,
+  verifyRefreshToken,
+} from '../utils/jwt.util';
+import { comparePassword, hashPassword } from '../utils/password.util';
+import type { ApiSuccess } from '../types';
 
 /**
- * @route POST /auth/register
- * @body  { email, password, name? }
- * @returns 201 { user, accessToken, refreshToken }
+ * Build the `{ user, tokens }` payload returned by /register and /login.
  */
-export async function register(req: Request, _res: Response, next: NextFunction): Promise<void> {
-  try {
-    const { email, password, name } = req.body;
+function buildAuthResponse(user: { id: string; email: string; name: string | null; created_at: Date; updated_at: Date }) {
+  const tokens = generateTokenPair({ userId: user.id, email: user.email });
+  const { accessJti: _ai, refreshJti: _ri, ...publicTokens } = tokens;
+  void _ai;
+  void _ri;
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    },
+    tokens: publicTokens,
+  };
+}
 
-    const weakReason = validatePasswordStrength(password);
-    if (weakReason) throw new HttpError(400, 'weak_password', weakReason);
+/**
+ * @route   POST /auth/register
+ * @access  public
+ * @body    { email: string, password: string, name?: string }
+ * @returns 201 { success, data: { user, tokens } }
+ * @throws  409 EMAIL_EXISTS, 400 VALIDATION_ERROR
+ */
+export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { email, password, name } = req.body as { email: string; password: string; name?: string };
 
     const passwordHash = await hashPassword(password);
-    const user = await UserModel.create({ email, name: name ?? null, passwordHash });
 
-    const tokens = issueTokenPair(user.id);
-    _res.status(201).json({ user: toPublicUser(user), ...tokens });
-  } catch (e) {
-    next(e);
+    // Use a transaction so a row appears in `users` only if the entire write
+    // succeeds — keeps things tidy even though we currently only write one
+    // table here.
+    const user = await withTransaction((client) =>
+      UserModel.create({ email, passwordHash, name: name ?? null }, client),
+    );
+
+    const body: ApiSuccess<ReturnType<typeof buildAuthResponse>> = {
+      success: true,
+      data: buildAuthResponse(user),
+    };
+    res.status(201).json(body);
+  } catch (err) {
+    next(err);
   }
 }
 
 /**
- * @route POST /auth/login
- * @body  { email, password }
- * @returns 200 { user, accessToken, refreshToken }
+ * @route   POST /auth/login
+ * @access  public
+ * @body    { email: string, password: string }
+ * @returns 200 { success, data: { user, tokens } }
+ * @throws  401 INVALID_CREDENTIALS
  */
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body as { email: string; password: string };
 
     const user = await UserModel.findByEmail(email);
-    if (!user) throw new HttpError(401, 'invalid_credentials', 'Invalid email or password');
+    if (!user) throw Errors.invalidCredentials();
 
-    const ok = await verifyPassword(password, user.passwordHash);
-    if (!ok) throw new HttpError(401, 'invalid_credentials', 'Invalid email or password');
+    const ok = await comparePassword(password, user.password_hash);
+    if (!ok) throw Errors.invalidCredentials();
 
-    const tokens = issueTokenPair(user.id);
-    res.json({ user: toPublicUser(user), ...tokens });
-  } catch (e) {
-    next(e);
+    const body: ApiSuccess<ReturnType<typeof buildAuthResponse>> = {
+      success: true,
+      data: buildAuthResponse(user),
+    };
+    res.status(200).json(body);
+  } catch (err) {
+    next(err);
   }
 }
 
 /**
- * @route POST /auth/refresh
- * @body  { refreshToken }
- * @returns 200 { accessToken, refreshToken }
+ * @route   POST /auth/refresh
+ * @access  public (requires a valid refresh token)
+ * @body    { refreshToken: string }
+ * @returns 200 { success, data: { accessToken } }
+ * @throws  403 INVALID_TOKEN
  */
 export async function refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { refreshToken } = req.body;
-    let userId: string;
+    const { refreshToken } = req.body as { refreshToken: string };
+
+    let payload;
     try {
-      userId = verifyToken(refreshToken, 'refresh').sub;
+      payload = verifyRefreshToken(refreshToken);
     } catch {
-      throw new HttpError(401, 'invalid_refresh_token', 'Refresh token is invalid or expired');
+      throw Errors.invalidToken('Refresh token is invalid or expired');
     }
-    res.json(issueTokenPair(userId));
-  } catch (e) {
-    next(e);
+
+    const revoked = await RefreshTokenDenylist.isRevoked(payload.jti);
+    if (revoked) throw Errors.invalidToken('Refresh token has been revoked');
+
+    const access = generateAccessToken({ userId: payload.userId, email: payload.email });
+
+    const body: ApiSuccess<{ accessToken: string }> = {
+      success: true,
+      data: { accessToken: access.token },
+    };
+    res.status(200).json(body);
+  } catch (err) {
+    next(err);
   }
 }
 
 /**
- * @route POST /auth/forgot-password
- * @body  { email }
- * @returns 200 always (don't leak whether email exists). In dev, includes the
- *          reset token in the response for testing — production should email it.
+ * @route   POST /auth/logout
+ * @access  public (requires a refresh token in the body)
+ * @body    { refreshToken: string }
+ * @returns 200 { success, data: { message } }
+ *
+ * Idempotent — submitting an already-revoked or expired token still 200s.
+ * That keeps the client logout flow simple.
  */
-export async function forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function logout(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email } = req.body;
-    const user = await UserModel.findByEmail(email);
+    const { refreshToken } = req.body as { refreshToken: string };
 
-    const response: { ok: true; resetToken?: string } = { ok: true };
-    if (user) {
-      const token = signToken(user.id, 'reset');
-      // TODO(production): dispatch email containing reset link with this token.
-      if (process.env.NODE_ENV !== 'production') response.resetToken = token;
-    }
-    res.json(response);
-  } catch (e) {
-    next(e);
-  }
-}
-
-/**
- * @route POST /auth/reset-password
- * @body  { token, newPassword }
- * @returns 200 { ok: true }
- */
-export async function resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const { token, newPassword } = req.body;
-
-    const weakReason = validatePasswordStrength(newPassword);
-    if (weakReason) throw new HttpError(400, 'weak_password', weakReason);
-
-    let userId: string;
     try {
-      userId = verifyToken(token, 'reset').sub;
+      const payload = verifyRefreshToken(refreshToken);
+      const expiresAt = getTokenExpiry(refreshToken) ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await RefreshTokenDenylist.revoke(payload.jti, payload.userId, expiresAt);
     } catch {
-      throw new HttpError(400, 'invalid_reset_token', 'Reset token is invalid or expired');
+      // Token is already invalid/expired — treat as already-logged-out.
     }
 
-    const passwordHash = await hashPassword(newPassword);
-    await UserModel.updatePasswordHash(userId, passwordHash);
-    res.json({ ok: true });
-  } catch (e) {
-    next(e);
+    const body: ApiSuccess<{ message: string }> = {
+      success: true,
+      data: { message: 'Logged out' },
+    };
+    res.status(200).json(body);
+  } catch (err) {
+    next(err);
   }
 }

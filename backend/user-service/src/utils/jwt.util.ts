@@ -1,57 +1,79 @@
-import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+import { env } from '../config/env';
+import type {
+  AccessTokenPayload,
+  JWTPayload,
+  RefreshTokenPayload,
+  TokenPair,
+} from '../types';
 
-export type TokenType = 'access' | 'refresh' | 'reset';
-
-interface TokenPayload extends JwtPayload {
-  sub: string;
-  type: TokenType;
+/**
+ * Issue a short-lived (15 min default) access token.
+ */
+export function generateAccessToken(payload: JWTPayload): { token: string; jti: string } {
+  const jti = uuidv4();
+  const token = jwt.sign(
+    { ...payload, type: 'access', jti },
+    env.jwtSecret,
+    { expiresIn: env.jwtAccessTtl as SignOptions['expiresIn'] },
+  );
+  return { token, jti };
 }
 
-const ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? '15m';
-const REFRESH_TTL = process.env.JWT_REFRESH_TTL ?? '7d';
-const RESET_TTL = process.env.JWT_RESET_TTL ?? '1h';
-
-function getSecret(type: TokenType): string {
-  if (type === 'access') {
-    const s = process.env.JWT_SECRET;
-    if (!s) throw new Error('JWT_SECRET is not set');
-    return s;
-  }
-  if (type === 'refresh') {
-    const s = process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET;
-    if (!s) throw new Error('JWT_REFRESH_SECRET / JWT_SECRET is not set');
-    return s;
-  }
-  // reset
-  const s = process.env.JWT_RESET_SECRET ?? process.env.JWT_SECRET;
-  if (!s) throw new Error('JWT_RESET_SECRET / JWT_SECRET is not set');
-  return s;
+/**
+ * Issue a long-lived (7 day default) refresh token. The returned `jti`
+ * should be persisted alongside the user when active-session tracking is
+ * required, or compared against a denylist when revocation is needed.
+ */
+export function generateRefreshToken(payload: JWTPayload): { token: string; jti: string } {
+  const jti = uuidv4();
+  const token = jwt.sign(
+    { ...payload, type: 'refresh', jti },
+    env.jwtRefreshSecret,
+    { expiresIn: env.jwtRefreshTtl as SignOptions['expiresIn'] },
+  );
+  return { token, jti };
 }
 
-function getTtl(type: TokenType): SignOptions['expiresIn'] {
-  if (type === 'access') return ACCESS_TTL as SignOptions['expiresIn'];
-  if (type === 'refresh') return REFRESH_TTL as SignOptions['expiresIn'];
-  return RESET_TTL as SignOptions['expiresIn'];
+/** Convenience: issue an access+refresh pair atomically. */
+export function generateTokenPair(payload: JWTPayload): TokenPair & { accessJti: string; refreshJti: string } {
+  const access = generateAccessToken(payload);
+  const refresh = generateRefreshToken(payload);
+  return {
+    accessToken: access.token,
+    refreshToken: refresh.token,
+    accessJti: access.jti,
+    refreshJti: refresh.jti,
+  };
 }
 
-/** Sign a JWT with the right secret/TTL for the requested type. */
-export function signToken(userId: string, type: TokenType): string {
-  return jwt.sign({ sub: userId, type }, getSecret(type), { expiresIn: getTtl(type) });
-}
-
-/** Verify a token and assert its `type` matches the expected one. */
-export function verifyToken(token: string, expected: TokenType): TokenPayload {
-  const decoded = jwt.verify(token, getSecret(expected)) as TokenPayload;
-  if (decoded.type !== expected) {
-    throw new Error(`Token type mismatch: expected ${expected}, got ${decoded.type}`);
+/**
+ * Verify an access token. Throws on invalid/expired tokens.
+ * Asserts the `type` claim matches `'access'` to prevent token misuse.
+ */
+export function verifyAccessToken(token: string): AccessTokenPayload {
+  const decoded = jwt.verify(token, env.jwtSecret) as AccessTokenPayload;
+  if (decoded.type !== 'access') {
+    throw new Error('Token is not an access token');
   }
   return decoded;
 }
 
-/** Convenience: issue an access+refresh pair for a freshly authenticated user. */
-export function issueTokenPair(userId: string): { accessToken: string; refreshToken: string } {
-  return {
-    accessToken: signToken(userId, 'access'),
-    refreshToken: signToken(userId, 'refresh'),
-  };
+/** Verify a refresh token. Throws on invalid/expired tokens or wrong type. */
+export function verifyRefreshToken(token: string): RefreshTokenPayload {
+  const decoded = jwt.verify(token, env.jwtRefreshSecret) as RefreshTokenPayload;
+  if (decoded.type !== 'refresh') {
+    throw new Error('Token is not a refresh token');
+  }
+  return decoded;
+}
+
+/**
+ * Returns the JWT expiry as a Date, or null if the token has no exp claim.
+ * Used by the logout flow to know how long to keep a denylist entry around.
+ */
+export function getTokenExpiry(token: string): Date | null {
+  const decoded = jwt.decode(token) as { exp?: number } | null;
+  return decoded?.exp ? new Date(decoded.exp * 1000) : null;
 }
