@@ -1,28 +1,53 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import pinoHttp from 'pino-http';
-import { authRouter } from './routes/auth';
-import { usersRouter } from './routes/users';
-import { errorHandler } from './middleware/errorHandler';
-import { logger } from './utils/logger';
+import pino from 'pino';
 
+import { authRouter } from './routes/auth.routes';
+import { userRouter } from './routes/user.routes';
+import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
+
+const logger = pino({ base: { service: 'user-service' }, level: process.env.LOG_LEVEL ?? 'info' });
 const app = express();
-const PORT = Number(process.env.USER_SERVICE_PORT ?? 4001);
+const PORT = Number(process.env.USER_SERVICE_PORT ?? process.env.PORT ?? 4001);
 
+app.set('trust proxy', 1);
 app.use(helmet());
-app.use(cors());
-app.use(express.json({ limit: '1mb' }));
-app.use(pinoHttp({ logger }));
-app.use(rateLimit({ windowMs: 60_000, max: 120 }));
+app.use(cors({ origin: process.env.CORS_ORIGIN ?? '*', credentials: true }));
+app.use(express.json({ limit: '256kb' }));
+// pino + pino-http have a stale type mismatch; cast through unknown.
+app.use(pinoHttp({ logger } as unknown as Parameters<typeof pinoHttp>[0]));
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'user-service' }));
+// 100 requests / 15 min / IP across the whole service.
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'rate_limited', message: 'Too many requests, please try again later' },
+  }),
+);
+
+/**
+ * @route GET /health
+ * @returns 200 { status, service, timestamp }
+ */
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', service: 'user-service', timestamp: new Date().toISOString() });
+});
 
 app.use('/auth', authRouter);
-app.use('/users', usersRouter);
+app.use('/users', userRouter);
 
-app.use(errorHandler);
+app.use(notFoundMiddleware);
+app.use(errorMiddleware);
 
-app.listen(PORT, () => logger.info(`user-service listening on :${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => logger.info(`user-service listening on :${PORT}`));
+}
+
+export { app };
