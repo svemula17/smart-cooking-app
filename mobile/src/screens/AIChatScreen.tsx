@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { api } from '../services/api';
+import { userApi as api } from '../services/api';
 import type { ChatMessage } from '../types';
 import { colors } from '../theme/colors';
 
