@@ -1,23 +1,27 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import pinoHttp from 'pino-http';
-import pino from 'pino';
-import { listsRouter } from './routes/lists';
-import { checkoutRouter } from './routes/checkout';
+import { createApp } from './app';
+import { closePool } from './config/database';
+import { closeRedis } from './config/redis';
+import { env } from './config/env';
 
-const logger = pino({ base: { service: 'shopping-service' } });
-const app = express();
-const PORT = Number(process.env.SHOPPING_SERVICE_PORT ?? 4005);
+function startServer(): void {
+  const app = createApp();
+  const server = app.listen(env.port, () => {
+    console.log(`[shopping-service] listening on :${env.port} (${env.nodeEnv})`);
+  });
 
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(pinoHttp({ logger }));
+  function shutdown(signal: NodeJS.Signals): void {
+    console.log(`[shopping-service] received ${signal}, shutting down...`);
+    server.close(async () => {
+      await Promise.all([closePool(), closeRedis()]);
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  }
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'shopping-service' }));
-app.use('/lists', listsRouter);
-app.use('/checkout', checkoutRouter);
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}
 
-app.listen(PORT, () => logger.info(`shopping-service listening on :${PORT}`));
+if (require.main === module) {
+  startServer();
+}

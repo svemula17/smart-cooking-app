@@ -1,50 +1,103 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from app.ai_assistant import AIAssistant
-from app.multi_dish_coordinator import MultiDishCoordinator
-from app.variety_algorithm import suggest_variety
+"""AI service entry point.
 
-app = FastAPI(title="ai-service", version="0.1.0")
-assistant = AIAssistant()
-coordinator = MultiDishCoordinator()
+Manages the lifecycle of the asyncpg pool and Redis client, mounts the
+``/ai`` router, and exposes a top-level ``/health`` for probes.
+"""
 
+from __future__ import annotations
 
-class ChatRequest(BaseModel):
-    message: str
-    user_id: str | None = None
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-class ChatResponse(BaseModel):
-    reply: str
-
-
-class CoordinateRequest(BaseModel):
-    recipe_ids: list[str]
-    serve_at_minutes_from_now: int = 60
+from app.config.database import Database
+from app.config.redis import RedisClient
+from app.routes.ai import router as ai_router
 
 
-class VarietyRequest(BaseModel):
-    user_id: str
-    recent_recipe_ids: list[str]
-    count: int = 5
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await Database.connect()
+    await RedisClient.connect()
+    try:
+        yield
+    finally:
+        await RedisClient.disconnect()
+        await Database.disconnect()
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "ai-service"}
+app = FastAPI(
+    title="ai-service",
+    version="1.0.0",
+    description="LangChain-backed cooking assistant, multi-dish coordinator, variety algorithm, and ingredient substitutions.",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-@app.post("/ai/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest) -> ChatResponse:
-    reply = await assistant.respond(req.message, user_id=req.user_id)
-    return ChatResponse(reply=reply)
+# ---------- Error handlers ----------
+
+@app.exception_handler(RequestValidationError)
+async def validation_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "error": {
+                "message": "Validation failed",
+                "code": "VALIDATION_ERROR",
+                "details": jsonable_encoder(exc.errors()),
+            },
+        },
+    )
 
 
-@app.post("/ai/coordinate")
-async def coordinate(req: CoordinateRequest) -> dict:
-    return await coordinator.plan(req.recipe_ids, req.serve_at_minutes_from_now)
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
+    detail = exc.detail
+    if isinstance(detail, dict) and "code" in detail:
+        return JSONResponse(status_code=exc.status_code, content={"success": False, "error": detail})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "error": {"message": str(detail), "code": "ERROR"}},
+    )
 
 
-@app.post("/ai/variety")
-async def variety(req: VarietyRequest) -> dict:
-    return {"suggestions": suggest_variety(req.recent_recipe_ids, req.count)}
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": {"message": "An unexpected error occurred", "code": "INTERNAL_ERROR"},
+        },
+    )
+
+
+# ---------- Health ----------
+
+@app.get("/health", tags=["health"])
+async def health() -> dict:
+    return {
+        "success": True,
+        "data": {
+            "status": "ok",
+            "service": "ai-service",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+
+
+app.include_router(ai_router, prefix="/ai", tags=["ai"])
