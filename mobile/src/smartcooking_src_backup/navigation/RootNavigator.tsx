@@ -15,10 +15,6 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import type { RootStackParamList, TabParamList } from '../types';
 import { colors } from '../theme/colors';
 
-// React 19 expands ReactNode to include bigint, which breaks @react-navigation
-// v7's ScreenComponentType. Cast all screen components to bypass this.
-type AnyComponent = React.ComponentType<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -58,40 +54,40 @@ function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home"     component={HomeScreen        as AnyComponent} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Search"   component={RecipeBrowserScreen as AnyComponent} options={{ tabBarLabel: 'Recipes' }} />
-      <Tab.Screen name="Shopping" component={ShoppingListScreen as AnyComponent} options={{ tabBarLabel: 'Shopping' }} />
-      <Tab.Screen name="Profile"  component={ProfileScreen     as AnyComponent} options={{ tabBarLabel: 'Profile' }} />
+      <Tab.Screen name="Home"     component={HomeScreen}         options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="Search"   component={RecipeBrowserScreen as React.ComponentType<any>} options={{ tabBarLabel: 'Recipes' }} />
+      <Tab.Screen name="Shopping" component={ShoppingListScreen} options={{ tabBarLabel: 'Shopping' }} />
+      <Tab.Screen name="Profile"  component={ProfileScreen}      options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 }
 
-export function RootNavigator(): React.JSX.Element {
+export function RootNavigator(): JSX.Element {
   return (
     <Stack.Navigator
       initialRouteName="Splash"
       screenOptions={{ headerShown: false, animation: 'fade' }}
     >
-      <Stack.Screen name="Splash"        component={SplashScreen      as AnyComponent} />
-      <Stack.Screen name="Onboarding"    component={OnboardingScreen  as AnyComponent} />
+      <Stack.Screen name="Splash"        component={SplashScreen} />
+      <Stack.Screen name="Onboarding"    component={OnboardingScreen} />
       <Stack.Screen
         name="Tabs"
-        component={TabNavigator as AnyComponent}
+        component={TabNavigator}
         options={{ gestureEnabled: false }}
       />
       <Stack.Screen
         name="RecipeBrowser"
-        component={RecipeBrowserScreen as AnyComponent}
+        component={RecipeBrowserScreen}
         options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="RecipeDetail"
-        component={RecipeDetailScreen as AnyComponent}
+        component={RecipeDetailScreen}
         options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="CookingMode"
-        component={CookingModeScreen as AnyComponent}
+        component={CookingModeScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
     </Stack.Navigator>

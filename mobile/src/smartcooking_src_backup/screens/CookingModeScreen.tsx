@@ -3,7 +3,7 @@ import { View, Text, Button, StyleSheet } from 'react-native';
 import { TimerButton } from '../components/TimerButton';
 import { colors } from '../theme/colors';
 
-export function CookingModeScreen({ route }: any): React.JSX.Element {
+export function CookingModeScreen({ route }: any): JSX.Element {
   const { recipeId } = route.params;
   const [step, setStep] = useState(0);
 

@@ -4,7 +4,7 @@ import { userApi as api } from '../services/api';
 import type { ChatMessage } from '../types';
 import { colors } from '../theme/colors';
 
-export function AIChatScreen(): React.JSX.Element {
+export function AIChatScreen(): JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
 

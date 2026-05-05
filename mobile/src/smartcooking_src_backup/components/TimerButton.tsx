@@ -4,7 +4,7 @@ import { colors } from '../theme/colors';
 
 interface Props { seconds: number; }
 
-export function TimerButton({ seconds }: Props): React.JSX.Element {
+export function TimerButton({ seconds }: Props): JSX.Element {
   const [remaining, setRemaining] = useState(seconds);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);

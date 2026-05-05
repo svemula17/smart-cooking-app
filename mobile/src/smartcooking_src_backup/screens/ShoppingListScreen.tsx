@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { toggleItem, type RootState } from '../store';
 import { colors } from '../theme/colors';
 
-export function ShoppingListScreen(): React.JSX.Element {
+export function ShoppingListScreen(): JSX.Element {
   const items = useSelector((s: RootState) => s.shopping.items);
   const dispatch = useDispatch();
 

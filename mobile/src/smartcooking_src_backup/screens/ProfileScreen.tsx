@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { clearAuth, type RootState } from '../store';
 import { colors } from '../theme/colors';
 
-export function ProfileScreen(): React.JSX.Element {
+export function ProfileScreen(): JSX.Element {
   const user = useSelector((s: RootState) => s.auth.user);
   const dispatch = useDispatch();
   return (

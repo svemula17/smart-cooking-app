@@ -21,8 +21,12 @@
     "docker:down": "docker-compose down"
   },
   "devDependencies": {
+    "@types/react": "^19.1.0",
     "typescript": "^5.4.5",
     "prettier": "^3.2.5"
+  },
+  "overrides": {
+    "@types/react": "^19.1.0"
   },
   "engines": {
     "node": ">=20"
