@@ -1,36 +1,339 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { useSelector, useDispatch } from 'react-redux';
-import { toggleItem, type RootState } from '../store';
+import React, { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSelector } from 'react-redux';
+import { shoppingService } from '../services/shoppingService';
 import { colors } from '../theme/colors';
+import type { RootState } from '../store';
+import type { ShoppingList, ShoppingItem } from '../types';
 
-export function ShoppingListScreen(): React.JSX.Element {
-  const items = useSelector((s: RootState) => s.shopping.items);
-  const dispatch = useDispatch();
+// ─── List detail modal (inline expanded list) ─────────────────────────────────
+
+interface ListDetailProps {
+  list: ShoppingList;
+  onClose: () => void;
+  onDelete: (id: string) => void;
+}
+
+function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['shopping-detail', list.id],
+    queryFn: () => shoppingService.getList(list.id),
+  });
+
+  const checkMutation = useMutation({
+    mutationFn: ({ itemId, checked }: { itemId: string; checked: boolean }) =>
+      shoppingService.checkItem(list.id, itemId, checked),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['shopping-detail', list.id] }),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: () => shoppingService.completeList(list.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shopping-lists'] });
+      onClose();
+    },
+  });
+
+  const items = data?.items ?? [];
+  const checkedCount = items.filter((i) => i.is_checked).length;
+
+  function renderItem({ item }: { item: ShoppingItem }) {
+    return (
+      <TouchableOpacity
+        style={detailStyles.row}
+        onPress={() => checkMutation.mutate({ itemId: item.id, checked: !item.is_checked })}
+      >
+        <View style={[detailStyles.checkbox, item.is_checked && detailStyles.checkboxChecked]}>
+          {item.is_checked && <Text style={detailStyles.checkmark}>✓</Text>}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[detailStyles.itemName, item.is_checked && detailStyles.strikethrough]}>
+            {item.ingredient_name}
+          </Text>
+          <Text style={detailStyles.itemQty}>
+            {item.quantity} {item.unit}
+            {item.aisle ? ` · ${item.aisle}` : ''}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Shopping list</Text>
-      <FlatList
-        data={items}
-        keyExtractor={(i) => i.id}
-        ListEmptyComponent={<Text style={{ color: colors.textMuted }}>Your list is empty.</Text>}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row} onPress={() => dispatch(toggleItem(item.id))}>
-            <Text style={[styles.itemText, item.checked && styles.checked]}>
-              {item.quantity} {item.unit} {item.ingredientName}
-            </Text>
+    <View style={detailStyles.container}>
+      {/* Detail header */}
+      <View style={detailStyles.header}>
+        <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Text style={detailStyles.backText}>← Lists</Text>
+        </TouchableOpacity>
+        <Text style={detailStyles.title} numberOfLines={1}>{list.name}</Text>
+        <TouchableOpacity
+          onPress={() =>
+            Alert.alert('Delete List', 'Remove this shopping list?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Delete', style: 'destructive', onPress: () => { onDelete(list.id); onClose(); } },
+            ])
+          }
+        >
+          <Text style={detailStyles.deleteText}>🗑</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Progress bar */}
+      {items.length > 0 && (
+        <View style={detailStyles.progressSection}>
+          <View style={detailStyles.progressTrack}>
+            <View style={[detailStyles.progressFill, { width: `${(checkedCount / items.length) * 100}%` }]} />
+          </View>
+          <Text style={detailStyles.progressText}>{checkedCount}/{items.length} items</Text>
+        </View>
+      )}
+
+      {isLoading ? (
+        <ActivityIndicator style={{ marginTop: 32 }} color={colors.primary} />
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(i) => i.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          ListEmptyComponent={
+            <View style={detailStyles.empty}>
+              <Text style={detailStyles.emptyText}>No items in this list.</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Complete button */}
+      {list.status === 'active' && items.length > 0 && (
+        <View style={detailStyles.completeBar}>
+          <TouchableOpacity
+            style={[detailStyles.completeBtn, checkedCount < items.length && detailStyles.completeBtnPartial]}
+            onPress={() =>
+              Alert.alert(
+                'Mark Complete?',
+                checkedCount < items.length ? `Only ${checkedCount}/${items.length} items checked. Mark done anyway?` : 'Mark this list as complete?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Complete', onPress: () => completeMutation.mutate() },
+                ],
+              )
+            }
+          >
+            {completeMutation.isPending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={detailStyles.completeBtnText}>Mark Complete ✓</Text>
+            )}
           </TouchableOpacity>
-        )}
-      />
+        </View>
+      )}
     </View>
   );
 }
 
+const detailStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider, gap: 8 },
+  backText: { fontSize: 15, color: colors.primary, fontWeight: '600', width: 64 },
+  title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  deleteText: { fontSize: 18, width: 32, textAlign: 'right' },
+  progressSection: { paddingHorizontal: 20, paddingVertical: 12 },
+  progressTrack: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
+  progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 3 },
+  progressText: { fontSize: 12, color: colors.textSecondary },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
+  checkboxChecked: { backgroundColor: colors.success, borderColor: colors.success },
+  checkmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  itemName: { fontSize: 16, color: colors.text, fontWeight: '500' },
+  strikethrough: { textDecorationLine: 'line-through', color: colors.textLight },
+  itemQty: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  empty: { alignItems: 'center', paddingTop: 48 },
+  emptyText: { color: colors.textSecondary, fontSize: 15 },
+  completeBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 32, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.divider },
+  completeBtn: { backgroundColor: colors.success, borderRadius: 24, paddingVertical: 16, alignItems: 'center' },
+  completeBtnPartial: { backgroundColor: colors.warning },
+  completeBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+});
+
+// ─── Shopping list card ───────────────────────────────────────────────────────
+
+function ListCard({ list, onPress }: { list: ShoppingList; onPress: () => void }) {
+  const isActive = list.status === 'active';
+  const date = new Date(list.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+  return (
+    <TouchableOpacity style={cardStyles.card} onPress={onPress} activeOpacity={0.7}>
+      <View style={cardStyles.left}>
+        <View style={[cardStyles.badge, isActive ? cardStyles.badgeActive : cardStyles.badgeDone]}>
+          <Text style={[cardStyles.badgeText, isActive ? cardStyles.badgeTextActive : cardStyles.badgeTextDone]}>
+            {isActive ? 'Active' : 'Done'}
+          </Text>
+        </View>
+        <Text style={cardStyles.name} numberOfLines={2}>{list.name}</Text>
+        <Text style={cardStyles.meta}>{list.recipe_ids.length} recipe{list.recipe_ids.length !== 1 ? 's' : ''} · {date}</Text>
+      </View>
+      <Text style={cardStyles.arrow}>›</Text>
+    </TouchableOpacity>
+  );
+}
+
+const cardStyles = StyleSheet.create({
+  card: { backgroundColor: colors.surfaceElevated, borderRadius: 16, padding: 18, marginBottom: 12, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2, borderWidth: 1, borderColor: colors.divider },
+  left: { flex: 1 },
+  badge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
+  badgeActive: { backgroundColor: colors.primaryLight },
+  badgeDone: { backgroundColor: '#E8F5E9' },
+  badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  badgeTextActive: { color: colors.primary },
+  badgeTextDone: { color: colors.success },
+  name: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  meta: { fontSize: 13, color: colors.textSecondary },
+  arrow: { fontSize: 22, color: colors.textLight, marginLeft: 8 },
+});
+
+// ─── ShoppingListScreen ───────────────────────────────────────────────────────
+
+export function ShoppingListScreen(): React.JSX.Element {
+  const user = useSelector((s: RootState) => s.auth.user);
+  const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
+  const qc = useQueryClient();
+
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useQuery({
+    queryKey: ['shopping-lists', user?.id],
+    queryFn: () => shoppingService.getLists(user!.id),
+    enabled: !!user?.id,
+  });
+
+  // Refresh when tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) refetch();
+    }, [user?.id, refetch]),
+  );
+
+  const deleteMutation = useMutation({
+    mutationFn: (listId: string) => shoppingService.deleteList(listId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['shopping-lists'] }),
+    onError: () => Alert.alert('Error', 'Failed to delete the list. Try again.'),
+  });
+
+  // If a list is selected, show detail view
+  if (selectedList) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" />
+        <ListDetailView
+          list={selectedList}
+          onClose={() => { setSelectedList(null); refetch(); }}
+          onDelete={(id) => deleteMutation.mutate(id)}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const lists = data?.lists ?? [];
+  const active = lists.filter((l) => l.status === 'active');
+  const completed = lists.filter((l) => l.status === 'completed');
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="dark-content" />
+
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Shopping Lists</Text>
+        {lists.length > 0 && (
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>{active.length} active</Text>
+          </View>
+        )}
+      </View>
+
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : isError ? (
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>Couldn't load your lists.</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={[...active, ...completed]}
+          keyExtractor={(l) => l.id}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          renderItem={({ item }) => (
+            <ListCard list={item} onPress={() => setSelectedList(item)} />
+          )}
+          ListHeaderComponent={
+            active.length > 0 && completed.length > 0 ? (
+              <Text style={styles.sectionLabel}>Active</Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🛒</Text>
+              <Text style={styles.emptyTitle}>No shopping lists yet</Text>
+              <Text style={styles.emptySub}>
+                Generate a shopping list from a recipe's detail page to get started.
+              </Text>
+            </View>
+          }
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+export default ShoppingListScreen;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 16 },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text, marginBottom: 12 },
-  row: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  itemText: { fontSize: 16, color: colors.text },
-  checked: { textDecorationLine: 'line-through', color: colors.textMuted },
+  safe: { flex: 1, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
+  headerBadge: { backgroundColor: colors.primaryLight, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  headerBadgeText: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  list: { paddingHorizontal: 20, paddingBottom: 32 },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: colors.error, fontSize: 16, marginBottom: 16 },
+  retryBtn: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 12 },
+  retryText: { color: '#fff', fontWeight: '700' },
+  emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
+  emptyIcon: { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8 },
+  emptySub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });

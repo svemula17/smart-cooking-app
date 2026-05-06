@@ -37,9 +37,14 @@ function makeClient(baseURL: string) {
   return instance;
 }
 
-export const userApi     = makeClient(USER_SERVICE);
-export const recipeApi   = makeClient(RECIPE_SERVICE);
-export const shoppingApi = makeClient(SHOPPING_SERVICE);
+const NUTRITION_SERVICE = 'http://localhost:8001';
+const AI_SERVICE        = 'http://localhost:8002';
+
+export const userApi       = makeClient(USER_SERVICE);
+export const recipeApi     = makeClient(RECIPE_SERVICE);
+export const shoppingApi   = makeClient(SHOPPING_SERVICE);
+export const nutritionApi  = makeClient(NUTRITION_SERVICE);
+export const aiApi         = makeClient(AI_SERVICE);
 
 // Keep a sync-accessible token for hot-path needs (set after login)
 let _token: string | null = null;
