@@ -126,6 +126,7 @@ export type RootStackParamList = {
 export type TabParamList = {
   Home: undefined;
   Search: undefined;
+  AIChat: undefined;
   Shopping: undefined;
   Profile: undefined;
 };

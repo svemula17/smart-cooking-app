@@ -8,18 +8,23 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
-  FlatList,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSelector } from 'react-redux';
 import { RootStackParamList, RecipeWithDetails, Review } from '../types';
 import { NutritionGrid } from '../components/NutritionGrid';
 import { recipeService } from '../services/recipeService';
+import { shoppingService } from '../services/shoppingService';
 import { colors } from '../theme/colors';
+import type { RootState } from '../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
 
 const { width } = Dimensions.get('window');
+void width;
 
 const CUISINE_EMOJI: Record<string, string> = {
   Indian: '🍛',
@@ -59,6 +64,8 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { recipeId } = route.params;
   const [activeTab, setActiveTab] = useState<TabKey>('Ingredients');
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
+  const user = useSelector((s: RootState) => s.auth.user);
+  const qc = useQueryClient();
 
   const { data: recipe, isLoading, isError } = useQuery<RecipeWithDetails>({
     queryKey: ['recipe', recipeId],
@@ -70,6 +77,35 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     queryFn: () => recipeService.getReviews(recipeId),
     enabled: !!recipe,
   });
+
+  const addToListMutation = useMutation({
+    mutationFn: () =>
+      shoppingService.generate({
+        user_id: user!.id,
+        name: `${recipe!.name} — Shopping List`,
+        recipe_ids: [recipeId],
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shopping-lists'] });
+      Alert.alert('✅ Added to Shopping', `Shopping list for "${recipe?.name}" created!`, [{ text: 'OK' }]);
+    },
+    onError: () => Alert.alert('Error', 'Failed to create shopping list. Please try again.'),
+  });
+
+  const handleAddToList = () => {
+    if (!user) {
+      Alert.alert('Sign In Required', 'Please sign in to save shopping lists.');
+      return;
+    }
+    Alert.alert(
+      'Add to Shopping List?',
+      `Create a shopping list with ingredients for "${recipe?.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Create List', onPress: () => addToListMutation.mutate() },
+      ],
+    );
+  };
 
   const toggleIngredient = (id: string) => {
     setCheckedIngredients((prev) => {
@@ -276,8 +312,16 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         >
           <Text style={styles.cookBtnText}>Start Cooking 👨‍🍳</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.listBtn}>
-          <Text style={styles.listBtnText}>🛒 Add to List</Text>
+        <TouchableOpacity
+          style={[styles.listBtn, addToListMutation.isPending && styles.listBtnLoading]}
+          onPress={handleAddToList}
+          disabled={addToListMutation.isPending}
+        >
+          {addToListMutation.isPending ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={styles.listBtnText}>🛒 Add to List</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -646,6 +690,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
+  listBtnLoading: { opacity: 0.6 },
   listBtnText: {
     fontSize: 15,
     fontWeight: '700',

@@ -1,5 +1,6 @@
 import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { User, Recipe, RecipeWithDetails, UserPreferences, ShoppingListItem } from '../types';
+import type { NutritionLog, DailySummary } from '../services/nutritionService';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 interface AuthState { user: User | null; token: string | null; isAuthenticated: boolean; }
@@ -42,6 +43,24 @@ const recipesSlice = createSlice({
   },
 });
 
+// ─── Nutrition ────────────────────────────────────────────────────────────────
+interface NutritionState {
+  todayLogs: NutritionLog[];
+  todaySummary: DailySummary | null;
+  isLoading: boolean;
+}
+const nutritionSlice = createSlice({
+  name: 'nutrition',
+  initialState: { todayLogs: [], todaySummary: null, isLoading: false } as NutritionState,
+  reducers: {
+    setTodayLogs(s, a: PayloadAction<NutritionLog[]>) { s.todayLogs = a.payload; },
+    addLog(s, a: PayloadAction<NutritionLog>) { s.todayLogs.push(a.payload); },
+    removeLog(s, a: PayloadAction<string>) { s.todayLogs = s.todayLogs.filter((l) => l.id !== a.payload); },
+    setTodaySummary(s, a: PayloadAction<DailySummary | null>) { s.todaySummary = a.payload; },
+    setNutritionLoading(s, a: PayloadAction<boolean>) { s.isLoading = a.payload; },
+  },
+});
+
 // ─── Shopping ─────────────────────────────────────────────────────────────────
 interface ShoppingState { items: ShoppingListItem[]; }
 const shoppingSlice = createSlice({
@@ -60,14 +79,16 @@ const shoppingSlice = createSlice({
 export const { setAuth, clearAuth, updateUser } = authSlice.actions;
 export const { setPreferences, setMacroProgress } = userSlice.actions;
 export const { setRecipes, selectRecipe, setLoading, setError } = recipesSlice.actions;
+export const { setTodayLogs, addLog, removeLog, setTodaySummary, setNutritionLoading } = nutritionSlice.actions;
 export const { setItems, toggleItem } = shoppingSlice.actions;
 
 export const store = configureStore({
   reducer: {
-    auth: authSlice.reducer,
-    user: userSlice.reducer,
-    recipes: recipesSlice.reducer,
-    shopping: shoppingSlice.reducer,
+    auth:      authSlice.reducer,
+    user:      userSlice.reducer,
+    recipes:   recipesSlice.reducer,
+    nutrition: nutritionSlice.reducer,
+    shopping:  shoppingSlice.reducer,
   },
 });
 
