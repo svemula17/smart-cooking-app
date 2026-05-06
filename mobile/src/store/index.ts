@@ -1,96 +1,93 @@
-import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { User, Recipe, RecipeWithDetails, UserPreferences, ShoppingListItem } from '../types';
-import type { NutritionLog, DailySummary } from '../services/nutritionService';
+import { configureStore } from '@reduxjs/toolkit';
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-interface AuthState { user: User | null; token: string | null; isAuthenticated: boolean; }
-const authSlice = createSlice({
-  name: 'auth',
-  initialState: { user: null, token: null, isAuthenticated: false } as AuthState,
-  reducers: {
-    setAuth(s, a: PayloadAction<{ user: User; token: string }>) {
-      s.user = a.payload.user; s.token = a.payload.token; s.isAuthenticated = true;
-    },
-    clearAuth(s) { s.user = null; s.token = null; s.isAuthenticated = false; },
-    updateUser(s, a: PayloadAction<Partial<User>>) { if (s.user) Object.assign(s.user, a.payload); },
-  },
-});
+import authReducer  from './slices/authSlice';
+import userReducer  from './slices/userSlice';
+import recipeReducer from './slices/recipeSlice';
+import nutritionReducer from './slices/nutritionSlice';
+import shoppingReducer from './slices/shoppingSlice';
 
-// ─── User preferences ─────────────────────────────────────────────────────────
-interface UserState {
-  preferences: UserPreferences | null;
-  macroProgress: { calories: number; protein: number; carbs: number; fat: number };
-}
-const userSlice = createSlice({
-  name: 'user',
-  initialState: { preferences: null, macroProgress: { calories: 0, protein: 0, carbs: 0, fat: 0 } } as UserState,
-  reducers: {
-    setPreferences(s, a: PayloadAction<UserPreferences>) { s.preferences = a.payload; },
-    setMacroProgress(s, a: PayloadAction<UserState['macroProgress']>) { s.macroProgress = a.payload; },
-  },
-});
-
-// ─── Recipes ──────────────────────────────────────────────────────────────────
-interface RecipesState { items: Recipe[]; selected: RecipeWithDetails | null; loading: boolean; error: string | null; }
-const recipesSlice = createSlice({
-  name: 'recipes',
-  initialState: { items: [], selected: null, loading: false, error: null } as RecipesState,
-  reducers: {
-    setRecipes(s, a: PayloadAction<Recipe[]>) { s.items = a.payload; },
-    selectRecipe(s, a: PayloadAction<RecipeWithDetails | null>) { s.selected = a.payload; },
-    setLoading(s, a: PayloadAction<boolean>) { s.loading = a.payload; },
-    setError(s, a: PayloadAction<string | null>) { s.error = a.payload; },
-  },
-});
-
-// ─── Nutrition ────────────────────────────────────────────────────────────────
-interface NutritionState {
-  todayLogs: NutritionLog[];
-  todaySummary: DailySummary | null;
-  isLoading: boolean;
-}
-const nutritionSlice = createSlice({
-  name: 'nutrition',
-  initialState: { todayLogs: [], todaySummary: null, isLoading: false } as NutritionState,
-  reducers: {
-    setTodayLogs(s, a: PayloadAction<NutritionLog[]>) { s.todayLogs = a.payload; },
-    addLog(s, a: PayloadAction<NutritionLog>) { s.todayLogs.push(a.payload); },
-    removeLog(s, a: PayloadAction<string>) { s.todayLogs = s.todayLogs.filter((l) => l.id !== a.payload); },
-    setTodaySummary(s, a: PayloadAction<DailySummary | null>) { s.todaySummary = a.payload; },
-    setNutritionLoading(s, a: PayloadAction<boolean>) { s.isLoading = a.payload; },
-  },
-});
-
-// ─── Shopping ─────────────────────────────────────────────────────────────────
-interface ShoppingState { items: ShoppingListItem[]; }
-const shoppingSlice = createSlice({
-  name: 'shopping',
-  initialState: { items: [] } as ShoppingState,
-  reducers: {
-    setItems(s, a: PayloadAction<ShoppingListItem[]>) { s.items = a.payload; },
-    toggleItem(s, a: PayloadAction<string>) {
-      const item = s.items.find((i) => i.id === a.payload);
-      if (item) item.checked = !item.checked;
-    },
-  },
-});
-
-// ─── Exports ──────────────────────────────────────────────────────────────────
-export const { setAuth, clearAuth, updateUser } = authSlice.actions;
-export const { setPreferences, setMacroProgress } = userSlice.actions;
-export const { setRecipes, selectRecipe, setLoading, setError } = recipesSlice.actions;
-export const { setTodayLogs, addLog, removeLog, setTodaySummary, setNutritionLoading } = nutritionSlice.actions;
-export const { setItems, toggleItem } = shoppingSlice.actions;
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 export const store = configureStore({
   reducer: {
-    auth:      authSlice.reducer,
-    user:      userSlice.reducer,
-    recipes:   recipesSlice.reducer,
-    nutrition: nutritionSlice.reducer,
-    shopping:  shoppingSlice.reducer,
+    auth:      authReducer,
+    user:      userReducer,
+    recipes:   recipeReducer,
+    nutrition: nutritionReducer,
+    shopping:  shoppingReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      // Silence the large-payload serializable check for recipe lists
+      serializableCheck: {
+        ignoredPaths: ['recipes.byCuisine'],
+      },
+    }),
 });
 
-export type RootState = ReturnType<typeof store.getState>;
+export type RootState   = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+// ─── Re-export all slice actions for convenience ──────────────────────────────
+
+export {
+  setAuth,
+  updateUser,
+  setToken,
+  setAuthLoading,
+  setAuthError,
+  clearAuth,
+} from './slices/authSlice';
+
+export {
+  setPreferences,
+  patchPreferences,
+  setMacroProgress,
+  incrementMacro,
+  resetMacroProgress,
+  setPrefsLoading,
+  setPrefsError,
+  clearUser,
+} from './slices/userSlice';
+
+export {
+  setRecipes,
+  setCuisineRecipes,
+  selectRecipe,
+  setFilters,
+  clearFilters,
+  setLoading,
+  setError,
+} from './slices/recipeSlice';
+
+export {
+  setTodayLogs,
+  addLog,
+  removeLog,
+  setTodaySummary,
+  setViewingDate,
+  resetToToday,
+  setNutritionLoading,
+  setNutritionError,
+} from './slices/nutritionSlice';
+
+export {
+  setLists,
+  addList,
+  removeList,
+  openList,
+  closeList,
+  toggleItem,
+  upsertItem,
+  markActiveListComplete,
+  setShoppingLoading,
+  setShoppingError,
+} from './slices/shoppingSlice';
+
+// ─── Re-export slice state types ──────────────────────────────────────────────
+
+export type { AuthState }     from './slices/authSlice';
+export type { UserState, MacroProgress } from './slices/userSlice';
+export type { RecipesState, RecipeFilters } from './slices/recipeSlice';
+export type { NutritionState } from './slices/nutritionSlice';
+export type { ShoppingState }  from './slices/shoppingSlice';

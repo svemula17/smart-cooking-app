@@ -1,80 +1,105 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userApi, setAuthToken } from './api';
+import { storage } from '../utils/storage';
 import type { User } from '../types';
 
-interface AuthResponse {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface AuthResponse {
   user: User;
   accessToken: string;
   refreshToken?: string;
 }
 
-async function persistAuth(data: AuthResponse) {
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+async function persistAuth(data: AuthResponse): Promise<void> {
   setAuthToken(data.accessToken);
-  await AsyncStorage.setItem('accessToken', data.accessToken);
-  await AsyncStorage.setItem('user', JSON.stringify(data.user));
-  if (data.refreshToken) {
-    await AsyncStorage.setItem('refreshToken', data.refreshToken);
-  }
+  await Promise.all([
+    storage.setTokens(data.accessToken, data.refreshToken),
+    storage.setUser(data.user),
+  ]);
 }
 
+// ─── Service ──────────────────────────────────────────────────────────────────
+
 export const authService = {
-  async register(name: string, email: string, password: string): Promise<AuthResponse> {
-    const res = await userApi.post('/auth/register', { name, email, password });
-    const data: AuthResponse = res.data.data;
+  /** Create a new account */
+  async register(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<AuthResponse> {
+    const res = await userApi.post<{ data: AuthResponse }>('/auth/register', {
+      name,
+      email,
+      password,
+    });
+    const data = res.data.data;
     await persistAuth(data);
     return data;
   },
 
+  /** Log in with email + password */
   async login(email: string, password: string): Promise<AuthResponse> {
-    const res = await userApi.post('/auth/login', { email, password });
-    const data: AuthResponse = res.data.data;
+    const res = await userApi.post<{ data: AuthResponse }>('/auth/login', {
+      email,
+      password,
+    });
+    const data = res.data.data;
     await persistAuth(data);
     return data;
   },
 
+  /** Log out — calls the revoke endpoint then wipes local storage */
   async logout(): Promise<void> {
     try {
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      const refreshToken = await storage.getRefreshToken();
       if (refreshToken) {
         await userApi.post('/auth/logout', { refreshToken });
       }
     } catch {
-      // ignore network errors on logout
+      // network errors on logout are non-fatal
     } finally {
       setAuthToken(null);
-      await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('refreshToken');
-      await AsyncStorage.removeItem('user');
+      await storage.clearAuth();
     }
   },
 
+  /** Fetch the current user from the server (requires valid token) */
   async getMe(): Promise<User | null> {
     try {
-      const res = await userApi.get('/users/me');
-      return res.data.data as User;
+      const res = await userApi.get<{ data: User }>('/users/me');
+      return res.data.data;
     } catch {
       return null;
     }
   },
 
+  /**
+   * Restore a previously persisted session from AsyncStorage.
+   * Returns null if no tokens are stored.
+   */
   async restoreSession(): Promise<{ user: User; token: string } | null> {
     try {
-      const t = await AsyncStorage.getItem('accessToken');
-      const u = await AsyncStorage.getItem('user');
-      if (!t || !u) return null;
-      setAuthToken(t);
-      return { token: t, user: JSON.parse(u) as User };
+      const [token, user] = await Promise.all([
+        storage.getAccessToken(),
+        storage.getUser<User>(),
+      ]);
+      if (!token || !user) return null;
+      setAuthToken(token);
+      return { token, user };
     } catch {
       return null;
     }
   },
 
+  /** Returns true if the user has never completed onboarding */
   async isFirstLaunch(): Promise<boolean> {
-    const seen = await AsyncStorage.getItem('onboardingComplete');
-    return seen !== 'true';
+    return !(await storage.isOnboardingComplete());
   },
 
+  /** Mark onboarding as done so future launches go straight to Home */
   async markOnboardingComplete(): Promise<void> {
-    await AsyncStorage.setItem('onboardingComplete', 'true');
+    await storage.markOnboardingComplete();
   },
 };

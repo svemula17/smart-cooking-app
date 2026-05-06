@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { aiApi } from '../services/api';
+import { aiService } from '../services/aiService';
 import type { ChatMessage } from '../types';
 import { colors } from '../theme/colors';
 
@@ -116,8 +116,9 @@ export function AIChatScreen(): React.JSX.Element {
       scrollToEnd();
 
       try {
-        const res = await aiApi.post<{ data: { reply: string } }>('/ai/chat', { message: trimmed });
-        const reply = res.data?.data?.reply ?? "Sorry, I didn't get that. Try again!";
+        const history = messages
+          .map((m) => ({ role: m.role, content: m.content }));
+        const { reply } = await aiService.chat({ message: trimmed, history });
         const aiMsg: ChatMessage = {
           id: `a-${Date.now()}`,
           role: 'assistant',
