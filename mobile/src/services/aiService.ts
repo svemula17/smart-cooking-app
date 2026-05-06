@@ -1,66 +1,115 @@
 import { aiApi } from './api';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types (mirroring backend ai-service/app/schemas/ai.py) ──────────────────
 
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  createdAt: string;
+// ── Chat ─────────────────────────────────────────────────────────────────────
+
+export interface ChatContext {
+  recipe_name?: string;
+  current_step?: string;
+  ingredients_available?: string[];
 }
 
 export interface ChatRequest {
+  user_id: string;
   message: string;
-  /** Optional recipe context — injected as system context by the AI service */
-  context?: {
-    recipeId?: string;
-    recipeName?: string;
-    currentStep?: number;
-    ingredients?: string[];
-  };
-  /** Pass previous messages to keep multi-turn context */
-  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  recipe_id?: string;
+  conversation_id?: string;
+  context?: ChatContext;
 }
 
 export interface ChatResponse {
-  reply: string;
-  /** Token usage from the underlying LLM (optional, logged by service) */
-  usage?: { prompt_tokens: number; completion_tokens: number };
+  /** The AI's reply text */
+  response: string;
+  conversation_id: string;
+  tokens_used: number;
+  cached: boolean;
 }
 
-export interface RecipeSuggestion {
-  recipeId: string;
-  recipeName: string;
+// ── Substitution ─────────────────────────────────────────────────────────────
+
+export interface Substitute {
+  name: string;
+  ratio: string;
+  notes: string;
+}
+
+export interface SubstituteRequest {
+  ingredient_name: string;
+  recipe_context?: string;
+  dietary_restrictions?: string[];
+}
+
+export interface SubstituteResponse {
+  substitutes: Substitute[];
+}
+
+// ── Variety ──────────────────────────────────────────────────────────────────
+
+export interface VarietySuggestion {
+  id: string;
+  name: string;
+  cuisine_type: string;
   reason: string;
-  matchScore: number;
 }
 
-export interface MealPlanDay {
-  date: string;          // ISO "YYYY-MM-DD"
-  breakfast?: RecipeSuggestion;
-  lunch?: RecipeSuggestion;
-  dinner?: RecipeSuggestion;
-  snack?: RecipeSuggestion;
+export interface VarietyResponse {
+  suggestions: VarietySuggestion[];
+  variety_score: number;
+  underused_cuisines: string[];
+  cooked_cuisines: Record<string, number>;
+  reasoning: string;
 }
 
-export interface SubstitutionResult {
-  ingredient: string;
-  substitutes: Array<{ name: string; ratio: string; notes: string }>;
+// ── Multi-dish coordinator ────────────────────────────────────────────────────
+
+export interface CoordinationStep {
+  step_number: number;
+  instruction: string;
+  time_minutes?: number;
 }
 
-export interface OptimisedPlan {
-  days: MealPlanDay[];
-  totalCalories: number;
-  achievedGoals: string[];
-  warnings: string[];
+export interface CoordinationRecipe {
+  id: string;
+  name: string;
+  prep_time: number;
+  cook_time: number;
+  steps?: CoordinationStep[];
+}
+
+export interface TimelineEntry {
+  recipe_id: string;
+  recipe_name: string;
+  start_time_minutes: number;
+  start_time_display: string;
+  finish_time_display: string;
+}
+
+export interface MultiDishResponse {
+  timeline: Record<string, TimelineEntry>;
+  total_time_minutes: number;
+  finish_time_display: string;
+}
+
+// ── Troubleshoot ──────────────────────────────────────────────────────────────
+
+export interface TroubleshootSolution {
+  action: string;
+  explanation: string;
+}
+
+export interface TroubleshootResponse {
+  solutions: TroubleshootSolution[];
+  tokens_used: number;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export const aiService = {
   /**
-   * Send a single chat message and receive a reply.
-   * Optionally pass recipe context and conversation history for continuity.
+   * POST /ai/chat
+   * Send a message to the AI cooking assistant.
+   * Pass conversation_id to maintain multi-turn context on the server.
    */
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const res = await aiApi.post<{ data: ChatResponse }>('/ai/chat', request);
@@ -68,89 +117,99 @@ export const aiService = {
   },
 
   /**
-   * Ask for ingredient substitution suggestions.
-   * e.g. "What can I use instead of heavy cream?"
+   * POST /ai/substitute
+   * Get substitution options for a specific ingredient.
    */
   async getSubstitutions(
-    ingredient: string,
+    ingredientName: string,
     recipeContext?: string,
-  ): Promise<SubstitutionResult> {
-    const res = await aiApi.post<{ data: SubstitutionResult }>(
-      '/ai/substitutions',
-      { ingredient, recipe_context: recipeContext },
-    );
-    return res.data.data;
+    dietaryRestrictions: string[] = [],
+  ): Promise<Substitute[]> {
+    const body: SubstituteRequest = {
+      ingredient_name: ingredientName,
+      recipe_context: recipeContext,
+      dietary_restrictions: dietaryRestrictions,
+    };
+    const res = await aiApi.post<{ data: SubstituteResponse }>('/ai/substitute', body);
+    return res.data.data.substitutes ?? [];
   },
 
   /**
-   * Get personalised recipe suggestions based on user macros and pantry.
-   * Calls the AI service's macro-aware recommender.
+   * POST /ai/variety/suggest
+   * Get recipe suggestions to improve cuisine variety based on recent history.
    */
-  async getSuggestions(params: {
-    remainingCalories: number;
-    remainingProtein: number;
-    remainingCarbs: number;
-    remainingFat: number;
-    dietaryRestrictions?: string[];
-    favoriteCuisines?: string[];
-    limit?: number;
-  }): Promise<RecipeSuggestion[]> {
-    const res = await aiApi.post<{ data: { suggestions: RecipeSuggestion[] } }>(
-      '/ai/suggestions',
-      {
-        remaining_calories: params.remainingCalories,
-        remaining_protein:  params.remainingProtein,
-        remaining_carbs:    params.remainingCarbs,
-        remaining_fat:      params.remainingFat,
-        dietary_restrictions: params.dietaryRestrictions ?? [],
-        favorite_cuisines:    params.favoriteCuisines ?? [],
-        limit: params.limit ?? 5,
-      },
-    );
-    return res.data.data.suggestions ?? [];
-  },
-
-  /**
-   * Generate a weekly meal plan optimised for the user's macro goals.
-   * Uses OR-Tools on the backend (ai-service).
-   */
-  async generateMealPlan(params: {
+  async getVarietySuggestions(params: {
     userId: string;
-    targetCalories: number;
-    targetProtein: number;
-    targetCarbs: number;
-    targetFat: number;
-    dietaryRestrictions?: string[];
-    daysAhead?: number;
-  }): Promise<OptimisedPlan> {
-    const res = await aiApi.post<{ data: OptimisedPlan }>(
-      '/ai/meal-plan',
-      {
-        user_id:               params.userId,
-        target_calories:       params.targetCalories,
-        target_protein:        params.targetProtein,
-        target_carbs:          params.targetCarbs,
-        target_fat:            params.targetFat,
-        dietary_restrictions:  params.dietaryRestrictions ?? [],
-        days_ahead:            params.daysAhead ?? 7,
-      },
+    daysBack?: number;
+    limit?: number;
+  }): Promise<VarietyResponse> {
+    const res = await aiApi.post<{ data: VarietyResponse }>('/ai/variety/suggest', {
+      user_id:  params.userId,
+      days_back: params.daysBack ?? 30,
+      limit:    params.limit ?? 10,
+    });
+    return res.data.data;
+  },
+
+  /**
+   * POST /ai/multi-dish/coordinate
+   * Generate an optimised parallel cooking timeline for multiple recipes.
+   */
+  async coordinateMultiDish(
+    recipes: CoordinationRecipe[],
+    serveAt?: string,
+  ): Promise<MultiDishResponse> {
+    const res = await aiApi.post<{ data: MultiDishResponse }>(
+      '/ai/multi-dish/coordinate',
+      { recipes, serve_at: serveAt },
     );
     return res.data.data;
   },
 
   /**
-   * Ask a quick cooking tip question without full history context.
-   * Useful for "Ask AI" FAB in CookingMode.
+   * POST /ai/troubleshoot
+   * Get solutions for a cooking problem (e.g. "my sauce is too thick").
    */
-  async quickTip(
-    question: string,
-    recipeName?: string,
-    stepInstruction?: string,
-  ): Promise<string> {
-    const context = recipeName
-      ? { recipeName, currentInstruction: stepInstruction }
-      : undefined;
-    const result = await aiService.chat({ message: question, context });
-    return result.reply;
+  async troubleshoot(
+    problem: string,
+    recipeContext?: string,
+  ): Promise<TroubleshootSolution[]> {
+    const res = await aiApi.post<{ data: TroubleshootResponse }>('/ai/troubleshoot', {
+      problem,
+      recipe_context: recipeContext,
+    });
+    return res.data.data.solutions ?? [];
+  },
+
+  /**
+   * POST /ai/tips
+   * Get pro cooking tips for a specific recipe.
+   */
+  async getTips(recipeId: string): Promise<string[]> {
+    const res = await aiApi.post<{ data: { tips: string[]; cached: boolean } }>(
+      '/ai/tips',
+      { recipe_id: recipeId },
+    );
+    return res.data.data.tips ?? [];
+  },
+
+  /**
+   * Convenience wrapper — ask a quick one-off question during cooking.
+   * Used by CookingMode's "Ask AI" button.
+   */
+  async quickTip(params: {
+    userId: string;
+    question: string;
+    recipeName?: string;
+    currentStep?: string;
+  }): Promise<string> {
+    const result = await aiService.chat({
+      user_id: params.userId,
+      message: params.question,
+      context: params.recipeName
+        ? { recipe_name: params.recipeName, current_step: params.currentStep }
+        : undefined,
+    });
+    return result.response;
   },
 };

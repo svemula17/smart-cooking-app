@@ -223,7 +223,8 @@ export function ShoppingListScreen(): React.JSX.Element {
     isRefetching,
   } = useQuery({
     queryKey: ['shopping-lists', user?.id],
-    queryFn: () => shoppingService.getLists(user!.id),
+    // Identity comes from the JWT — no userId in path
+    queryFn: () => shoppingService.getLists(),
     enabled: !!user?.id,
   });
 

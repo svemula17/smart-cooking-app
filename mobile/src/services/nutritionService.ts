@@ -1,98 +1,221 @@
 import { nutritionApi } from './api';
 
-export interface NutritionixFood {
-  food_name: string;
-  serving_qty: number;
-  serving_unit: string;
-  nf_calories: number;
-  nf_protein: number;
-  nf_total_carbohydrate: number;
-  nf_total_fat: number;
-  nf_dietary_fiber: number;
-  nf_sodium: number;
-}
+// ─── Types (mirroring backend nutrition-service/app/schemas/nutrition.py) ─────
 
-export interface NutritionLog {
-  id: string;
-  user_id: string;
-  food_name: string;
+export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+
+// ── Calculate ─────────────────────────────────────────────────────────────────
+
+export interface IngredientInput {
+  name: string;
   quantity: number;
   unit: string;
+}
+
+export interface NutritionTotals {
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  sodium_mg: number;
+}
+
+export interface CalculateResponse {
+  total_nutrition: NutritionTotals;
+  per_serving: NutritionTotals;
+  servings: number;
+}
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+
+export interface NutritionLogRequest {
+  user_id: string;
+  recipe_id: string;
+  servings_consumed: number;
+  meal_type: MealType;
+  /** ISO date string "YYYY-MM-DD" */
+  date: string;
+  auto_logged?: boolean;
+}
+
+export interface NutritionLogEntry {
+  id: string;
+  user_id: string;
+  recipe_id: string | null;
+  /** Aliased from log_date in the backend */
+  date: string;
+  meal_type: MealType;
+  servings_consumed: number;
   calories: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
   logged_at: string;
+  auto_logged: boolean;
+}
+
+// ── Daily summary ─────────────────────────────────────────────────────────────
+
+export interface MacroGoals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface MacroProgress {
+  calories_percent: number;
+  protein_percent: number;
+  carbs_percent: number;
+  fat_percent: number;
+}
+
+export interface MealSummary {
+  log_id: string;
+  meal_type: MealType;
+  recipe_id: string | null;
+  recipe_name: string | null;
+  servings_consumed: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  auto_logged: boolean;
+  logged_at: string;
 }
 
 export interface DailySummary {
   date: string;
+  user_id: string;
   total_calories: number;
-  total_protein_g: number;
-  total_carbs_g: number;
-  total_fat_g: number;
-  logs: NutritionLog[];
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+  goals: MacroGoals;
+  progress: MacroProgress;
+  meals: MealSummary[];
 }
 
-interface SearchResponse {
-  foods: NutritionixFood[];
+// ── Weekly / Monthly ──────────────────────────────────────────────────────────
+
+export interface WeeklySummary {
+  start_date: string;
+  end_date: string;
+  days: DailySummary[];
 }
 
-interface LogResponse {
-  log: NutritionLog;
+export interface MonthlyWeekBucket {
+  week_start: string;
+  week_end: string;
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+  days_logged: number;
 }
 
-interface SummaryResponse {
-  summary: DailySummary;
+export interface MonthlySummary {
+  start_date: string;
+  end_date: string;
+  weeks: MonthlyWeekBucket[];
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+}
+
+// ─── Service ──────────────────────────────────────────────────────────────────
+
+function todayIso(): string {
+  return new Date().toISOString().split('T')[0]!;
 }
 
 export const nutritionService = {
-  /** Search the Nutritionix food database */
-  async search(query: string): Promise<NutritionixFood[]> {
-    const res = await nutritionApi.get<{ data: SearchResponse }>(
-      '/nutrition/search',
-      { params: { q: query } },
+  /**
+   * POST /nutrition/calculate
+   * Calculate macro totals for a list of recipe ingredients.
+   * Does NOT persist anything — pure calculation.
+   */
+  async calculate(
+    recipeId: string,
+    ingredients: IngredientInput[],
+    servings = 1,
+  ): Promise<CalculateResponse> {
+    const res = await nutritionApi.post<{ data: CalculateResponse }>(
+      '/nutrition/calculate',
+      { recipe_id: recipeId, ingredients, servings },
     );
-    return res.data.data.foods ?? [];
+    return res.data.data;
   },
 
-  /** Log a food entry for the authenticated user */
-  async log(entry: {
-    food_name: string;
-    quantity: number;
-    unit: string;
-    calories: number;
-    protein_g: number;
-    carbs_g: number;
-    fat_g: number;
-  }): Promise<NutritionLog> {
-    const res = await nutritionApi.post<{ data: LogResponse }>('/nutrition/log', entry);
+  /**
+   * POST /nutrition/log
+   * Log a recipe the user just ate (or auto-log after completing a recipe).
+   */
+  async log(entry: NutritionLogRequest): Promise<NutritionLogEntry> {
+    const res = await nutritionApi.post<{ data: { log: NutritionLogEntry } }>(
+      '/nutrition/log',
+      entry,
+    );
     return res.data.data.log;
   },
 
-  /** Get today's nutrition summary (or a specific date YYYY-MM-DD) */
-  async getSummary(date?: string): Promise<DailySummary> {
-    const params = date ? { date } : {};
-    const res = await nutritionApi.get<{ data: SummaryResponse }>(
-      '/nutrition/summary',
+  /**
+   * GET /nutrition/daily/:userId/:date
+   * Get the aggregated macro summary for a specific date.
+   * Defaults to today.
+   */
+  async getDaily(userId: string, date?: string): Promise<DailySummary> {
+    const day = date ?? todayIso();
+    const res = await nutritionApi.get<{ data: DailySummary }>(
+      `/nutrition/daily/${userId}/${day}`,
+    );
+    return res.data.data;
+  },
+
+  /**
+   * GET /nutrition/logs/:userId
+   * Paginated list of raw log entries for the user.
+   */
+  async getLogs(
+    userId: string,
+    params?: { page?: number; limit?: number; date?: string },
+  ): Promise<{ logs: NutritionLogEntry[]; total: number }> {
+    const res = await nutritionApi.get<{ data: { logs: NutritionLogEntry[]; total: number } }>(
+      `/nutrition/logs/${userId}`,
       { params },
     );
-    return res.data.data.summary;
+    return res.data.data;
   },
 
-  /** Delete a logged entry */
+  /**
+   * GET /nutrition/weekly/:userId
+   * Returns the last 7 days of daily summaries.
+   */
+  async getWeekly(userId: string): Promise<WeeklySummary> {
+    const res = await nutritionApi.get<{ data: WeeklySummary }>(
+      `/nutrition/weekly/${userId}`,
+    );
+    return res.data.data;
+  },
+
+  /**
+   * GET /nutrition/monthly/:userId
+   * Returns the last 30 days bucketed by week.
+   */
+  async getMonthly(userId: string): Promise<MonthlySummary> {
+    const res = await nutritionApi.get<{ data: MonthlySummary }>(
+      `/nutrition/monthly/${userId}`,
+    );
+    return res.data.data;
+  },
+
+  /**
+   * DELETE /nutrition/log/:logId
+   * Remove a logged entry.
+   */
   async deleteLog(logId: string): Promise<void> {
     await nutritionApi.delete(`/nutrition/log/${logId}`);
-  },
-
-  /** Analyse a recipe's ingredients and return merged nutrition */
-  async analyseRecipe(
-    ingredients: Array<{ name: string; quantity: number; unit: string }>,
-  ): Promise<NutritionixFood[]> {
-    const res = await nutritionApi.post<{ data: SearchResponse }>(
-      '/nutrition/analyse',
-      { ingredients },
-    );
-    return res.data.data.foods ?? [];
   },
 };

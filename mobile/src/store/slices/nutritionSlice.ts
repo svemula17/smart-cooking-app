@@ -1,11 +1,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { NutritionLog, DailySummary } from '../../services/nutritionService';
+import type { NutritionLogEntry, DailySummary } from '../../services/nutritionService';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface NutritionState {
   /** Today's individual log entries */
-  todayLogs: NutritionLog[];
+  todayLogs: NutritionLogEntry[];
   /** Aggregated summary for today (or the currently viewed date) */
   todaySummary: DailySummary | null;
   /** Which date is currently in view — ISO string "YYYY-MM-DD" */
@@ -33,12 +33,12 @@ const nutritionSlice = createSlice({
   initialState,
   reducers: {
     /** Replace all today's logs (e.g. after fetching the full list) */
-    setTodayLogs(state, action: PayloadAction<NutritionLog[]>) {
+    setTodayLogs(state, action: PayloadAction<NutritionLogEntry[]>) {
       state.todayLogs = action.payload;
     },
 
-    /** Append a single freshly-created log */
-    addLog(state, action: PayloadAction<NutritionLog>) {
+    /** Append a single freshly-created log entry */
+    addLog(state, action: PayloadAction<NutritionLogEntry>) {
       state.todayLogs.push(action.payload);
     },
 
@@ -57,7 +57,7 @@ const nutritionSlice = createSlice({
       state.viewingDate = action.payload;
     },
 
-    /** Jump back to today and clear the logs/summary */
+    /** Jump back to today and clear cached data */
     resetToToday(state) {
       state.viewingDate = todayIso();
       state.todayLogs = [];

@@ -12,8 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 import { aiService } from '../services/aiService';
 import type { ChatMessage } from '../types';
+import type { RootState } from '../store';
 import { colors } from '../theme/colors';
 
 // ─── Typing indicator ─────────────────────────────────────────────────────────
@@ -92,7 +94,9 @@ export function AIChatScreen(): React.JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | undefined>();
   const listRef = useRef<FlatList>(null);
+  const user = useSelector((s: RootState) => s.auth.user);
 
   const scrollToEnd = useCallback(() => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
@@ -116,13 +120,17 @@ export function AIChatScreen(): React.JSX.Element {
       scrollToEnd();
 
       try {
-        const history = messages
-          .map((m) => ({ role: m.role, content: m.content }));
-        const { reply } = await aiService.chat({ message: trimmed, history });
+        const result = await aiService.chat({
+          user_id: user?.id ?? 'anonymous',
+          message: trimmed,
+          conversation_id: conversationId,
+        });
+        // Persist conversation_id for multi-turn continuity
+        if (result.conversation_id) setConversationId(result.conversation_id);
         const aiMsg: ChatMessage = {
           id: `a-${Date.now()}`,
           role: 'assistant',
-          content: reply,
+          content: result.response,
           createdAt: new Date().toISOString(),
         };
         setMessages((m) => [...m, aiMsg]);
