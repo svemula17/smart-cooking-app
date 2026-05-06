@@ -7,12 +7,12 @@ import SplashScreen from '../screens/SplashScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
-import SearchScreen from '../screens/SearchScreen';
 import RecipeBrowserScreen from '../screens/RecipeBrowserScreen';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import { CookingModeScreen } from '../screens/CookingModeScreen';
 import { ShoppingListScreen } from '../screens/ShoppingListScreen';
-import { AIChatScreen } from '../screens/AIChatScreen';
+import { MealPlannerScreen } from '../screens/MealPlannerScreen';
+import { MonthlyTrackingScreen } from '../screens/MonthlyTrackingScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
@@ -30,11 +30,11 @@ const Tab   = createBottomTabNavigator<TabParamList>();
 interface TabIconConfig { emoji: string; label: string }
 
 const TAB_CONFIG: Record<string, TabIconConfig> = {
-  Home:     { emoji: '🏠', label: 'Home' },
-  Search:   { emoji: '🔍', label: 'Discover' },
-  AIChat:   { emoji: '🤖', label: 'AI Chef' },
-  Shopping: { emoji: '🛒', label: 'Shopping' },
-  Profile:  { emoji: '👤', label: 'Profile' },
+  Home:        { emoji: '🏠', label: 'Home' },
+  MealPlanner: { emoji: '📅', label: 'Plan' },
+  Shopping:    { emoji: '🛒', label: 'Shopping' },
+  Stats:       { emoji: '📊', label: 'Stats' },
+  Profile:     { emoji: '👤', label: 'Profile' },
 };
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
@@ -87,11 +87,11 @@ function TabNavigator() {
         tabBarLabel: TAB_CONFIG[route.name]?.label ?? route.name,
       })}
     >
-      <Tab.Screen name="Home"     component={HomeScreen       as AnyComponent} />
-      <Tab.Screen name="Search"   component={SearchScreen     as AnyComponent} />
-      <Tab.Screen name="AIChat"   component={AIChatScreen     as AnyComponent} />
-      <Tab.Screen name="Shopping" component={ShoppingListScreen as AnyComponent} />
-      <Tab.Screen name="Profile"  component={ProfileScreen    as AnyComponent} />
+      <Tab.Screen name="Home"        component={HomeScreen          as AnyComponent} />
+      <Tab.Screen name="MealPlanner" component={MealPlannerScreen   as AnyComponent} />
+      <Tab.Screen name="Shopping"    component={ShoppingListScreen  as AnyComponent} />
+      <Tab.Screen name="Stats"       component={MonthlyTrackingScreen as AnyComponent} />
+      <Tab.Screen name="Profile"     component={ProfileScreen       as AnyComponent} />
     </Tab.Navigator>
   );
 }

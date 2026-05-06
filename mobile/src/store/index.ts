@@ -5,6 +5,8 @@ import userReducer  from './slices/userSlice';
 import recipeReducer from './slices/recipeSlice';
 import nutritionReducer from './slices/nutritionSlice';
 import shoppingReducer from './slices/shoppingSlice';
+import mealPlanReducer from './slices/mealPlanSlice';
+import trackingReducer from './slices/trackingSlice';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +17,8 @@ export const store = configureStore({
     recipes:   recipeReducer,
     nutrition: nutritionReducer,
     shopping:  shoppingReducer,
+    mealPlan:  mealPlanReducer,
+    tracking:  trackingReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -91,3 +95,22 @@ export type { UserState, MacroProgress } from './slices/userSlice';
 export type { RecipesState, RecipeFilters } from './slices/recipeSlice';
 export type { NutritionState } from './slices/nutritionSlice';
 export type { ShoppingState }  from './slices/shoppingSlice';
+
+export {
+  setMealPlans,
+  addMealPlan,
+  removeMealPlan,
+  updateMealPlan,
+  setMealPlanLoading,
+  setMealPlanError,
+} from './slices/mealPlanSlice';
+
+export {
+  setMonthlyStats,
+  setViewingMonth,
+  setTrackingLoading,
+  setTrackingError,
+} from './slices/trackingSlice';
+
+export type { MealPlanState } from './slices/mealPlanSlice';
+export type { TrackingState } from './slices/trackingSlice';

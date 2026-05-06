@@ -103,6 +103,61 @@ export interface ShoppingListItem {
   checked: boolean;
 }
 
+// ─── Meal Planning ────────────────────────────────────────────────────────────
+
+export type MealType = 'breakfast' | 'lunch' | 'dinner';
+
+export interface PrepInstruction {
+  required: boolean;
+  duration_minutes: number;
+  instruction: string;
+  reminder_before_minutes: number;
+  ingredients?: string[];
+}
+
+export interface PrepInstructions {
+  marination?: PrepInstruction;
+  soaking?: PrepInstruction;
+}
+
+export interface MealPlan {
+  id: string;
+  user_id: string;
+  recipe_id: string;
+  recipe: Recipe & { prep_instructions?: PrepInstructions; nutrition?: Nutrition | null };
+  scheduled_date: string;
+  meal_type: MealType;
+  cooking_time: string;
+  completed: boolean;
+  created_at: string;
+}
+
+// ─── Nutrition Tracking ───────────────────────────────────────────────────────
+
+export interface DailyNutritionData {
+  date: string;
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+  goal_met: boolean;
+}
+
+export interface WeeklyComparison {
+  this_week:  { calories: number; protein: number; carbs: number; fat: number };
+  last_week:  { calories: number; protein: number; carbs: number; fat: number };
+}
+
+export interface MonthlyStats {
+  month: string;
+  daily_data: DailyNutritionData[];
+  averages: { calories: number; protein: number; carbs: number; fat: number };
+  weekly_comparison: WeeklyComparison;
+  goal_adherence_percent: number;
+  current_streak: number;
+  goals: { calories: number; protein: number; carbs: number; fat: number };
+}
+
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 export interface ChatMessage {
@@ -130,14 +185,15 @@ export type RootStackParamList = {
   RecipeBrowser: { cuisine: string };
   RecipeDetail: { recipeId: string };
   CookingMode: { recipeId: string };
+  RecipeSelect: { date: string; mealType: MealType };
 };
 
 export type TabParamList = {
-  Home: undefined;
-  Search: undefined;
-  AIChat: undefined;
-  Shopping: undefined;
-  Profile: undefined;
+  Home:       undefined;
+  MealPlanner: undefined;
+  Shopping:   undefined;
+  Stats:      undefined;
+  Profile:    undefined;
 };
 
 // ─── API envelopes ────────────────────────────────────────────────────────────

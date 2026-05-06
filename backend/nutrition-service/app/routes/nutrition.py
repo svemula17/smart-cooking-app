@@ -9,7 +9,8 @@ unknown fields are stripped.
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import Optional
+from datetime import timedelta
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import asyncpg
@@ -231,3 +232,133 @@ async def delete_log(
             detail={"message": "Log not found", "code": "NOT_FOUND"},
         )
     return ApiSuccess(data={"message": "Log deleted"})
+
+
+# ============================================================================
+# 8. GET /nutrition/monthly-stats/{user_id}  — enhanced with daily data
+# ============================================================================
+
+@router.get(
+    "/monthly-stats/{user_id}",
+    response_model=ApiSuccess[dict],
+    summary="Enhanced monthly stats with daily breakdown, adherence, and streak",
+)
+async def get_monthly_stats(
+    user_id: UUID,
+    user: AuthenticatedUser = CurrentUser,
+    pool: asyncpg.Pool = Depends(get_db),
+    month: Optional[str] = Query(default=None, description="YYYY-MM — defaults to current month"),
+) -> ApiSuccess[dict]:
+    assert_owner(user, str(user_id))
+
+    # Determine the date range
+    if month:
+        year, mon = int(month[:4]), int(month[5:7])
+        start_date = date_type(year, mon, 1)
+        if mon == 12:
+            end_date = date_type(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = date_type(year, mon + 1, 1) - timedelta(days=1)
+    else:
+        today = date_type.today()
+        start_date = date_type(today.year, today.month, 1)
+        end_date = today
+
+    # Fetch user goals
+    goal_row = await pool.fetchrow(
+        "SELECT calories_goal, protein_goal, carbs_goal, fat_goal FROM user_preferences WHERE user_id = $1",
+        user_id,
+    )
+    goals = {
+        "calories": float(goal_row["calories_goal"]) if goal_row else 2000.0,
+        "protein":  float(goal_row["protein_goal"])  if goal_row else 150.0,
+        "carbs":    float(goal_row["carbs_goal"])    if goal_row else 250.0,
+        "fat":      float(goal_row["fat_goal"])      if goal_row else 65.0,
+    }
+
+    # Fetch raw daily aggregates
+    rows = await pool.fetch(
+        """
+        SELECT
+            log_date::text AS date,
+            SUM(calories)  AS total_calories,
+            SUM(protein_g) AS total_protein,
+            SUM(carbs_g)   AS total_carbs,
+            SUM(fat_g)     AS total_fat
+        FROM nutrition_logs
+        WHERE user_id = $1 AND log_date BETWEEN $2 AND $3
+        GROUP BY log_date
+        ORDER BY log_date
+        """,
+        user_id, start_date, end_date,
+    )
+
+    daily_data: List[Dict[str, Any]] = []
+    for row in rows:
+        cals = float(row["total_calories"] or 0)
+        goal_met = goals["calories"] > 0 and (cals / goals["calories"]) >= 0.8
+        daily_data.append({
+            "date":           row["date"],
+            "total_calories": round(cals),
+            "total_protein":  round(float(row["total_protein"] or 0)),
+            "total_carbs":    round(float(row["total_carbs"] or 0)),
+            "total_fat":      round(float(row["total_fat"] or 0)),
+            "goal_met":       goal_met,
+        })
+
+    # Averages
+    n = len(daily_data) or 1
+    averages = {
+        "calories": round(sum(d["total_calories"] for d in daily_data) / n),
+        "protein":  round(sum(d["total_protein"]  for d in daily_data) / n),
+        "carbs":    round(sum(d["total_carbs"]    for d in daily_data) / n),
+        "fat":      round(sum(d["total_fat"]      for d in daily_data) / n),
+    }
+
+    # Weekly comparison: this week vs last week
+    today = date_type.today()
+    this_week_start = today - timedelta(days=today.weekday())
+    last_week_start = this_week_start - timedelta(weeks=1)
+    last_week_end   = this_week_start - timedelta(days=1)
+
+    def _week_avg(rows_subset: list) -> dict:
+        if not rows_subset:
+            return {"calories": 0, "protein": 0, "carbs": 0, "fat": 0}
+        n2 = len(rows_subset)
+        return {
+            "calories": round(sum(d["total_calories"] for d in rows_subset) / n2),
+            "protein":  round(sum(d["total_protein"]  for d in rows_subset) / n2),
+            "carbs":    round(sum(d["total_carbs"]    for d in rows_subset) / n2),
+            "fat":      round(sum(d["total_fat"]      for d in rows_subset) / n2),
+        }
+
+    this_week_data = [d for d in daily_data if d["date"] >= this_week_start.isoformat()]
+    last_week_data = [d for d in daily_data if last_week_start.isoformat() <= d["date"] <= last_week_end.isoformat()]
+
+    weekly_comparison = {
+        "this_week": _week_avg(this_week_data),
+        "last_week": _week_avg(last_week_data),
+    }
+
+    # Goal adherence
+    days_with_data = len(daily_data)
+    days_met = sum(1 for d in daily_data if d["goal_met"])
+    adherence_pct = round((days_met / days_with_data * 100) if days_with_data else 0)
+
+    # Current streak
+    streak = 0
+    for d in reversed(daily_data):
+        if d["goal_met"]:
+            streak += 1
+        else:
+            break
+
+    return ApiSuccess(data={
+        "month":                  start_date.strftime("%Y-%m"),
+        "daily_data":             daily_data,
+        "averages":               averages,
+        "weekly_comparison":      weekly_comparison,
+        "goal_adherence_percent": adherence_pct,
+        "current_streak":         streak,
+        "goals":                  goals,
+    })
