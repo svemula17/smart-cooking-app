@@ -1,12 +1,13 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// iOS Simulator can reach host machine via localhost
-// Android Emulator needs 10.0.2.2 instead of localhost
-// Ports must match .env SERVICE_PORT values (4001-4005)
-const USER_SERVICE     = 'http://localhost:4001';
-const RECIPE_SERVICE   = 'http://localhost:4002';
-const SHOPPING_SERVICE = 'http://localhost:4005';
+// Real device on same Wi-Fi → use Mac's LAN IP (10.0.0.34)
+// iOS Simulator → use localhost
+// Android Emulator → use 10.0.2.2
+const HOST = '10.0.0.34';
+const USER_SERVICE     = `http://${HOST}:4001`;
+const RECIPE_SERVICE   = `http://${HOST}:4002`;
+const SHOPPING_SERVICE = `http://${HOST}:4005`;
 
 function makeClient(baseURL: string) {
   const instance = axios.create({
@@ -38,8 +39,8 @@ function makeClient(baseURL: string) {
   return instance;
 }
 
-const NUTRITION_SERVICE = 'http://localhost:4003';
-const AI_SERVICE        = 'http://localhost:4004';
+const NUTRITION_SERVICE = `http://${HOST}:4003`;
+const AI_SERVICE        = `http://${HOST}:4004`;
 
 export const userApi       = makeClient(USER_SERVICE);
 export const recipeApi     = makeClient(RECIPE_SERVICE);

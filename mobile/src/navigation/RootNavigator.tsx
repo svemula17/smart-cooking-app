@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import SplashScreen from '../screens/SplashScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
+import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
 import RecipeBrowserScreen from '../screens/RecipeBrowserScreen';
@@ -105,6 +106,11 @@ export function RootNavigator(): React.JSX.Element {
     >
       <Stack.Screen name="Splash"     component={SplashScreen     as AnyComponent} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen as AnyComponent} />
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen as AnyComponent}
+        options={{ animation: 'slide_from_bottom' }}
+      />
       <Stack.Screen
         name="Tabs"
         component={TabNavigator as AnyComponent}

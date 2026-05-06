@@ -123,7 +123,16 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const handleFinish = async () => {
     setLoading(true);
     try {
-      if (isAuthenticated) {
+      await authService.markOnboardingComplete();
+    } catch {
+      // continue regardless
+    } finally {
+      setLoading(false);
+    }
+
+    if (isAuthenticated) {
+      // Already logged in (e.g. came back to onboarding) — save goals and go straight to app
+      try {
         await userService.updateGoals({
           calories_goal: parseInt(calories, 10) || 2000,
           protein_goal:  parseInt(protein,  10) || 150,
@@ -133,13 +142,22 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         if (selectedRestrictions.length > 0) {
           await userService.updateRestrictions(selectedRestrictions);
         }
+      } catch {
+        // best-effort
       }
-      await authService.markOnboardingComplete();
-    } catch {
-      // continue regardless
-    } finally {
-      setLoading(false);
       navigation.replace('Tabs');
+    } else {
+      // New user — go to Login/Register, carrying goals so they can be saved after signup
+      navigation.replace('Login', {
+        initialMode: 'register',
+        pendingGoals: {
+          calories: parseInt(calories, 10) || 2000,
+          protein:  parseInt(protein,  10) || 150,
+          carbs:    parseInt(carbs,    10) || 250,
+          fat:      parseInt(fat,      10) || 65,
+          restrictions: selectedRestrictions,
+        },
+      });
     }
   };
 

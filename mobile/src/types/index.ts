@@ -114,9 +114,18 @@ export interface ChatMessage {
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
+export type PendingGoals = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  restrictions: string[];
+};
+
 export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
+  Login: { initialMode?: 'login' | 'register'; pendingGoals?: PendingGoals } | undefined;
   Tabs: undefined;
   RecipeBrowser: { cuisine: string };
   RecipeDetail: { recipeId: string };

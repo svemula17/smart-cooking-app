@@ -58,7 +58,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
         if (isFirst) {
           navigation.replace('Onboarding');
         } else {
-          navigation.replace('Tabs');
+          navigation.replace('Login');
         }
       } catch {
         navigation.replace('Onboarding');
