@@ -79,6 +79,8 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
         q: debouncedQuery || undefined,
         cuisine_type: cuisine !== 'all' ? cuisine : undefined,
         difficulty: activeFilter === 'Easy' ? 'Easy' : undefined,
+        min_protein: activeFilter === 'High Protein' ? 25 : undefined,
+        max_cook_time: activeFilter === 'Under 30min' ? 30 : undefined,
       });
     },
   });
@@ -233,13 +235,15 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   filterScroll: {
-    maxHeight: 52,
     marginBottom: 8,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   filterContent: {
     paddingHorizontal: 16,
-    gap: 8,
+    paddingVertical: 6,
     alignItems: 'center',
+    flexDirection: 'row',
   },
   listContent: {
     paddingHorizontal: 16,

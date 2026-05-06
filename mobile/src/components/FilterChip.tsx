@@ -33,7 +33,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     marginRight: 8,
-    gap: 4,
   },
   chipSelected: {
     backgroundColor: colors.primaryLight,
@@ -41,6 +40,7 @@ const styles = StyleSheet.create({
   },
   emoji: {
     fontSize: 13,
+    marginRight: 4,
   },
   label: {
     fontSize: 13,

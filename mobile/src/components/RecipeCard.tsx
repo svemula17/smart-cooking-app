@@ -10,6 +10,12 @@ const CUISINE_EMOJI: Record<string, string> = {
   French: '🥐', 'Indo-Chinese': '🍜',
 };
 
+const CUISINE_BG: Record<string, string> = {
+  Indian: '#F5E6D3', Chinese: '#FFF0E0', Italian: '#FDE8E8',
+  Mexican: '#E8F5E9', Thai: '#E0F4F1', Japanese: '#F0E8F5',
+  Mediterranean: '#E8EFF5', American: '#FFF3E0', French: '#FFF8E1',
+};
+
 const DIFFICULTY_COLOR: Record<string, string> = {
   Easy: '#4CAF50',
   Medium: '#F9E795',
@@ -23,11 +29,12 @@ const DIFFICULTY_TEXT: Record<string, string> = {
 };
 
 function StarRating({ rating, total }: { rating: number; total: number }) {
-  const stars = Math.round(rating);
+  const safeRating = rating ?? 0;
+  const stars = Math.round(safeRating);
   return (
     <View style={styles.starRow}>
       <Text style={styles.stars}>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</Text>
-      <Text style={styles.starCount}>{rating.toFixed(1)} ({total})</Text>
+      <Text style={styles.starCount}>{safeRating.toFixed(1)} ({total ?? 0})</Text>
     </View>
   );
 }
@@ -39,7 +46,7 @@ export interface RecipeCardProps {
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutrition }) => {
-  const totalTime = recipe.prep_time_minutes + recipe.cook_time_minutes;
+  const totalTime = (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
   const localImage = getRecipeImage(recipe.name);
   const diffBg   = DIFFICULTY_COLOR[recipe.difficulty] ?? '#E0E0E0';
   const diffTxt  = DIFFICULTY_TEXT[recipe.difficulty] ?? '#333';
@@ -51,7 +58,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
         {localImage ? (
           <Image source={localImage} style={styles.image} resizeMode="cover" />
         ) : (
-          <View style={styles.imageFallback}>
+          <View style={[styles.imageFallback, { backgroundColor: CUISINE_BG[recipe.cuisine_type] ?? '#F0F0F0' }]}>
             <Text style={styles.cuisineEmoji}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
           </View>
         )}
