@@ -8,20 +8,53 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
-  Image,
-  ActivityIndicator,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSelector } from 'react-redux';
-import { useQueries } from '@tanstack/react-query';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
+import { toggleCookFromPantry } from '../store';
 import { CuisineCard } from '../components/CuisineCard';
-import { MacroProgressBar } from '../components/MacroProgressBar';
-import { getRecipeImage } from '../utils/recipeImages';
-import { recipeService } from '../services/recipeService';
 import { colors } from '../theme/colors';
+
+// ─── Goal Ring ────────────────────────────────────────────────────────────────
+
+function GoalRing({
+  label, emoji, current, goal, color, size = 72,
+}: { label: string; emoji: string; current: number; goal: number; color: string; size?: number }) {
+  const r = (size - 10) / 2;
+  const circumference = 2 * Math.PI * r;
+  const pct = goal > 0 ? Math.min(current / goal, 1) : 0;
+  const dash = circumference * pct;
+  const cx = size / 2;
+
+  return (
+    <View style={{ alignItems: 'center', flex: 1 }}>
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size}>
+          <Circle cx={cx} cy={cx} r={r} stroke="#E8E8E8" strokeWidth={7} fill="none" />
+          <Circle
+            cx={cx} cy={cx} r={r}
+            stroke={color}
+            strokeWidth={7}
+            fill="none"
+            strokeDasharray={`${dash} ${circumference}`}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${cx},${cx}`}
+          />
+        </Svg>
+        <View style={{ position: 'absolute', top: 0, left: 0, width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 16 }}>{emoji}</Text>
+          <Text style={{ fontSize: 11, fontWeight: '800', color, marginTop: 2 }}>{Math.round(pct * 100)}%</Text>
+        </View>
+      </View>
+      <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginTop: 6 }}>{label}</Text>
+    </View>
+  );
+}
 
 type HomeNav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -36,12 +69,6 @@ const CUISINES = [
   { cuisine: 'Mediterranean', emoji: '🫒', color: colors.mediterranean },
 ];
 
-const CUISINE_EMOJI: Record<string, string> = {
-  Indian: '🍛', Chinese: '🥢', Italian: '🍝', Mexican: '🌮',
-  Thai: '🍜', Japanese: '🍱', Mediterranean: '🫒', American: '🍔',
-  French: '🥐', 'Indo-Chinese': '🍜',
-};
-
 const getGreeting = (): string => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -51,10 +78,12 @@ const getGreeting = (): string => {
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNav>();
+  const dispatch = useDispatch();
   const user        = useSelector((s: RootState) => s.auth.user);
   const preferences = useSelector((s: RootState) => s.user.preferences);
   const macroProgress = useSelector((s: RootState) => s.user.macroProgress);
-  const recentIds   = useSelector((s: RootState) => s.recentlyViewed.ids);
+  const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
+  const pantryCount = useSelector((s: RootState) => s.pantry.items.length);
 
   const goals = {
     calories: preferences?.calories_goal ?? 2000,
@@ -64,19 +93,6 @@ const HomeScreen: React.FC = () => {
   };
 
   const userName = user?.name ? user.name.split(' ')[0] : 'Chef';
-
-  // Fetch recently viewed recipes in parallel
-  const recentQueries = useQueries({
-    queries: recentIds.map((id) => ({
-      queryKey: ['recipe', id],
-      queryFn: () => recipeService.getById(id),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
-  const recentRecipes = recentQueries
-    .filter((q) => q.data)
-    .map((q) => q.data!);
 
   const renderCuisineItem = ({ item }: { item: typeof CUISINES[0] }) => (
     <CuisineCard
@@ -106,52 +122,36 @@ const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Macro Progress Card */}
-        <View style={styles.macroCard}>
-          <Text style={styles.sectionTitle}>Today's Nutrition</Text>
-          <Text style={styles.macroSubtitle}>
-            {macroProgress.calories} / {goals.calories} kcal consumed
-          </Text>
-          <View style={styles.macroList}>
-            <MacroProgressBar label="Calories" current={macroProgress.calories} goal={goals.calories} color={colors.calories} unit="kcal" />
-            <MacroProgressBar label="Protein"  current={macroProgress.protein}  goal={goals.protein}  color={colors.protein}  unit="g" />
-            <MacroProgressBar label="Carbs"    current={macroProgress.carbs}    goal={goals.carbs}    color={colors.carbs}    unit="g" />
-            <MacroProgressBar label="Fat"      current={macroProgress.fat}      goal={goals.fat}      color={colors.fat}      unit="g" />
+        {/* Goal Completion Rings */}
+        <View style={styles.ringsCard}>
+          <Text style={styles.sectionTitle}>Daily Goals</Text>
+          <Text style={styles.macroSubtitle}>{macroProgress.calories} / {goals.calories} kcal today</Text>
+          <View style={styles.ringsRow}>
+            <GoalRing label="Calories" emoji="🔥" current={macroProgress.calories} goal={goals.calories} color={colors.calories} />
+            <GoalRing label="Protein"  emoji="💪" current={macroProgress.protein}  goal={goals.protein}  color={colors.protein} />
+            <GoalRing label="Carbs"    emoji="🌾" current={macroProgress.carbs}    goal={goals.carbs}    color={colors.carbs} />
+            <GoalRing label="Fat"      emoji="🫒" current={macroProgress.fat}      goal={goals.fat}      color={colors.fat} />
           </View>
         </View>
 
-        {/* Recently Viewed */}
-        {recentIds.length > 0 && (
-          <View style={styles.recentSection}>
-            <Text style={styles.sectionTitle}>Recently Viewed</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentScroll}>
-              {recentQueries.some((q) => q.isLoading) && recentRecipes.length === 0 ? (
-                <ActivityIndicator color={colors.primary} style={{ marginLeft: 4 }} />
-              ) : (
-                recentRecipes.map((recipe) => {
-                  const img = getRecipeImage(recipe.name);
-                  return (
-                    <TouchableOpacity
-                      key={recipe.id}
-                      style={styles.recentCard}
-                      onPress={() => navigation.navigate('RecipeDetail', { recipeId: recipe.id })}
-                      activeOpacity={0.8}
-                    >
-                      {img ? (
-                        <Image source={img} style={styles.recentImage} resizeMode="cover" />
-                      ) : (
-                        <View style={[styles.recentImage, styles.recentImageFallback]}>
-                          <Text style={{ fontSize: 28 }}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
-                        </View>
-                      )}
-                      <Text style={styles.recentName} numberOfLines={2}>{recipe.name}</Text>
-                      <Text style={styles.recentMeta}>{recipe.cuisine_type}</Text>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </ScrollView>
-          </View>
+        {/* Cook From Pantry active banner */}
+        {cookFromPantry && (
+          <TouchableOpacity
+            style={styles.pantryBanner}
+            onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
+            activeOpacity={0.8}
+          >
+            <View style={styles.pantryBannerRow}>
+              <Text style={styles.pantryBannerIcon}>🥦</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pantryBannerTitle}>Cook From Pantry Active</Text>
+                <Text style={styles.pantryBannerSub}>Recipes sorted by your {pantryCount} ingredients</Text>
+              </View>
+              <TouchableOpacity onPress={(e) => { e.stopPropagation(); dispatch(toggleCookFromPantry()); }}>
+                <Text style={styles.pantryBannerOff}>Turn Off</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Cuisine Section */}
@@ -170,13 +170,23 @@ const HomeScreen: React.FC = () => {
           columnWrapperStyle={styles.cuisineRow}
         />
 
-        {/* Browse All Button */}
-        <TouchableOpacity
-          style={styles.browseAllBtn}
-          onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
-        >
-          <Text style={styles.browseAllText}>Browse All Recipes →</Text>
-        </TouchableOpacity>
+        {/* Quick actions row */}
+        <View style={styles.quickRow}>
+          <TouchableOpacity
+            style={styles.quickBtn}
+            onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
+          >
+            <Text style={styles.quickBtnEmoji}>🍽️</Text>
+            <Text style={styles.quickBtnText}>All Recipes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickBtn, styles.quickBtnPantry]}
+            onPress={() => navigation.navigate('Pantry')}
+          >
+            <Text style={styles.quickBtnEmoji}>🏠</Text>
+            <Text style={styles.quickBtnText}>My Pantry</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -194,42 +204,38 @@ const styles = StyleSheet.create({
   userName:    { fontSize: 26, fontWeight: '800', color: colors.text, marginTop: 2 },
   avatarCircle: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarEmoji: { fontSize: 22 },
-  macroCard: {
-    marginHorizontal: 20, marginBottom: 28, backgroundColor: colors.surfaceElevated,
+  ringsCard: {
+    marginHorizontal: 20, marginBottom: 16, backgroundColor: colors.surfaceElevated,
     borderRadius: 20, padding: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3,
     borderWidth: 1, borderColor: colors.divider,
   },
+  ringsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },
   macroSubtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: 16 },
-  macroList:   { gap: 12 },
-
-  // Recently viewed
-  recentSection: { marginBottom: 28 },
-  recentScroll:  { paddingHorizontal: 20, gap: 12 },
-  recentCard: {
-    width: 130,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.divider,
-  },
-  recentImage: { width: 130, height: 90 },
-  recentImageFallback: { backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  recentName:  { fontSize: 12, fontWeight: '700', color: colors.text, paddingHorizontal: 8, paddingTop: 6, lineHeight: 16 },
-  recentMeta:  { fontSize: 11, color: colors.textSecondary, paddingHorizontal: 8, paddingBottom: 8, marginTop: 2 },
 
   cuisineHeader: { paddingHorizontal: 20, marginBottom: 16 },
   cuisineSubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   cuisineGrid: { paddingHorizontal: 16, gap: 12 },
   cuisineRow:  { gap: 12, justifyContent: 'space-between' },
-  browseAllBtn: {
-    marginHorizontal: 20, marginTop: 20, backgroundColor: colors.primaryLight,
-    borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-    borderWidth: 1, borderColor: colors.primary + '40',
+  pantryBanner: {
+    marginHorizontal: 20, marginBottom: 12, backgroundColor: '#F0FFF4',
+    borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#C6F6D5',
   },
-  browseAllText: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  pantryBannerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pantryBannerIcon: { fontSize: 26 },
+  pantryBannerTitle: { fontSize: 14, fontWeight: '700', color: '#276749' },
+  pantryBannerSub: { fontSize: 12, color: '#38A169', marginTop: 2 },
+  pantryBannerOff: { fontSize: 12, fontWeight: '700', color: '#E53E3E', paddingLeft: 8 },
+
+  quickRow: { flexDirection: 'row', marginHorizontal: 20, marginTop: 20, gap: 12 },
+  quickBtn: {
+    flex: 1, backgroundColor: colors.primaryLight, borderRadius: 14,
+    paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.primary + '40',
+  },
+  quickBtnPantry: { backgroundColor: '#F0FFF4', borderColor: '#C6F6D5' },
+  quickBtnEmoji: { fontSize: 22, marginBottom: 4 },
+  quickBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
 });
 
 export default HomeScreen;

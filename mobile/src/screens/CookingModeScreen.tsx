@@ -12,10 +12,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSelector } from 'react-redux';
 import { recipeService } from '../services/recipeService';
+import { pantryService } from '../services/pantryService';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types';
+import type { RootState } from '../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CookingMode'>;
 
@@ -135,10 +138,20 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
   const { recipeId } = route.params;
   const [currentStep, setCurrentStep] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const qc = useQueryClient();
+  const pantryItems = useSelector((s: RootState) => s.pantry.items);
 
   const { data: recipe, isLoading, isError } = useQuery({
     queryKey: ['recipe-detail', recipeId],
     queryFn: () => recipeService.getById(recipeId),
+  });
+
+  const deductMutation = useMutation({
+    mutationFn: (ingredients: Array<{ name: string; quantity: number; unit: string }>) =>
+      pantryService.deduct(ingredients),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pantry'] });
+    },
   });
 
   const steps = recipe?.instructions ?? [];
@@ -161,13 +174,33 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
 
   const goNext = useCallback(() => {
     if (currentStep >= totalSteps - 1) {
+      // Deduct pantry ingredients matching recipe ingredients
+      if (recipe?.ingredients && pantryItems.length > 0) {
+        const toDeduct = recipe.ingredients
+          .filter((ing) =>
+            pantryItems.some((p) =>
+              p.name.toLowerCase().includes(ing.ingredient_name.toLowerCase()) ||
+              ing.ingredient_name.toLowerCase().includes(p.name.toLowerCase()),
+            ),
+          )
+          .map((ing) => ({ name: ing.ingredient_name, quantity: ing.quantity ?? 1, unit: ing.unit ?? 'units' }));
+        if (toDeduct.length > 0) {
+          deductMutation.mutate(toDeduct);
+          Alert.alert(
+            '🎉 Recipe Complete!',
+            `Great job! Deducted ${toDeduct.length} ingredient${toDeduct.length > 1 ? 's' : ''} from your pantry.`,
+            [{ text: 'Back to Recipe', onPress: () => navigation.goBack() }],
+          );
+          return;
+        }
+      }
       Alert.alert('🎉 Recipe Complete!', 'Great job! You finished cooking.', [
         { text: 'Back to Recipe', onPress: () => navigation.goBack() },
       ]);
       return;
     }
     animateSlide('left', () => setCurrentStep((s) => s + 1));
-  }, [currentStep, totalSteps, animateSlide, navigation]);
+  }, [currentStep, totalSteps, animateSlide, navigation, recipe, pantryItems, deductMutation]);
 
   const goPrev = useCallback(() => {
     if (currentStep === 0) return;

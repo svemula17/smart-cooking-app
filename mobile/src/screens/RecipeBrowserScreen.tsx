@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
+import { useSelector } from 'react-redux';
 import { RootStackParamList, Recipe } from '../types';
+import { RootState } from '../store';
 import { RecipeCard } from '../components/RecipeCard';
 import { FilterChip } from '../components/FilterChip';
 import { recipeService } from '../services/recipeService';
@@ -61,6 +63,9 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
   const [activeFilter, setActiveFilter] = useState('All');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
+  const pantryItems = useSelector((s: RootState) => s.pantry.items);
+
   const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -84,7 +89,21 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
       });
     },
   });
-  const recipes: Recipe[] = recipesData?.recipes ?? [];
+  const allRecipes: Recipe[] = recipesData?.recipes ?? [];
+
+  // Cook From Pantry: score recipes by how many ingredients match pantry
+  const pantryNames = pantryItems.map((p) => p.name.toLowerCase());
+  const recipes = cookFromPantry
+    ? [...allRecipes].sort((a, b) => {
+        const scoreA = (a as any).ingredients?.filter((i: any) =>
+          pantryNames.some((p) => i.ingredient_name?.toLowerCase().includes(p) || p.includes(i.ingredient_name?.toLowerCase())),
+        ).length ?? 0;
+        const scoreB = (b as any).ingredients?.filter((i: any) =>
+          pantryNames.some((p) => i.ingredient_name?.toLowerCase().includes(p) || p.includes(i.ingredient_name?.toLowerCase())),
+        ).length ?? 0;
+        return scoreB - scoreA;
+      })
+    : allRecipes;
 
   const headerTitle = cuisine === 'all' ? 'All Recipes' : `${cuisine} Recipes`;
 
@@ -135,6 +154,15 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
         />
       </View>
 
+      {/* Cook From Pantry banner */}
+      {cookFromPantry && (
+        <View style={styles.pantryBanner}>
+          <Text style={styles.pantryBannerText}>
+            🥦 Cook From Pantry Mode — recipes sorted by your available ingredients ({pantryItems.length} items)
+          </Text>
+        </View>
+      )}
+
       {/* Filter Chips */}
       <ScrollView
         horizontal
@@ -179,6 +207,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  pantryBanner: {
+    backgroundColor: '#F0FFF4', borderRadius: 0, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#C6F6D5',
+  },
+  pantryBannerText: { fontSize: 13, fontWeight: '600', color: '#276749' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

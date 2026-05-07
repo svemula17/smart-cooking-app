@@ -20,8 +20,6 @@ export interface RecipesState {
   activeFilters: RecipeFilters;
   /** Recipes cached by cuisine key */
   byCuisine: Record<string, Recipe[]>;
-  /** Recently viewed recipe IDs (most recent first) */
-  recentIds: string[];
   isLoading: boolean;
   error: string | null;
 }
@@ -31,12 +29,9 @@ const initialState: RecipesState = {
   selected: null,
   activeFilters: {},
   byCuisine: {},
-  recentIds: [],
   isLoading: false,
   error: null,
 };
-
-const MAX_RECENT = 10;
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
@@ -60,14 +55,6 @@ const recipeSlice = createSlice({
     /** Set the currently selected (detail-view) recipe */
     selectRecipe(state, action: PayloadAction<RecipeWithDetails | null>) {
       state.selected = action.payload;
-      if (action.payload) {
-        // Push to recent, deduplicate, cap at MAX_RECENT
-        const id = action.payload.id;
-        state.recentIds = [
-          id,
-          ...state.recentIds.filter((x) => x !== id),
-        ].slice(0, MAX_RECENT);
-      }
     },
 
     /** Update active filter set (merges with existing) */

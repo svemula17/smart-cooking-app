@@ -14,11 +14,15 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { clearAuth, setPreferences, toggleDarkMode, type RootState } from '../store';
 import { Switch } from 'react-native';
 import { userService } from '../services/userService';
 import { colors } from '../theme/colors';
-import type { UserPreferences } from '../types';
+import type { UserPreferences, RootStackParamList } from '../types';
+
+type ProfileNav = NativeStackNavigationProp<RootStackParamList>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -153,6 +157,7 @@ const modalStyles = StyleSheet.create({
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
 export function ProfileScreen(): React.JSX.Element {
+  const navigation = useNavigation<ProfileNav>();
   const dispatch = useDispatch();
   const qc = useQueryClient();
   const user = useSelector((s: RootState) => s.auth.user);
@@ -246,6 +251,18 @@ export function ProfileScreen(): React.JSX.Element {
             <Text style={styles.editNameText}>Edit Name</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Pantry Manager shortcut */}
+        <TouchableOpacity style={styles.pantryCard} onPress={() => navigation.navigate('Pantry')} activeOpacity={0.8}>
+          <View style={styles.pantryLeft}>
+            <Text style={styles.pantryEmoji}>🏠</Text>
+            <View>
+              <Text style={styles.pantryTitle}>Pantry Manager</Text>
+              <Text style={styles.pantryDesc}>Track your ingredients & expiry dates</Text>
+            </View>
+          </View>
+          <Text style={styles.pantryArrow}>›</Text>
+        </TouchableOpacity>
 
         {/* Favorites summary */}
         <View style={styles.card}>
@@ -422,6 +439,12 @@ const styles = StyleSheet.create({
   adminBadge: { marginTop: 12, backgroundColor: colors.secondary, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
   adminText: { fontSize: 13, fontWeight: '700', color: colors.accent },
 
+  pantryCard: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#F0FFF4', borderRadius: 20, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#C6F6D5' },
+  pantryLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  pantryEmoji: { fontSize: 32 },
+  pantryTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  pantryDesc: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  pantryArrow: { fontSize: 22, color: colors.textLight },
   signOutBtn: { marginHorizontal: 20, marginTop: 8, backgroundColor: '#FFF0F0', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FFCDD2' },
   signOutText: { fontSize: 16, fontWeight: '700', color: colors.error },
 

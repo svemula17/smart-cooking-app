@@ -21,7 +21,7 @@ import { NutritionGrid } from '../components/NutritionGrid';
 import { recipeService } from '../services/recipeService';
 import { shoppingService } from '../services/shoppingService';
 import { colors } from '../theme/colors';
-import { toggleFavorite, addRecentlyViewed, type RootState } from '../store';
+import { toggleFavorite, type RootState } from '../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
 
@@ -79,11 +79,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const { data: recipe, isLoading, isError } = useQuery<RecipeWithDetails>({
     queryKey: ['recipe', recipeId],
-    queryFn: async () => {
-      const r = await recipeService.getById(recipeId);
-      dispatch(addRecentlyViewed(recipeId));
-      return r;
-    },
+    queryFn: () => recipeService.getById(recipeId),
   });
 
   const { data: reviews } = useQuery<Review[]>({

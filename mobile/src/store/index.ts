@@ -8,7 +8,6 @@ import shoppingReducer from './slices/shoppingSlice';
 import mealPlanReducer from './slices/mealPlanSlice';
 import trackingReducer from './slices/trackingSlice';
 import favoritesReducer from './slices/favoritesSlice';
-import recentlyViewedReducer from './slices/recentlyViewedSlice';
 import settingsReducer from './slices/settingsSlice';
 import pantryReducer from './slices/pantrySlice';
 
@@ -24,7 +23,6 @@ export const store = configureStore({
     mealPlan:  mealPlanReducer,
     tracking:  trackingReducer,
     favorites: favoritesReducer,
-    recentlyViewed: recentlyViewedReducer,
     settings: settingsReducer,
     pantry: pantryReducer,
   },
@@ -125,9 +123,6 @@ export type { TrackingState } from './slices/trackingSlice';
 
 export { toggleFavorite, clearFavorites } from './slices/favoritesSlice';
 export type { FavoritesState } from './slices/favoritesSlice';
-
-export { addRecentlyViewed, clearRecentlyViewed } from './slices/recentlyViewedSlice';
-export type { RecentlyViewedState } from './slices/recentlyViewedSlice';
 
 export { toggleDarkMode } from './slices/settingsSlice';
 export type { SettingsState } from './slices/settingsSlice';

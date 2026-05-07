@@ -1,10 +1,12 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Linking,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -19,6 +21,83 @@ import { colors } from '../theme/colors';
 import type { RootState } from '../store';
 import type { ShoppingList, ShoppingItem } from '../types';
 
+// ─── Smart Grocery Consolidation ─────────────────────────────────────────────
+
+const AISLE_MAP: Record<string, string> = {
+  // produce
+  tomato: 'Produce', lettuce: 'Produce', onion: 'Produce', garlic: 'Produce',
+  carrot: 'Produce', potato: 'Produce', spinach: 'Produce', pepper: 'Produce',
+  lemon: 'Produce', lime: 'Produce', ginger: 'Produce', coriander: 'Produce',
+  // protein
+  chicken: 'Meat & Seafood', beef: 'Meat & Seafood', pork: 'Meat & Seafood',
+  fish: 'Meat & Seafood', shrimp: 'Meat & Seafood', egg: 'Dairy & Eggs',
+  // dairy
+  milk: 'Dairy & Eggs', butter: 'Dairy & Eggs', cheese: 'Dairy & Eggs',
+  cream: 'Dairy & Eggs', yogurt: 'Dairy & Eggs',
+  // grains
+  rice: 'Grains & Pasta', pasta: 'Grains & Pasta', flour: 'Grains & Pasta',
+  bread: 'Grains & Pasta', noodle: 'Grains & Pasta',
+  // canned
+  sauce: 'Canned & Jarred', tomato_paste: 'Canned & Jarred', bean: 'Canned & Jarred',
+  stock: 'Canned & Jarred', broth: 'Canned & Jarred',
+  // spices
+  salt: 'Spices & Condiments', pepper_spice: 'Spices & Condiments', cumin: 'Spices & Condiments',
+  turmeric: 'Spices & Condiments', paprika: 'Spices & Condiments', oil: 'Spices & Condiments',
+  vinegar: 'Spices & Condiments', soy: 'Spices & Condiments',
+};
+
+function getAisle(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [key, aisle] of Object.entries(AISLE_MAP)) {
+    if (lower.includes(key)) return aisle;
+  }
+  return 'Other';
+}
+
+interface ConsolidatedItem {
+  name: string;
+  quantities: Array<{ qty: number; unit: string }>;
+  aisle: string;
+  checked: boolean;
+  ids: string[];
+}
+
+function consolidateItems(items: ShoppingItem[]): Record<string, ConsolidatedItem[]> {
+  const map = new Map<string, ConsolidatedItem>();
+  for (const item of items) {
+    const key = item.ingredient_name.toLowerCase().trim();
+    if (map.has(key)) {
+      const existing = map.get(key)!;
+      const qEntry = existing.quantities.find((q) => q.unit === item.unit);
+      if (qEntry) qEntry.qty += item.quantity;
+      else existing.quantities.push({ qty: item.quantity, unit: item.unit });
+      if (!item.is_checked) existing.checked = false;
+      existing.ids.push(item.id);
+    } else {
+      map.set(key, {
+        name: item.ingredient_name,
+        quantities: [{ qty: item.quantity, unit: item.unit }],
+        aisle: item.aisle ?? getAisle(item.ingredient_name),
+        checked: item.is_checked,
+        ids: [item.id],
+      });
+    }
+  }
+  const grouped: Record<string, ConsolidatedItem[]> = {};
+  for (const item of map.values()) {
+    const aisle = item.aisle;
+    if (!grouped[aisle]) grouped[aisle] = [];
+    grouped[aisle].push(item);
+  }
+  return grouped;
+}
+
+function buildInstacartUrl(items: ShoppingItem[]): string {
+  const ingNames = [...new Set(items.map((i) => i.ingredient_name))].slice(0, 20);
+  const query = ingNames.join(', ');
+  return `https://www.instacart.com/store/publix/search_v3/${encodeURIComponent(query)}`;
+}
+
 // ─── List detail modal (inline expanded list) ─────────────────────────────────
 
 interface ListDetailProps {
@@ -29,6 +108,7 @@ interface ListDetailProps {
 
 function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
   const qc = useQueryClient();
+  const [showConsolidated, setShowConsolidated] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ['shopping-detail', list.id],
     queryFn: () => shoppingService.getList(list.id),
@@ -50,6 +130,8 @@ function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
 
   const items = data?.items ?? [];
   const checkedCount = items.filter((i) => i.is_checked).length;
+  const consolidated = useMemo(() => consolidateItems(items), [items]);
+  const instacartUrl = useMemo(() => buildInstacartUrl(items), [items]);
 
   function renderItem({ item }: { item: ShoppingItem }) {
     return (
@@ -93,6 +175,35 @@ function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
         </TouchableOpacity>
       </View>
 
+      {/* Instacart + Consolidate buttons */}
+      {items.length > 0 && (
+        <View style={detailStyles.actionRow}>
+          <TouchableOpacity
+            style={[detailStyles.actionBtn, detailStyles.instacartBtn]}
+            onPress={() => {
+              Alert.alert(
+                '🛒 Open in Instacart',
+                'This will open Instacart with your ingredients. You can add them to your cart there.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Open Instacart', onPress: () => Linking.openURL(instacartUrl) },
+                ],
+              );
+            }}
+          >
+            <Text style={detailStyles.instacartBtnText}>🛒 Order via Instacart</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[detailStyles.actionBtn, showConsolidated && detailStyles.consolidatedBtnActive]}
+            onPress={() => setShowConsolidated((v) => !v)}
+          >
+            <Text style={[detailStyles.consolidatedBtnText, showConsolidated && { color: '#fff' }]}>
+              {showConsolidated ? '📋 Standard' : '✨ Smart View'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Progress bar */}
       {items.length > 0 && (
         <View style={detailStyles.progressSection}>
@@ -105,6 +216,32 @@ function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
 
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 32 }} color={colors.primary} />
+      ) : showConsolidated ? (
+        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+          {Object.entries(consolidated).map(([aisle, aisleItems]) => (
+            <View key={aisle}>
+              <View style={detailStyles.aisleHeader}>
+                <Text style={detailStyles.aisleTitle}>{aisle}</Text>
+              </View>
+              {aisleItems.map((item) => (
+                <View key={item.name} style={[detailStyles.row, item.checked && { opacity: 0.5 }]}>
+                  <View style={[detailStyles.checkbox, item.checked && detailStyles.checkboxChecked]}>
+                    {item.checked && <Text style={detailStyles.checkmark}>✓</Text>}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[detailStyles.itemName, item.checked && detailStyles.strikethrough]}>{item.name}</Text>
+                    <Text style={detailStyles.itemQty}>
+                      {item.quantities.map((q) => `${q.qty} ${q.unit}`).join(' + ')}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ))}
+          {items.length === 0 && (
+            <View style={detailStyles.empty}><Text style={detailStyles.emptyText}>No items in this list.</Text></View>
+          )}
+        </ScrollView>
       ) : (
         <FlatList
           data={items}
@@ -150,6 +287,14 @@ function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
 const detailStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider, gap: 8 },
+  actionRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  instacartBtn: { backgroundColor: '#F0FFF4', borderColor: '#38A169' },
+  instacartBtnText: { fontSize: 13, fontWeight: '700', color: '#38A169' },
+  consolidatedBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  consolidatedBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  aisleHeader: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  aisleTitle: { fontSize: 12, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 },
   backText: { fontSize: 15, color: colors.primary, fontWeight: '600', width: 64 },
   title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center' },
   deleteText: { fontSize: 18, width: 32, textAlign: 'right' },
