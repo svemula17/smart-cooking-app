@@ -1,8 +1,10 @@
 import React from 'react';
 import { Image, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import type { Recipe } from '../types';
 import { colors } from '../theme/colors';
 import { getRecipeImage } from '../utils/recipeImages';
+import { toggleFavorite, type RootState } from '../store';
 
 const CUISINE_EMOJI: Record<string, string> = {
   Indian: '🍛', Chinese: '🥢', Italian: '🍝', Mexican: '🌮',
@@ -46,6 +48,8 @@ export interface RecipeCardProps {
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutrition }) => {
+  const dispatch = useDispatch();
+  const isFav = useSelector((s: RootState) => s.favorites.ids.includes(recipe.id));
   const totalTime = (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
   const localImage = getRecipeImage(recipe.name);
   const diffBg   = DIFFICULTY_COLOR[recipe.difficulty] ?? '#E0E0E0';
@@ -65,6 +69,13 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
         <View style={[styles.diffBadge, { backgroundColor: diffBg }]}>
           <Text style={[styles.diffText, { color: diffTxt }]}>{recipe.difficulty}</Text>
         </View>
+        <TouchableOpacity
+          style={styles.heartBtn}
+          onPress={(e) => { e.stopPropagation(); dispatch(toggleFavorite(recipe.id)); }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.heartIcon}>{isFav ? '❤️' : '🤍'}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Body */}
@@ -140,6 +151,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  heartBtn: {
+    position: 'absolute',
+    top: 8,
+    left: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heartIcon: {
+    fontSize: 16,
   },
   diffText: {
     fontSize: 11,

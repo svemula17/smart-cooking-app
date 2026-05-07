@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { clearAuth, setPreferences, type RootState } from '../store';
+import { clearAuth, setPreferences, toggleDarkMode, type RootState } from '../store';
+import { Switch } from 'react-native';
 import { userService } from '../services/userService';
 import { colors } from '../theme/colors';
 import type { UserPreferences } from '../types';
@@ -157,7 +158,11 @@ export function ProfileScreen(): React.JSX.Element {
   const user = useSelector((s: RootState) => s.auth.user);
   const macroProgress = useSelector((s: RootState) => s.user.macroProgress);
   const storePrefs = useSelector((s: RootState) => s.user.preferences);
+  const favoriteIds = useSelector((s: RootState) => s.favorites.ids);
+  const isDark = useSelector((s: RootState) => s.settings.isDark);
   const [editNameVisible, setEditNameVisible] = useState(false);
+  const [editGoalsVisible, setEditGoalsVisible] = useState(false);
+  const [draftGoals, setDraftGoals] = useState({ calories: '', protein: '', carbs: '', fat: '' });
 
   // Fetch live preferences
   const { data: prefs, isLoading: prefsLoading } = useQuery({
@@ -177,6 +182,17 @@ export function ProfileScreen(): React.JSX.Element {
       setEditNameVisible(false);
     },
     onError: () => Alert.alert('Error', 'Failed to update name. Try again.'),
+  });
+
+  const updateGoalsMutation = useMutation({
+    mutationFn: (goals: { calories_goal: number; protein_goal: number; carbs_goal: number; fat_goal: number }) =>
+      userService.updateGoals(goals),
+    onSuccess: (updated) => {
+      dispatch(setPreferences(updated));
+      qc.invalidateQueries({ queryKey: ['user-prefs'] });
+      setEditGoalsVisible(false);
+    },
+    onError: () => Alert.alert('Error', 'Failed to update goals. Try again.'),
   });
 
   const updateRestrictionsMutation = useMutation({
@@ -231,9 +247,35 @@ export function ProfileScreen(): React.JSX.Element {
           </TouchableOpacity>
         </View>
 
+        {/* Favorites summary */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>Saved Recipes</Text>
+            <Text style={styles.favCount}>{favoriteIds.length} saved</Text>
+          </View>
+          {favoriteIds.length === 0 ? (
+            <Text style={styles.restrictionHint}>Tap ❤️ on any recipe card to save it here.</Text>
+          ) : (
+            <Text style={styles.restrictionHint}>Browse your saved recipes from the Home screen.</Text>
+          )}
+        </View>
+
         {/* Macro goals */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Daily Macro Goals</Text>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>Daily Macro Goals</Text>
+            <TouchableOpacity onPress={() => {
+              setDraftGoals({
+                calories: String(goals.calories),
+                protein: String(goals.protein),
+                carbs: String(goals.carbs),
+                fat: String(goals.fat),
+              });
+              setEditGoalsVisible(true);
+            }}>
+              <Text style={styles.editGoalsBtn}>Edit</Text>
+            </TouchableOpacity>
+          </View>
           {prefsLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
           ) : (
@@ -246,6 +288,52 @@ export function ProfileScreen(): React.JSX.Element {
           )}
           <Text style={styles.macroHint}>Track your daily intake via logged meals.</Text>
         </View>
+
+        {/* Edit Goals Modal */}
+        <Modal visible={editGoalsVisible} animationType="slide" transparent presentationStyle="overFullScreen">
+          <View style={goalModalStyles.overlay}>
+            <View style={goalModalStyles.sheet}>
+              <Text style={goalModalStyles.title}>Edit Daily Goals</Text>
+              {([
+                { key: 'calories', label: 'Calories (kcal)' },
+                { key: 'protein',  label: 'Protein (g)' },
+                { key: 'carbs',    label: 'Carbs (g)' },
+                { key: 'fat',      label: 'Fat (g)' },
+              ] as const).map(({ key, label }) => (
+                <View key={key} style={goalModalStyles.row}>
+                  <Text style={goalModalStyles.label}>{label}</Text>
+                  <TextInput
+                    style={goalModalStyles.input}
+                    value={draftGoals[key]}
+                    onChangeText={(v) => setDraftGoals((d) => ({ ...d, [key]: v }))}
+                    keyboardType="numeric"
+                    returnKeyType="done"
+                  />
+                </View>
+              ))}
+              <TouchableOpacity
+                style={[goalModalStyles.saveBtn, updateGoalsMutation.isPending && { opacity: 0.6 }]}
+                onPress={() => {
+                  updateGoalsMutation.mutate({
+                    calories_goal: parseInt(draftGoals.calories, 10) || goals.calories,
+                    protein_goal:  parseInt(draftGoals.protein,  10) || goals.protein,
+                    carbs_goal:    parseInt(draftGoals.carbs,    10) || goals.carbs,
+                    fat_goal:      parseInt(draftGoals.fat,      10) || goals.fat,
+                  });
+                }}
+                disabled={updateGoalsMutation.isPending}
+              >
+                {updateGoalsMutation.isPending
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={goalModalStyles.saveBtnText}>Save Goals</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={goalModalStyles.cancelBtn} onPress={() => setEditGoalsVisible(false)}>
+                <Text style={goalModalStyles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
 
         {/* Dietary restrictions */}
         <View style={styles.card}>
@@ -264,6 +352,15 @@ export function ProfileScreen(): React.JSX.Element {
         {/* Account section */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Account</Text>
+          <View style={[styles.infoRow, { borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
+            <Text style={styles.infoLabel}>🌙 Dark Mode</Text>
+            <Switch
+              value={isDark}
+              onValueChange={(_v) => { dispatch(toggleDarkMode()); }}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#fff"
+            />
+          </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Member since</Text>
             <Text style={styles.infoValue}>
@@ -329,4 +426,19 @@ const styles = StyleSheet.create({
   signOutText: { fontSize: 16, fontWeight: '700', color: colors.error },
 
   version: { textAlign: 'center', marginTop: 24, fontSize: 12, color: colors.textLight },
+  editGoalsBtn: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  favCount: { fontSize: 14, fontWeight: '600', color: colors.primary },
+});
+
+const goalModalStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 48 },
+  title: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 20 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, flex: 1 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: colors.text, width: 110, textAlign: 'right' },
+  saveBtn: { backgroundColor: colors.primary, borderRadius: 24, paddingVertical: 16, alignItems: 'center', marginTop: 8, marginBottom: 10 },
+  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  cancelBtn: { alignItems: 'center', paddingVertical: 12 },
+  cancelText: { color: colors.textSecondary, fontSize: 15 },
 });

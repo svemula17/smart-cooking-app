@@ -3,10 +3,10 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
-import { Provider as ReduxProvider } from 'react-redux';
+import { Provider as ReduxProvider, useSelector } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
-import { store } from './src/store';
+import { store, type RootState } from './src/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 // Configure how notifications appear when the app is in the foreground
@@ -26,21 +26,26 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function App() {
+function ThemedApp() {
+  const isDark = useSelector((s: RootState) => s.settings.isDark);
   useEffect(() => {
-    // Request notification permissions on mount (soft — no blocking prompt at startup)
-    Notifications.requestPermissionsAsync().catch(() => {/* ignore — prompted later when scheduling */});
+    Notifications.requestPermissionsAsync().catch(() => {});
   }, []);
+  return (
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <RootNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
+}
 
+export default function App() {
   return (
     <ReduxProvider store={store}>
       <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <NavigationContainer>
-            <StatusBar style="dark" />
-            <RootNavigator />
-          </NavigationContainer>
-        </SafeAreaProvider>
+        <ThemedApp />
       </QueryClientProvider>
     </ReduxProvider>
   );

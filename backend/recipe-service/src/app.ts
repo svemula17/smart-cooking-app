@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { recipeRouter } from './routes/recipe.routes';
 import { mealPlanRouter } from './routes/mealPlan.routes';
+import { pantryRouter } from './routes/pantry.routes';
 import type { ApiError, ApiSuccess } from './types';
 
 /**
@@ -47,6 +48,7 @@ export function createApp(): express.Express {
 
   app.use('/recipes', recipeRouter);
   app.use('/meal-plans', mealPlanRouter);
+  app.use('/pantry', pantryRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

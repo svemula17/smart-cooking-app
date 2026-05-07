@@ -10,16 +10,18 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { RootStackParamList, RecipeWithDetails, Review } from '../types';
 import { NutritionGrid } from '../components/NutritionGrid';
 import { recipeService } from '../services/recipeService';
 import { shoppingService } from '../services/shoppingService';
 import { colors } from '../theme/colors';
-import type { RootState } from '../store';
+import { toggleFavorite, addRecentlyViewed, type RootState } from '../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
 
@@ -64,12 +66,24 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { recipeId } = route.params;
   const [activeTab, setActiveTab] = useState<TabKey>('Ingredients');
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedStars, setSelectedStars] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [servings, setServings] = useState<number | null>(null);
+  const [activeTimer, setActiveTimer] = useState<{ label: string; total: number; remaining: number; running: boolean } | null>(null);
+  const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const dispatch = useDispatch();
   const user = useSelector((s: RootState) => s.auth.user);
+  const isFav = useSelector((s: RootState) => s.favorites.ids.includes(recipeId));
   const qc = useQueryClient();
 
   const { data: recipe, isLoading, isError } = useQuery<RecipeWithDetails>({
     queryKey: ['recipe', recipeId],
-    queryFn: () => recipeService.getById(recipeId),
+    queryFn: async () => {
+      const r = await recipeService.getById(recipeId);
+      dispatch(addRecentlyViewed(recipeId));
+      return r;
+    },
   });
 
   const { data: reviews } = useQuery<Review[]>({
@@ -90,6 +104,45 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       Alert.alert('✅ Added to Shopping', `Shopping list for "${recipe?.name}" created!`, [{ text: 'OK' }]);
     },
     onError: () => Alert.alert('Error', 'Failed to create shopping list. Please try again.'),
+  });
+
+  // Step timer logic
+  function startTimer(label: string, minutes: number) {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const total = minutes * 60;
+    setActiveTimer({ label, total, remaining: total, running: true });
+    timerRef.current = setInterval(() => {
+      setActiveTimer((prev) => {
+        if (!prev) return null;
+        if (prev.remaining <= 1) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          Alert.alert('⏱ Timer Done!', `${label} is complete!`);
+          return null;
+        }
+        return { ...prev, remaining: prev.remaining - 1 };
+      });
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    setActiveTimer(null);
+  }
+
+  React.useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  const rateMutation = useMutation({
+    mutationFn: () => recipeService.rate(recipeId, selectedStars, reviewComment.trim() || undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recipe', recipeId] });
+      qc.invalidateQueries({ queryKey: ['reviews', recipeId] });
+      setRatingModalVisible(false);
+      setReviewComment('');
+      Alert.alert('Thanks!', 'Your rating has been submitted.');
+    },
+    onError: () => Alert.alert('Error', 'Failed to submit rating. Try again.'),
   });
 
   const handleAddToList = () => {
@@ -147,6 +200,8 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const cuisineEmoji = CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️';
   const diffStyle = DIFFICULTY_STYLE[recipe.difficulty] ?? DIFFICULTY_STYLE.Easy;
   const totalTime = recipe.prep_time_minutes + recipe.cook_time_minutes;
+  const currentServings = servings ?? recipe.servings;
+  const servingScale = currentServings / (recipe.servings || 1);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -162,6 +217,11 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Back button overlaid */}
           <TouchableOpacity style={styles.heroBackBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.heroBackText}>←</Text>
+          </TouchableOpacity>
+
+          {/* Favorite button */}
+          <TouchableOpacity style={styles.heroFavBtn} onPress={() => dispatch(toggleFavorite(recipeId))}>
+            <Text style={styles.heroFavIcon}>{isFav ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
 
           {/* Overlay info */}
@@ -186,17 +246,35 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          {[
-            { icon: '⏱', label: 'Prep', value: `${recipe.prep_time_minutes}m` },
-            { icon: '🔥', label: 'Cook', value: `${recipe.cook_time_minutes}m` },
-            { icon: '👥', label: 'Serves', value: `${recipe.servings}` },
-          ].map(({ icon, label, value }) => (
-            <View key={label} style={styles.statItem}>
-              <Text style={styles.statIcon}>{icon}</Text>
-              <Text style={styles.statValue}>{value}</Text>
-              <Text style={styles.statLabel}>{label}</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statIcon}>⏱</Text>
+            <Text style={styles.statValue}>{recipe.prep_time_minutes}m</Text>
+            <Text style={styles.statLabel}>Prep</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statIcon}>🔥</Text>
+            <Text style={styles.statValue}>{recipe.cook_time_minutes}m</Text>
+            <Text style={styles.statLabel}>Cook</Text>
+          </View>
+          {/* Serving adjuster */}
+          <View style={styles.statItem}>
+            <View style={styles.servingRow}>
+              <TouchableOpacity
+                style={styles.servingBtn}
+                onPress={() => setServings(Math.max(1, currentServings - 1))}
+              >
+                <Text style={styles.servingBtnText}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.statValue}>{currentServings}</Text>
+              <TouchableOpacity
+                style={styles.servingBtn}
+                onPress={() => setServings(Math.min(20, currentServings + 1))}
+              >
+                <Text style={styles.servingBtnText}>+</Text>
+              </TouchableOpacity>
             </View>
-          ))}
+            <Text style={styles.statLabel}>Serves</Text>
+          </View>
         </View>
 
         {/* Nutrition */}
@@ -246,7 +324,9 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       ) : null}
                     </View>
                     <Text style={styles.ingredientQty}>
-                      {ing.quantity} {ing.unit}
+                      {ing.quantity != null
+                        ? `${+(ing.quantity * servingScale).toFixed(1)} ${ing.unit}`
+                        : ing.unit}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -264,9 +344,12 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <View style={styles.stepBody}>
                     <Text style={styles.stepInstruction}>{step.instruction}</Text>
                     {step.time_minutes ? (
-                      <View style={styles.stepTimeBadge}>
-                        <Text style={styles.stepTimeText}>⏱ {step.time_minutes} min</Text>
-                      </View>
+                      <TouchableOpacity
+                        style={styles.stepTimeBadge}
+                        onPress={() => startTimer(`Step ${step.step_number}`, step.time_minutes!)}
+                      >
+                        <Text style={styles.stepTimeText}>⏱ {step.time_minutes} min — tap to time</Text>
+                      </TouchableOpacity>
                     ) : null}
                   </View>
                 </View>
@@ -276,6 +359,9 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {activeTab === 'Reviews' && (
             <View style={styles.reviewList}>
+              <TouchableOpacity style={styles.rateBtn} onPress={() => setRatingModalVisible(true)}>
+                <Text style={styles.rateBtnText}>⭐ Rate this Recipe</Text>
+              </TouchableOpacity>
               {reviews && reviews.length > 0 ? (
                 reviews.map((rev) => (
                   <View key={rev.id} style={styles.reviewCard}>
@@ -303,6 +389,60 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* Bottom padding for sticky bar */}
         <View style={{ height: 96 }} />
       </ScrollView>
+
+      {/* Floating Step Timer */}
+      {activeTimer && (
+        <View style={styles.timerBanner}>
+          <View style={styles.timerInfo}>
+            <Text style={styles.timerLabel}>{activeTimer.label}</Text>
+            <Text style={styles.timerValue}>
+              {String(Math.floor(activeTimer.remaining / 60)).padStart(2, '0')}:
+              {String(activeTimer.remaining % 60).padStart(2, '0')}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.timerStopBtn} onPress={stopTimer}>
+            <Text style={styles.timerStopText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Rating Modal */}
+      <Modal visible={ratingModalVisible} animationType="slide" transparent presentationStyle="overFullScreen">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Rate this Recipe</Text>
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <TouchableOpacity key={s} onPress={() => setSelectedStars(s)}>
+                  <Text style={styles.starBtn}>{s <= selectedStars ? '★' : '☆'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment (optional)"
+              placeholderTextColor={colors.textLight}
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            <TouchableOpacity
+              style={[styles.submitBtn, rateMutation.isPending && { opacity: 0.6 }]}
+              onPress={() => rateMutation.mutate()}
+              disabled={rateMutation.isPending}
+            >
+              {rateMutation.isPending
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.submitBtnText}>Submit Rating</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setRatingModalVisible(false)}>
+              <Text style={styles.cancelModalText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Sticky Bottom Bar */}
       <View style={styles.stickyBar}>
@@ -696,6 +836,83 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
+  servingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  servingBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  servingBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+    lineHeight: 20,
+  },
+  timerBanner: {
+    position: 'absolute',
+    bottom: 90,
+    left: 16,
+    right: 16,
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  timerInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  timerLabel: { fontSize: 14, fontWeight: '600', color: '#fff' },
+  timerValue: { fontSize: 22, fontWeight: '800', color: '#fff', fontVariant: ['tabular-nums'] },
+  timerStopBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  timerStopText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  heroFavBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  heroFavIcon: { fontSize: 20 },
+  rateBtn: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  rateBtnText: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 48 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 20, textAlign: 'center' },
+  starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 },
+  starBtn: { fontSize: 36, color: '#F9A825' },
+  commentInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.text, marginBottom: 16, minHeight: 80 },
+  submitBtn: { backgroundColor: colors.primary, borderRadius: 24, paddingVertical: 16, alignItems: 'center', marginBottom: 10 },
+  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  cancelModalBtn: { alignItems: 'center', paddingVertical: 12 },
+  cancelModalText: { color: colors.textSecondary, fontSize: 15 },
   // Skeleton
   skeletonHero: {
     height: 240,

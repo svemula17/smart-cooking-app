@@ -186,6 +186,7 @@ export type RootStackParamList = {
   RecipeDetail: { recipeId: string };
   CookingMode: { recipeId: string };
   RecipeSelect: { date: string; mealType: MealType };
+  Pantry: undefined;
 };
 
 export type TabParamList = {

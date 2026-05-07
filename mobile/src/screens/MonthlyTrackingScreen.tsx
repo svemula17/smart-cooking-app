@@ -224,6 +224,60 @@ const adhStyles = StyleSheet.create({
   streak:    { fontSize: 16, fontWeight: '700', color: colors.calories },
 });
 
+// ─── Mock data (shown when API has no real data) ──────────────────────────────
+
+function buildMockData(goals: { calories: number; protein: number; carbs: number; fat: number }) {
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const daysToShow  = Math.min(today.getDate(), daysInMonth);
+
+  // Deterministic variation based on day index
+  const seeds = [0.85, 0.95, 1.05, 0.90, 1.10, 0.88, 1.02, 0.78, 1.08, 0.92,
+                 1.15, 0.82, 0.98, 1.12, 0.87, 1.03, 0.93, 1.07, 0.80, 1.01,
+                 0.96, 1.14, 0.84, 1.09, 0.91, 0.99, 1.06, 0.86, 1.13, 0.94];
+
+  const daily_data: DailyNutritionData[] = Array.from({ length: daysToShow }, (_, i) => {
+    const f = seeds[i % seeds.length]!;
+    const cals = Math.round(goals.calories * f);
+    return {
+      date:           `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`,
+      total_calories: cals,
+      total_protein:  Math.round(goals.protein  * f),
+      total_carbs:    Math.round(goals.carbs    * f),
+      total_fat:      Math.round(goals.fat      * f),
+      goal_met:       cals >= goals.calories * 0.8,
+    };
+  });
+
+  const n = daily_data.length || 1;
+  const avg = (key: keyof DailyNutritionData) =>
+    Math.round(daily_data.reduce((s, d) => s + (d[key] as number), 0) / n);
+
+  const thisWeek = daily_data.slice(-7);
+  const lastWeek = daily_data.slice(-14, -7);
+  const wAvg = (arr: DailyNutritionData[], key: keyof DailyNutritionData) =>
+    arr.length ? Math.round(arr.reduce((s, d) => s + (d[key] as number), 0) / arr.length) : 0;
+
+  const daysMet = daily_data.filter((d) => d.goal_met).length;
+  let streak = 0;
+  for (let i = daily_data.length - 1; i >= 0; i--) {
+    if (daily_data[i]!.goal_met) streak++; else break;
+  }
+
+  return {
+    month:    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`,
+    daily_data,
+    averages: { calories: avg('total_calories'), protein: avg('total_protein'), carbs: avg('total_carbs'), fat: avg('total_fat') },
+    weekly_comparison: {
+      this_week: { calories: wAvg(thisWeek, 'total_calories'), protein: wAvg(thisWeek, 'total_protein'), carbs: wAvg(thisWeek, 'total_carbs'), fat: wAvg(thisWeek, 'total_fat') },
+      last_week: { calories: wAvg(lastWeek, 'total_calories'), protein: wAvg(lastWeek, 'total_protein'), carbs: wAvg(lastWeek, 'total_carbs'), fat: wAvg(lastWeek, 'total_fat') },
+    },
+    goal_adherence_percent: Math.round((daysMet / n) * 100),
+    current_streak: streak,
+    goals,
+  };
+}
+
 // ─── MonthlyTrackingScreen ────────────────────────────────────────────────────
 
 export function MonthlyTrackingScreen(): React.JSX.Element {
@@ -246,6 +300,10 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
     fat:      prefs?.fat_goal      ?? 65,
   };
 
+  // Use real data if available, otherwise show mock
+  const displayData = (data && data.daily_data.length > 0) ? data : buildMockData(goals);
+  const isMock = !data || data.daily_data.length === 0;
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
@@ -263,17 +321,13 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : isError || !data ? (
-        <View style={styles.centered}>
-          <Text style={styles.emptyIcon}>📭</Text>
-          <Text style={styles.emptyTitle}>No data yet</Text>
-          <Text style={styles.emptySub}>Start logging meals to see your stats</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {isMock && (
+            <View style={styles.mockBanner}>
+              <Text style={styles.mockBannerText}>📋 Sample data — log meals to see your real stats</Text>
+            </View>
+          )}
           {/* Macro tab selector */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabRow}>
             {MACRO_TABS.map((t) => (
@@ -293,7 +347,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
               {MACRO_TABS.find((t) => t.key === activeTab)?.label} Trend
             </Text>
             <TrendChart
-              daily={data.daily_data}
+              daily={displayData.daily_data}
               macroKey={activeTab}
               goal={goals[activeTab]}
               color={MACRO_TABS.find((t) => t.key === activeTab)!.color}
@@ -301,22 +355,25 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
             />
           </View>
 
-          <AveragesCard averages={data.averages} goals={goals} />
-          <WeekComparisonCard comparison={data.weekly_comparison} />
-          <AdherenceCard pct={data.goal_adherence_percent} streak={data.current_streak} />
+          <AveragesCard averages={displayData.averages} goals={goals} />
+          <WeekComparisonCard comparison={displayData.weekly_comparison} />
+          <AdherenceCard pct={displayData.goal_adherence_percent} streak={displayData.current_streak} />
         </ScrollView>
       )}
     </SafeAreaView>
   );
+
 }
 
 export default MonthlyTrackingScreen;
 
 const styles = StyleSheet.create({
-  safe:       { flex: 1, backgroundColor: colors.background },
-  header:     { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  headerTitle:{ fontSize: 26, fontWeight: '800', color: colors.text },
-  headerSub:  { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  safe:        { flex: 1, backgroundColor: colors.background },
+  header:      { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: colors.text },
+  headerSub:   { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  mockBanner:  { marginHorizontal: 0, marginBottom: 12, backgroundColor: colors.secondary + '88', borderRadius: 10, padding: 10 },
+  mockBannerText: { fontSize: 12, color: colors.accent, fontWeight: '500', textAlign: 'center' },
   scroll:     { padding: 16 },
   tabScroll:  { marginBottom: 16 },
   tabRow:     { gap: 8, paddingHorizontal: 0 },

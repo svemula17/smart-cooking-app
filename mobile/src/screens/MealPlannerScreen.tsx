@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { mealPlanService } from '../services/mealPlanService';
+import { shoppingService } from '../services/shoppingService';
 import { scheduleMealReminders } from '../services/reminderService';
 import { colors } from '../theme/colors';
 import { getRecipeImage } from '../utils/recipeImages';
@@ -116,7 +117,7 @@ function MealSlot({
           activeOpacity={0.8}
         >
           {getRecipeImage(plan.recipe.name) ? (
-            <Image source={getRecipeImage(plan.recipe.name)} style={slotStyles.recipeThumb} />
+            <Image source={getRecipeImage(plan.recipe.name)!} style={slotStyles.recipeThumb} />
           ) : (
             <View style={slotStyles.recipeThumbFallback}>
               <Text style={{ fontSize: 24 }}>🍽️</Text>
@@ -252,6 +253,14 @@ const dayStyles = StyleSheet.create({
 
 // ─── RecipeSelectModal ────────────────────────────────────────────────────────
 
+// Meal-type suitability: breakfast = quick (≤30 min), lunch = medium (≤60 min), dinner = all
+function suitableFor(mealType: MealType, prep: number, cook: number): boolean {
+  const total = (prep ?? 0) + (cook ?? 0);
+  if (mealType === 'breakfast') return total <= 30;
+  if (mealType === 'lunch')     return total <= 60;
+  return true; // dinner — anything
+}
+
 function RecipeSelectModal({
   date,
   mealType,
@@ -269,11 +278,14 @@ function RecipeSelectModal({
     queryKey: ['recipes-all'],
     queryFn: async () => {
       const { recipeService } = await import('../services/recipeService');
-      return recipeService.getRecipes({ limit: 50 });
+      return recipeService.getRecipes({ limit: 100 });
     },
   });
 
-  const recipes = data?.recipes ?? [];
+  const allRecipes = data?.recipes ?? [];
+  const recipes = allRecipes.filter((r) =>
+    suitableFor(mealType, r.prep_time_minutes, r.cook_time_minutes)
+  );
 
   return (
     <View style={modalStyles.overlay}>
@@ -286,6 +298,10 @@ function RecipeSelectModal({
         </View>
         <Text style={modalStyles.sub}>
           {MEAL_CONFIG[mealType].emoji} {MEAL_CONFIG[mealType].label} · {date}
+          {'  '}
+          <Text style={modalStyles.subCount}>
+            {isLoading ? '' : `${recipes.length} recipes`}
+          </Text>
         </Text>
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
@@ -297,7 +313,7 @@ function RecipeSelectModal({
             renderItem={({ item }) => (
               <TouchableOpacity style={modalStyles.row} onPress={() => onSelect(item.id)}>
                 {getRecipeImage(item.name) ? (
-                  <Image source={getRecipeImage(item.name)} style={modalStyles.thumb} />
+                  <Image source={getRecipeImage(item.name)!} style={modalStyles.thumb} />
                 ) : (
                   <View style={[modalStyles.thumb, { backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }]}>
                     <Text style={{ fontSize: 20 }}>🍽️</Text>
@@ -323,6 +339,7 @@ const modalStyles = StyleSheet.create({
   title:      { flex: 1, fontSize: 18, fontWeight: '700', color: colors.text },
   close:      { fontSize: 18, color: colors.textLight },
   sub:        { fontSize: 13, color: colors.textSecondary, paddingHorizontal: 20, marginBottom: 12 },
+  subCount:   { color: colors.primary, fontWeight: '600' },
   row:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.divider },
   thumb:      { width: 56, height: 56, borderRadius: 10 },
   recipeName: { fontSize: 15, fontWeight: '600', color: colors.text },
@@ -371,6 +388,17 @@ export function MealPlannerScreen(): React.JSX.Element {
     onError: () => Alert.alert('Error', 'Could not remove meal. Try again.'),
   });
 
+  const generateListMutation = useMutation({
+    mutationFn: (recipeIds: string[]) =>
+      shoppingService.generate({
+        user_id: user!.id,
+        name: `Week of ${startDate}`,
+        recipe_ids: recipeIds,
+      }),
+    onSuccess: () => Alert.alert('✅ Shopping List Created', 'Your weekly shopping list is ready in the Shopping tab!'),
+    onError: () => Alert.alert('Error', 'Could not generate shopping list. Try again.'),
+  });
+
   const plans: MealPlan[] = data?.meal_plans ?? [];
 
   const plansByDate = weekDates.reduce<Record<string, MealPlan[]>>((acc, d) => {
@@ -383,8 +411,24 @@ export function MealPlannerScreen(): React.JSX.Element {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📅 My Meal Plan</Text>
-        <Text style={styles.headerSub}>Next 7 days</Text>
+        <View>
+          <Text style={styles.headerTitle}>📅 My Meal Plan</Text>
+          <Text style={styles.headerSub}>Next 7 days</Text>
+        </View>
+        {plans.length > 0 && (
+          <TouchableOpacity
+            style={styles.generateBtn}
+            onPress={() => {
+              const recipeIds = [...new Set(plans.map((p) => p.recipe_id))];
+              generateListMutation.mutate(recipeIds);
+            }}
+            disabled={generateListMutation.isPending}
+          >
+            {generateListMutation.isPending
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={styles.generateBtnText}>🛒 List</Text>}
+          </TouchableOpacity>
+        )}
       </View>
 
       {isLoading ? (
@@ -432,9 +476,11 @@ export default MealPlannerScreen;
 
 const styles = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: colors.background },
-  header:      { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
+  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
   headerTitle: { fontSize: 26, fontWeight: '800', color: colors.text },
   headerSub:   { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  generateBtn: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  generateBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   scroll:      { paddingHorizontal: 16, paddingBottom: 32 },
   centered:    { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyIcon:   { fontSize: 48, marginBottom: 12 },

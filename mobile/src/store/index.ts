@@ -7,6 +7,10 @@ import nutritionReducer from './slices/nutritionSlice';
 import shoppingReducer from './slices/shoppingSlice';
 import mealPlanReducer from './slices/mealPlanSlice';
 import trackingReducer from './slices/trackingSlice';
+import favoritesReducer from './slices/favoritesSlice';
+import recentlyViewedReducer from './slices/recentlyViewedSlice';
+import settingsReducer from './slices/settingsSlice';
+import pantryReducer from './slices/pantrySlice';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +23,10 @@ export const store = configureStore({
     shopping:  shoppingReducer,
     mealPlan:  mealPlanReducer,
     tracking:  trackingReducer,
+    favorites: favoritesReducer,
+    recentlyViewed: recentlyViewedReducer,
+    settings: settingsReducer,
+    pantry: pantryReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -114,3 +122,21 @@ export {
 
 export type { MealPlanState } from './slices/mealPlanSlice';
 export type { TrackingState } from './slices/trackingSlice';
+
+export { toggleFavorite, clearFavorites } from './slices/favoritesSlice';
+export type { FavoritesState } from './slices/favoritesSlice';
+
+export { addRecentlyViewed, clearRecentlyViewed } from './slices/recentlyViewedSlice';
+export type { RecentlyViewedState } from './slices/recentlyViewedSlice';
+
+export { toggleDarkMode } from './slices/settingsSlice';
+export type { SettingsState } from './slices/settingsSlice';
+
+export {
+  setPantryItems,
+  addPantryItem,
+  updatePantryItem,
+  removePantryItem,
+  toggleCookFromPantry,
+} from './slices/pantrySlice';
+export type { PantryState } from './slices/pantrySlice';

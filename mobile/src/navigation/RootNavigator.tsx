@@ -14,6 +14,7 @@ import { ShoppingListScreen } from '../screens/ShoppingListScreen';
 import { MealPlannerScreen } from '../screens/MealPlannerScreen';
 import { MonthlyTrackingScreen } from '../screens/MonthlyTrackingScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { PantryScreen } from '../screens/PantryScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
 import { colors } from '../theme/colors';
@@ -130,6 +131,11 @@ export function RootNavigator(): React.JSX.Element {
         name="CookingMode"
         component={CookingModeScreen as AnyComponent}
         options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="Pantry"
+        component={PantryScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );
