@@ -120,6 +120,14 @@ export function PantryScreen() {
     const days = daysUntilExpiry(item.expiry_date);
     return days !== null && days <= EXPIRY_WARNING_DAYS && days >= 0;
   });
+  const expiredItems = items.filter((item) => {
+    const days = daysUntilExpiry(item.expiry_date);
+    return days !== null && days < 0;
+  });
+  const shelfStableItems = items.filter((item) => !item.expiry_date);
+  const freshnessScore = items.length === 0
+    ? 100
+    : Math.max(0, Math.round(((items.length - expiringItems.length - (expiredItems.length * 1.5)) / items.length) * 100));
 
   const grouped = CATEGORIES.reduce<Record<string, PantryItem[]>>((acc, cat) => {
     const catItems = filtered.filter((i) => i.category === cat);
@@ -158,6 +166,35 @@ export function PantryScreen() {
             {cookFromPantry ? 'ON' : 'OFF'}
           </Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.healthCard}>
+        <View style={styles.healthCardTop}>
+          <View>
+            <Text style={styles.healthEyebrow}>Pantry Pulse</Text>
+            <Text style={styles.healthTitle}>What your kitchen is telling you</Text>
+          </View>
+          <View style={styles.healthScorePill}>
+            <Text style={styles.healthScoreValue}>{freshnessScore}</Text>
+          </View>
+        </View>
+        <Text style={styles.healthSubtitle}>
+          Keep this screen about flow, not storage. Use soon, restock later, waste less.
+        </Text>
+        <View style={styles.healthStatsRow}>
+          <View style={styles.healthStat}>
+            <Text style={styles.healthStatValue}>{expiredItems.length}</Text>
+            <Text style={styles.healthStatLabel}>Expired</Text>
+          </View>
+          <View style={styles.healthStat}>
+            <Text style={styles.healthStatValue}>{expiringItems.length}</Text>
+            <Text style={styles.healthStatLabel}>Use soon</Text>
+          </View>
+          <View style={styles.healthStat}>
+            <Text style={styles.healthStatValue}>{shelfStableItems.length}</Text>
+            <Text style={styles.healthStatLabel}>Shelf stable</Text>
+          </View>
+        </View>
       </View>
 
       {/* Expiry warnings */}
@@ -362,6 +399,33 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
     modeToggleOn: { backgroundColor: colors.primary },
     modeToggleText: { fontWeight: '700', fontSize: 13, color: colors.textSecondary },
     modeToggleTextOn: { color: '#fff' },
+    healthCard: {
+      marginHorizontal: 20,
+      marginBottom: 12,
+      backgroundColor: '#FBF6ED',
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: '#E9D8BC',
+    },
+    healthCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    healthEyebrow: { fontSize: 11, fontWeight: '800', color: '#8A6846', letterSpacing: 0.8, textTransform: 'uppercase' },
+    healthTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginTop: 4 },
+    healthSubtitle: { fontSize: 13, lineHeight: 18, color: colors.textSecondary },
+    healthScorePill: {
+      minWidth: 50,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    healthScoreValue: { fontSize: 22, fontWeight: '900', color: colors.accent },
+    healthStatsRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+    healthStat: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12 },
+    healthStatValue: { fontSize: 20, fontWeight: '900', color: colors.text, marginBottom: 2 },
+    healthStatLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
 
     expiryBanner: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#FFF3CD', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#FFD700' },
     expiryBannerText: { fontSize: 13, color: '#856404', fontWeight: '600' },

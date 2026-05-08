@@ -182,7 +182,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Login: { initialMode?: 'login' | 'register'; pendingGoals?: PendingGoals } | undefined;
   Tabs: undefined;
-  RecipeBrowser: { cuisine: string };
+  RecipeBrowser: { cuisine: string; intent?: 'rescue' | 'fast' | 'low-effort' | 'high-protein' | 'use-soon' };
   RecipeDetail: { recipeId: string };
   CookingMode: { recipeId: string };
   RecipeSelect: { date: string; mealType: MealType };

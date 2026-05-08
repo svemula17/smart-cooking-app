@@ -2,15 +2,15 @@ import { recipeApi } from './api';
 
 export interface PantryItem {
   id: string;
-  user_id: string;
+  user_id?: string;
   name: string;
   quantity: number;
   unit: string;
   category: string;
   location: string;
   expiry_date: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type CreatePantryItem = Omit<PantryItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>;

@@ -25,11 +25,11 @@ import { colors } from '../theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'RecipeBrowser'>;
 
 const FILTERS = [
-  { label: 'All', emoji: '✨' },
+  { label: 'Rescue', emoji: '🚨' },
+  { label: 'Fastest', emoji: '⚡' },
+  { label: 'Low Effort', emoji: '🛋️' },
   { label: 'High Protein', emoji: '💪' },
-  { label: 'Under 30min', emoji: '⏱' },
-  { label: 'Easy', emoji: '😊' },
-  { label: 'Vegan', emoji: '🌱' },
+  { label: 'Reset', emoji: '✨' },
 ];
 
 const SkeletonCard: React.FC = () => {
@@ -57,10 +57,16 @@ const SkeletonCard: React.FC = () => {
 };
 
 const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { cuisine } = route.params;
+  const { cuisine, intent } = route.params;
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('All');
+  const initialFilter =
+    intent === 'fast' ? 'Fastest'
+      : intent === 'low-effort' ? 'Low Effort'
+        : intent === 'high-protein' ? 'High Protein'
+          : intent === 'rescue' || intent === 'use-soon' ? 'Rescue'
+            : 'Reset';
+  const [activeFilter, setActiveFilter] = useState(initialFilter);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
@@ -72,7 +78,7 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
     debounceTimer.current = setTimeout(() => setDebouncedQuery(text), 400);
   }, []);
 
-  const isDefaultView = cuisine !== 'all' && !debouncedQuery && activeFilter === 'All';
+  const isDefaultView = cuisine !== 'all' && !debouncedQuery && activeFilter === 'Reset';
 
   const { data: recipesData, isLoading } = useQuery({
     queryKey: ['recipes', cuisine, debouncedQuery, activeFilter],
@@ -83,29 +89,43 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
       return recipeService.search({
         q: debouncedQuery || undefined,
         cuisine_type: cuisine !== 'all' ? cuisine : undefined,
-        difficulty: activeFilter === 'Easy' ? 'Easy' : undefined,
+        difficulty: activeFilter === 'Low Effort' ? 'Easy' : undefined,
         min_protein: activeFilter === 'High Protein' ? 25 : undefined,
-        max_cook_time: activeFilter === 'Under 30min' ? 30 : undefined,
+        max_cook_time: activeFilter === 'Fastest' || activeFilter === 'Rescue' ? 25 : undefined,
       });
     },
   });
   const allRecipes: Recipe[] = recipesData?.recipes ?? [];
 
-  // Cook From Pantry: score recipes by how many ingredients match pantry
-  const pantryNames = pantryItems.map((p) => p.name.toLowerCase());
-  const recipes = cookFromPantry
-    ? [...allRecipes].sort((a, b) => {
-        const scoreA = (a as any).ingredients?.filter((i: any) =>
-          pantryNames.some((p) => i.ingredient_name?.toLowerCase().includes(p) || p.includes(i.ingredient_name?.toLowerCase())),
-        ).length ?? 0;
-        const scoreB = (b as any).ingredients?.filter((i: any) =>
-          pantryNames.some((p) => i.ingredient_name?.toLowerCase().includes(p) || p.includes(i.ingredient_name?.toLowerCase())),
-        ).length ?? 0;
-        return scoreB - scoreA;
-      })
-    : allRecipes;
+  const recipePriority = (recipe: Recipe) => {
+    const totalTime = recipe.prep_time_minutes + recipe.cook_time_minutes;
+    const difficultyBonus = recipe.difficulty === 'Easy' ? 12 : recipe.difficulty === 'Medium' ? 6 : 0;
+    const proteinBonus = activeFilter === 'High Protein' ? 8 : 0;
+    const pantrySignal = cookFromPantry ? 10 : 0;
+    const rescueBonus = activeFilter === 'Rescue' ? 18 : activeFilter === 'Fastest' ? 12 : activeFilter === 'Low Effort' ? 10 : 0;
+    return difficultyBonus + proteinBonus + pantrySignal + rescueBonus - totalTime;
+  };
+  const recipes = [...allRecipes].sort((a, b) => recipePriority(b) - recipePriority(a));
 
-  const headerTitle = cuisine === 'all' ? 'All Recipes' : `${cuisine} Recipes`;
+  const headerTitle = cuisine === 'all' ? 'Dinner Options' : `${cuisine} Tonight`;
+  const pantryUrgency = pantryItems.filter((item) => {
+    if (!item.expiry_date) return false;
+    const ms = new Date(item.expiry_date).getTime() - Date.now();
+    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
+    return days >= 0 && days <= 3;
+  }).length;
+  const intentSummary =
+    activeFilter === 'Rescue'
+      ? 'Prioritizing easy wins, shorter cook times, and lower friction.'
+      : activeFilter === 'Fastest'
+        ? 'Showing the quickest ways to get dinner done.'
+        : activeFilter === 'Low Effort'
+          ? 'Less chopping, less mental load, less cleanup energy.'
+          : activeFilter === 'High Protein'
+            ? 'Biasing toward stronger protein options.'
+            : cuisine === 'all'
+              ? 'Start from a mode, not from endless scrolling.'
+              : `A craving lane for ${cuisine.toLowerCase()} nights.`;
 
   const renderItem = ({ item }: { item: Recipe }) => (
     <RecipeCard
@@ -145,7 +165,7 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search recipes..."
+          placeholder="Search by mood, ingredient, or dish..."
           placeholderTextColor={colors.textLight}
           value={searchQuery}
           onChangeText={handleSearch}
@@ -154,14 +174,30 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
         />
       </View>
 
-      {/* Cook From Pantry banner */}
-      {cookFromPantry && (
-        <View style={styles.pantryBanner}>
-          <Text style={styles.pantryBannerText}>
-            🥦 Cook From Pantry Mode — recipes sorted by your available ingredients ({pantryItems.length} items)
-          </Text>
+      <View style={styles.missionCard}>
+        <View style={styles.missionHeader}>
+          <Text style={styles.missionEyebrow}>Tonight Mission</Text>
+          {cookFromPantry && <Text style={styles.missionBadge}>PANTRY ON</Text>}
         </View>
-      )}
+        <Text style={styles.missionTitle}>
+          {activeFilter === 'Rescue' ? 'Get something good on the table fast.' : headerTitle}
+        </Text>
+        <Text style={styles.missionSubtitle}>{intentSummary}</Text>
+        <View style={styles.missionStats}>
+          <View style={styles.missionStat}>
+            <Text style={styles.missionStatValue}>{pantryItems.length}</Text>
+            <Text style={styles.missionStatLabel}>Pantry items</Text>
+          </View>
+          <View style={styles.missionStat}>
+            <Text style={styles.missionStatValue}>{pantryUrgency}</Text>
+            <Text style={styles.missionStatLabel}>Use soon</Text>
+          </View>
+          <View style={styles.missionStat}>
+            <Text style={styles.missionStatValue}>{recipes.length}</Text>
+            <Text style={styles.missionStatLabel}>Candidates</Text>
+          </View>
+        </View>
+      </View>
 
       {/* Filter Chips */}
       <ScrollView
@@ -257,6 +293,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  missionCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#FBF6ED',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E7D7C4',
+  },
+  missionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  missionEyebrow: { fontSize: 11, fontWeight: '800', color: '#8A6846', letterSpacing: 0.8, textTransform: 'uppercase' },
+  missionBadge: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2E7D32',
+    backgroundColor: '#E7F6EA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  missionTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 6 },
+  missionSubtitle: { fontSize: 13, lineHeight: 19, color: colors.textSecondary },
+  missionStats: { flexDirection: 'row', marginTop: 14, gap: 10 },
+  missionStat: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12 },
+  missionStatValue: { fontSize: 20, fontWeight: '900', color: colors.accent, marginBottom: 2 },
+  missionStatLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
   searchIcon: {
     fontSize: 16,
     marginRight: 8,
