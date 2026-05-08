@@ -1,15 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, SafeAreaView, StatusBar, Alert, Modal,
-  FlatList, ActivityIndicator,
+  StyleSheet, SafeAreaView, StatusBar, Alert, Modal, FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSelector, useDispatch } from 'react-redux';
-import { pantryService, type PantryItem } from '../services/pantryService';
+import type { PantryItem } from '../services/pantryService';
 import { RootState } from '../store';
-import { setPantryItems, addPantryItem, updatePantryItem, removePantryItem, toggleCookFromPantry } from '../store';
+import { addPantryItem, updatePantryItem, removePantryItem, toggleCookFromPantry } from '../store';
 import { useThemeColors } from '../theme/useThemeColors';
 
 const CATEGORIES = ['produce', 'dairy', 'meat', 'seafood', 'grains', 'spices', 'canned', 'frozen', 'beverages', 'other'];
@@ -45,7 +43,6 @@ export function PantryScreen() {
   const colors = useThemeColors();
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const queryClient = useQueryClient();
   const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
 
   const [showModal, setShowModal] = useState(false);
@@ -54,64 +51,11 @@ export function PantryScreen() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['pantry'],
-    queryFn: async () => {
-      const data = await pantryService.list();
-      dispatch(setPantryItems(data));
-      return data;
-    },
-    staleTime: 2 * 60 * 1000,
-  });
+  // Use hardcoded items from Redux store — no network call needed
+  const items = useSelector((s: RootState) => s.pantry.items);
 
-  const createMutation = useMutation({
-    mutationFn: (item: typeof EMPTY_FORM) =>
-      pantryService.create({
-        name: item.name,
-        quantity: parseFloat(item.quantity) || 1,
-        unit: item.unit,
-        category: item.category,
-        location: item.location,
-        expiry_date: item.expiry_date || null,
-      }),
-    onSuccess: (newItem) => {
-      dispatch(addPantryItem(newItem));
-      queryClient.invalidateQueries({ queryKey: ['pantry'] });
-      setShowModal(false);
-      setForm(EMPTY_FORM);
-    },
-    onError: () => Alert.alert('Error', 'Failed to add item'),
-  });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, item }: { id: string; item: typeof EMPTY_FORM }) =>
-      pantryService.update(id, {
-        name: item.name,
-        quantity: parseFloat(item.quantity) || 1,
-        unit: item.unit,
-        category: item.category,
-        location: item.location,
-        expiry_date: item.expiry_date || null,
-      }),
-    onSuccess: (updated) => {
-      dispatch(updatePantryItem(updated));
-      queryClient.invalidateQueries({ queryKey: ['pantry'] });
-      setShowModal(false);
-      setEditingItem(null);
-      setForm(EMPTY_FORM);
-    },
-    onError: () => Alert.alert('Error', 'Failed to update item'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => pantryService.remove(id),
-    onSuccess: (_d, id) => {
-      dispatch(removePantryItem(id));
-      queryClient.invalidateQueries({ queryKey: ['pantry'] });
-    },
-    onError: () => Alert.alert('Error', 'Failed to delete item'),
-  });
-
+  // All CRUD operates locally on Redux store — no network needed
   const openAdd = useCallback(() => {
     setEditingItem(null);
     setForm(EMPTY_FORM);
@@ -134,18 +78,37 @@ export function PantryScreen() {
   const handleSave = useCallback(() => {
     if (!form.name.trim()) { Alert.alert('Error', 'Name is required'); return; }
     if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, item: form });
+      dispatch(updatePantryItem({
+        ...editingItem,
+        name: form.name,
+        quantity: parseFloat(form.quantity) || 1,
+        unit: form.unit,
+        category: form.category,
+        location: form.location,
+        expiry_date: form.expiry_date || null,
+      }));
     } else {
-      createMutation.mutate(form);
+      dispatch(addPantryItem({
+        id: String(Date.now()),
+        name: form.name,
+        quantity: parseFloat(form.quantity) || 1,
+        unit: form.unit,
+        category: form.category,
+        location: form.location,
+        expiry_date: form.expiry_date || null,
+      }));
     }
-  }, [form, editingItem, createMutation, updateMutation]);
+    setShowModal(false);
+    setEditingItem(null);
+    setForm(EMPTY_FORM);
+  }, [form, editingItem, dispatch]);
 
   const handleDelete = useCallback((item: PantryItem) => {
     Alert.alert('Delete Item', `Remove ${item.name} from pantry?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(item.id) },
+      { text: 'Delete', style: 'destructive', onPress: () => dispatch(removePantryItem(item.id)) },
     ]);
-  }, [deleteMutation]);
+  }, [dispatch]);
 
   const filtered = items.filter((item) => {
     const matchSearch = !search || item.name.toLowerCase().includes(search.toLowerCase());
@@ -237,55 +200,51 @@ export function PantryScreen() {
         ))}
       </ScrollView>
 
-      {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
-      ) : (
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-          {Object.entries(grouped).map(([cat, catItems]) => (
-            <View key={cat} style={styles.catSection}>
-              <Text style={styles.catHeader}>
-                {CATEGORY_EMOJI[cat] ?? '📦'} {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </Text>
-              {catItems.map((item) => {
-                const days = daysUntilExpiry(item.expiry_date);
-                const isExpiring = days !== null && days <= EXPIRY_WARNING_DAYS;
-                const isExpired = days !== null && days < 0;
-                return (
-                  <View key={item.id} style={[styles.itemRow, isExpiring && styles.itemRowWarning, isExpired && styles.itemRowExpired]}>
-                    <View style={styles.itemMain}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemMeta}>
-                        {item.quantity} {item.unit} · {item.location}
-                        {item.expiry_date ? (
-                          isExpired ? ' · EXPIRED' :
-                          isExpiring ? ` · Expires in ${days}d` :
-                          ` · Exp: ${item.expiry_date}`
-                        ) : ''}
-                      </Text>
-                    </View>
-                    <View style={styles.itemActions}>
-                      <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
-                        <Text style={styles.editBtnText}>✏️</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
-                        <Text style={styles.deleteBtnText}>🗑️</Text>
-                      </TouchableOpacity>
-                    </View>
+      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+        {Object.entries(grouped).map(([cat, catItems]) => (
+          <View key={cat} style={styles.catSection}>
+            <Text style={styles.catHeader}>
+              {CATEGORY_EMOJI[cat] ?? '📦'} {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </Text>
+            {catItems.map((item) => {
+              const days = daysUntilExpiry(item.expiry_date);
+              const isExpiring = days !== null && days <= EXPIRY_WARNING_DAYS;
+              const isExpired = days !== null && days < 0;
+              return (
+                <View key={item.id} style={[styles.itemRow, isExpiring && styles.itemRowWarning, isExpired && styles.itemRowExpired]}>
+                  <View style={styles.itemMain}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    <Text style={styles.itemMeta}>
+                      {item.quantity} {item.unit} · {item.location}
+                      {item.expiry_date ? (
+                        isExpired ? ' · EXPIRED' :
+                        isExpiring ? ` · Expires in ${days}d` :
+                        ` · Exp: ${item.expiry_date}`
+                      ) : ''}
+                    </Text>
                   </View>
-                );
-              })}
-            </View>
-          ))}
-          {filtered.length === 0 && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>🥡</Text>
-              <Text style={styles.emptyTitle}>Pantry is empty</Text>
-              <Text style={styles.emptyDesc}>Add ingredients you have at home</Text>
-            </View>
-          )}
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      )}
+                  <View style={styles.itemActions}>
+                    <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
+                      <Text style={styles.editBtnText}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
+                      <Text style={styles.deleteBtnText}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ))}
+        {filtered.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🥡</Text>
+            <Text style={styles.emptyTitle}>Pantry is empty</Text>
+            <Text style={styles.emptyDesc}>Add ingredients you have at home</Text>
+          </View>
+        )}
+        <View style={{ height: 32 }} />
+      </ScrollView>
 
       {/* Add/Edit Modal */}
       <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
@@ -295,10 +254,8 @@ export function PantryScreen() {
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>{editingItem ? 'Edit Item' : 'Add to Pantry'}</Text>
-            <TouchableOpacity onPress={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
-              <Text style={[styles.modalSave, (createMutation.isPending || updateMutation.isPending) && { opacity: 0.5 }]}>
-                Save
-              </Text>
+            <TouchableOpacity onPress={handleSave}>
+              <Text style={styles.modalSave}>Save</Text>
             </TouchableOpacity>
           </View>
 

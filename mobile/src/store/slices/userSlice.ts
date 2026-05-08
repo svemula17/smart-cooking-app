@@ -18,8 +18,16 @@ export interface UserState {
 }
 
 const initialState: UserState = {
-  preferences: null,
-  macroProgress: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  // Hardcoded demo goals & today's progress
+  preferences: {
+    calories_goal: 2000,
+    protein_goal: 150,
+    carbs_goal: 250,
+    fat_goal: 65,
+    dietary_restrictions: [],
+    favorite_cuisines: ['Indian', 'Italian', 'Thai'],
+  } as any,
+  macroProgress: { calories: 1340, protein: 98, carbs: 162, fat: 41 },
   isLoadingPrefs: false,
   prefsError: null,
 };
