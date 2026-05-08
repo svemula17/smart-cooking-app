@@ -31,11 +31,11 @@ const Tab   = createBottomTabNavigator<TabParamList>();
 interface TabIconConfig { emoji: string; label: string }
 
 const TAB_CONFIG: Record<string, TabIconConfig> = {
-  Home:        { emoji: '🏠', label: 'Home' },
-  MealPlanner: { emoji: '📅', label: 'Plan' },
-  Shopping:    { emoji: '🛒', label: 'Shopping' },
-  Stats:       { emoji: '📊', label: 'Stats' },
-  Profile:     { emoji: '👤', label: 'Profile' },
+  Home:        { emoji: '🌙', label: 'Tonight' },
+  MealPlanner: { emoji: '🧭', label: 'Prep' },
+  Shopping:    { emoji: '🪄', label: 'Unlock' },
+  Stats:       { emoji: '📈', label: 'Signals' },
+  Profile:     { emoji: '👤', label: 'You' },
 };
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {

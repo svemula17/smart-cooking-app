@@ -60,11 +60,11 @@ const formatDate = (iso: string): string => {
   }
 };
 
-type TabKey = 'Ingredients' | 'Steps' | 'Reviews';
+type TabKey = 'Need' | 'Flow' | 'Proof';
 
 const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { recipeId } = route.params;
-  const [activeTab, setActiveTab] = useState<TabKey>('Ingredients');
+  const [activeTab, setActiveTab] = useState<TabKey>('Need');
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [selectedStars, setSelectedStars] = useState(5);
@@ -75,6 +75,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const dispatch = useDispatch();
   const user = useSelector((s: RootState) => s.auth.user);
   const isFav = useSelector((s: RootState) => s.favorites.ids.includes(recipeId));
+  const pantryItems = useSelector((s: RootState) => s.pantry.items);
   const qc = useQueryClient();
 
   const { data: recipe, isLoading, isError } = useQuery<RecipeWithDetails>({
@@ -198,6 +199,37 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const totalTime = recipe.prep_time_minutes + recipe.cook_time_minutes;
   const currentServings = servings ?? recipe.servings;
   const servingScale = currentServings / (recipe.servings || 1);
+  const pantryNames = pantryItems.map((item) => item.name.toLowerCase());
+  const matchedIngredients = recipe.ingredients.filter((ing) => {
+    const ingredient = ing.ingredient_name.toLowerCase();
+    return pantryNames.some((name) => ingredient.includes(name) || name.includes(ingredient));
+  });
+  const pantryCoverage = recipe.ingredients.length > 0
+    ? Math.round((matchedIngredients.length / recipe.ingredients.length) * 100)
+    : 0;
+  const useSoonNames = pantryItems
+    .filter((item) => item.expiry_date)
+    .filter((item) => {
+      const diff = new Date(item.expiry_date!).getTime() - Date.now();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      return days >= 0 && days <= 3;
+    })
+    .map((item) => item.name.toLowerCase());
+  const useSoonMatches = recipe.ingredients.filter((ing) =>
+    useSoonNames.some((name) => ing.ingredient_name.toLowerCase().includes(name) || name.includes(ing.ingredient_name.toLowerCase())),
+  );
+  const effortNote =
+    totalTime <= 25 && recipe.difficulty === 'Easy'
+      ? 'Fast and forgiving'
+      : totalTime <= 40
+        ? 'Reasonable weeknight lift'
+        : 'Better when you actually want to cook';
+  const fitTone =
+    pantryCoverage >= 60
+      ? 'High pantry fit'
+      : pantryCoverage >= 35
+        ? 'Partial pantry fit'
+        : 'You will need a few unlock items';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -273,6 +305,41 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
 
+        <View style={styles.fitCard}>
+          <View style={styles.fitHeader}>
+            <View>
+              <Text style={styles.fitEyebrow}>Tonight Fit</Text>
+              <Text style={styles.fitTitle}>Should this be tonight’s plan?</Text>
+            </View>
+            <View style={styles.fitPill}>
+              <Text style={styles.fitPillText}>{fitTone}</Text>
+            </View>
+          </View>
+          <Text style={styles.fitSubtitle}>
+            {effortNote}. {matchedIngredients.length} of {recipe.ingredients.length} ingredients already overlap with your pantry.
+          </Text>
+          <View style={styles.fitMetrics}>
+            <View style={styles.fitMetric}>
+              <Text style={styles.fitMetricValue}>{pantryCoverage}%</Text>
+              <Text style={styles.fitMetricLabel}>Pantry match</Text>
+            </View>
+            <View style={styles.fitMetric}>
+              <Text style={styles.fitMetricValue}>{useSoonMatches.length}</Text>
+              <Text style={styles.fitMetricLabel}>Use-soon saves</Text>
+            </View>
+            <View style={styles.fitMetric}>
+              <Text style={styles.fitMetricValue}>{totalTime}m</Text>
+              <Text style={styles.fitMetricLabel}>Dinner time</Text>
+            </View>
+          </View>
+          {matchedIngredients.length > 0 && (
+            <Text style={styles.fitFootnote}>
+              Pantry overlap: {matchedIngredients.slice(0, 4).map((ing) => ing.ingredient_name).join(', ')}
+              {matchedIngredients.length > 4 ? '…' : ''}
+            </Text>
+          )}
+        </View>
+
         {/* Nutrition */}
         {recipe.nutrition && (
           <View style={styles.section}>
@@ -283,7 +350,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Tab Bar */}
         <View style={styles.tabBar}>
-          {(['Ingredients', 'Steps', 'Reviews'] as TabKey[]).map((tab) => (
+          {(['Need', 'Flow', 'Proof'] as TabKey[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -298,14 +365,18 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Tab Content */}
         <View style={styles.tabContent}>
-          {activeTab === 'Ingredients' && (
+          {activeTab === 'Need' && (
             <View style={styles.ingredientList}>
+              <Text style={styles.tabIntro}>
+                Start by checking what this dinner needs from you and what your pantry already covers.
+              </Text>
               {recipe.ingredients.map((ing) => {
                 const checked = checkedIngredients.has(ing.id);
+                const pantryMatched = matchedIngredients.some((match) => match.id === ing.id);
                 return (
                   <TouchableOpacity
                     key={ing.id}
-                    style={styles.ingredientRow}
+                    style={[styles.ingredientRow, pantryMatched && styles.ingredientRowMatched]}
                     onPress={() => toggleIngredient(ing.id)}
                   >
                     <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
@@ -319,6 +390,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={styles.ingredientNotes}>{ing.notes}</Text>
                       ) : null}
                     </View>
+                    {pantryMatched ? <Text style={styles.matchedPill}>IN</Text> : null}
                     <Text style={styles.ingredientQty}>
                       {ing.quantity != null
                         ? `${+(ing.quantity * servingScale).toFixed(1)} ${ing.unit}`
@@ -330,8 +402,11 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {activeTab === 'Steps' && (
+          {activeTab === 'Flow' && (
             <View style={styles.stepList}>
+              <Text style={styles.tabIntro}>
+                Treat this like an execution flow. Move step by step and time anything that can drift.
+              </Text>
               {recipe.instructions.map((step) => (
                 <View key={step.step_number} style={styles.stepRow}>
                   <View style={styles.stepNumberCircle}>
@@ -353,10 +428,10 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {activeTab === 'Reviews' && (
+          {activeTab === 'Proof' && (
             <View style={styles.reviewList}>
               <TouchableOpacity style={styles.rateBtn} onPress={() => setRatingModalVisible(true)}>
-                <Text style={styles.rateBtnText}>⭐ Rate this Recipe</Text>
+                <Text style={styles.rateBtnText}>⭐ Leave a signal for future-you</Text>
               </TouchableOpacity>
               {reviews && reviews.length > 0 ? (
                 reviews.map((rev) => (
@@ -406,7 +481,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <Modal visible={ratingModalVisible} animationType="slide" transparent presentationStyle="overFullScreen">
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Rate this Recipe</Text>
+            <Text style={styles.modalTitle}>Was this worth tonight?</Text>
             <View style={styles.starsRow}>
               {[1, 2, 3, 4, 5].map((s) => (
                 <TouchableOpacity key={s} onPress={() => setSelectedStars(s)}>
@@ -431,7 +506,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             >
               {rateMutation.isPending
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.submitBtnText}>Submit Rating</Text>}
+                : <Text style={styles.submitBtnText}>Save Signal</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setRatingModalVisible(false)}>
               <Text style={styles.cancelModalText}>Cancel</Text>
@@ -446,7 +521,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           style={styles.cookBtn}
           onPress={() => navigation.navigate('CookingMode', { recipeId })}
         >
-          <Text style={styles.cookBtnText}>Start Cooking 👨‍🍳</Text>
+          <Text style={styles.cookBtnText}>Run Dinner Flow 👨‍🍳</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.listBtn, addToListMutation.isPending && styles.listBtnLoading]}
@@ -456,7 +531,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {addToListMutation.isPending ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={styles.listBtnText}>🛒 Add to List</Text>
+            <Text style={styles.listBtnText}>🛒 Unlock Missing Items</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -588,6 +663,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 20,
   },
+  fitCard: {
+    marginHorizontal: 16,
+    marginTop: 18,
+    backgroundColor: '#FBF6ED',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E7D7C4',
+  },
+  fitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 10 },
+  fitEyebrow: { fontSize: 11, fontWeight: '800', color: '#8A6846', letterSpacing: 0.8, textTransform: 'uppercase' },
+  fitTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 4 },
+  fitPill: { backgroundColor: '#FFFFFF', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
+  fitPillText: { fontSize: 11, fontWeight: '800', color: colors.accent },
+  fitSubtitle: { fontSize: 13, lineHeight: 19, color: colors.textSecondary },
+  fitMetrics: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  fitMetric: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12 },
+  fitMetricValue: { fontSize: 22, fontWeight: '900', color: colors.text, marginBottom: 2 },
+  fitMetricLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
+  fitFootnote: { fontSize: 12, lineHeight: 18, color: colors.textSecondary, marginTop: 12 },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
@@ -626,6 +721,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
   },
+  tabIntro: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+    marginBottom: 10,
+  },
   // Ingredients
   ingredientList: {
     gap: 2,
@@ -637,6 +738,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
     gap: 12,
+  },
+  ingredientRowMatched: {
+    backgroundColor: '#F7FBF5',
   },
   checkbox: {
     width: 24,
@@ -677,6 +781,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     fontWeight: '600',
+  },
+  matchedPill: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2E7D32',
+    backgroundColor: '#E7F6EA',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   // Steps
   stepList: {
