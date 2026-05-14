@@ -15,6 +15,11 @@ import { MealPlannerScreen } from '../screens/MealPlannerScreen';
 import { MonthlyTrackingScreen } from '../screens/MonthlyTrackingScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PantryScreen } from '../screens/PantryScreen';
+import HouseScreen from '../screens/HouseScreen';
+import HouseMembersScreen from '../screens/HouseMembersScreen';
+import CookScheduleScreen from '../screens/CookScheduleScreen';
+import ExpensesScreen from '../screens/ExpensesScreen';
+import AddExpenseScreen from '../screens/AddExpenseScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
 import { colors } from '../theme/colors';
@@ -33,6 +38,7 @@ interface TabIconConfig { emoji: string; label: string }
 const TAB_CONFIG: Record<string, TabIconConfig> = {
   Home:        { emoji: '🌙', label: 'Tonight' },
   MealPlanner: { emoji: '🧭', label: 'Prep' },
+  House:       { emoji: '🏠', label: 'House' },
   Shopping:    { emoji: '🪄', label: 'Unlock' },
   Stats:       { emoji: '📈', label: 'Signals' },
   Profile:     { emoji: '👤', label: 'You' },
@@ -88,11 +94,12 @@ function TabNavigator() {
         tabBarLabel: TAB_CONFIG[route.name]?.label ?? route.name,
       })}
     >
-      <Tab.Screen name="Home"        component={HomeScreen          as AnyComponent} />
-      <Tab.Screen name="MealPlanner" component={MealPlannerScreen   as AnyComponent} />
-      <Tab.Screen name="Shopping"    component={ShoppingListScreen  as AnyComponent} />
+      <Tab.Screen name="Home"        component={HomeScreen            as AnyComponent} />
+      <Tab.Screen name="MealPlanner" component={MealPlannerScreen     as AnyComponent} />
+      <Tab.Screen name="House"       component={HouseScreen           as AnyComponent} />
+      <Tab.Screen name="Shopping"    component={ShoppingListScreen    as AnyComponent} />
       <Tab.Screen name="Stats"       component={MonthlyTrackingScreen as AnyComponent} />
-      <Tab.Screen name="Profile"     component={ProfileScreen       as AnyComponent} />
+      <Tab.Screen name="Profile"     component={ProfileScreen         as AnyComponent} />
     </Tab.Navigator>
   );
 }
@@ -136,6 +143,26 @@ export function RootNavigator(): React.JSX.Element {
         name="Pantry"
         component={PantryScreen as AnyComponent}
         options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="HouseMembers"
+        component={HouseMembersScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="CookSchedule"
+        component={CookScheduleScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="Expenses"
+        component={ExpensesScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="AddExpense"
+        component={AddExpenseScreen as AnyComponent}
+        options={{ animation: 'slide_from_bottom' }}
       />
     </Stack.Navigator>
   );

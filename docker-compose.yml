@@ -105,6 +105,19 @@ services:
       redis: { condition: service_healthy }
     networks: [cooking-net]
 
+  house-service:
+    build: ./backend/house-service
+    container_name: cooking-house-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: ${HOUSE_SERVICE_PORT:-4006}
+    ports:
+      - "${HOUSE_SERVICE_PORT:-4006}:${HOUSE_SERVICE_PORT:-4006}"
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [cooking-net]
+
 volumes:
   postgres_data:
   redis_data:

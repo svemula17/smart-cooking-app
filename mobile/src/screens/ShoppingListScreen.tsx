@@ -357,7 +357,9 @@ const cardStyles = StyleSheet.create({
 
 export function ShoppingListScreen(): React.JSX.Element {
   const user = useSelector((s: RootState) => s.auth.user);
+  const house = useSelector((s: RootState) => s.house.house);
   const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
+  const [houseMode, setHouseMode] = useState(false);
   const qc = useQueryClient();
 
   const {
@@ -409,12 +411,24 @@ export function ShoppingListScreen(): React.JSX.Element {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Shopping Lists</Text>
-        {lists.length > 0 && (
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>{active.length} active</Text>
-          </View>
-        )}
+        <Text style={styles.headerTitle}>{houseMode ? 'House Lists' : 'Shopping Lists'}</Text>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          {house && (
+            <TouchableOpacity
+              style={[styles.modeToggle, houseMode && styles.modeToggleActive]}
+              onPress={() => setHouseMode((v) => !v)}
+            >
+              <Text style={[styles.modeToggleText, houseMode && styles.modeToggleTextActive]}>
+                {houseMode ? '🏠' : '👤'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {lists.length > 0 && (
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>{active.length} active</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {isLoading ? (
@@ -472,6 +486,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
   headerBadge: { backgroundColor: colors.primaryLight, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
   headerBadgeText: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  modeToggle: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1.5, borderColor: '#D0D0D0' },
+  modeToggleActive: { backgroundColor: '#FFF3E0', borderColor: '#E85D04' },
+  modeToggleText: { fontSize: 15 },
+  modeToggleTextActive: { color: '#E85D04' },
   list: { paddingHorizontal: 20, paddingBottom: 32 },
   sectionLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },

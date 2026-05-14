@@ -351,6 +351,8 @@ const modalStyles = StyleSheet.create({
 export function MealPlannerScreen(): React.JSX.Element {
   const user  = useSelector((s: RootState) => s.auth.user);
   const prefs = useSelector((s: RootState) => s.user.preferences);
+  const house = useSelector((s: RootState) => s.house.house);
+  const [houseMode, setHouseMode] = useState(false);
   const qc    = useQueryClient();
   const [selectingSlot, setSelectingSlot] = useState<{ date: string; mealType: MealType } | null>(null);
 
@@ -412,9 +414,19 @@ export function MealPlannerScreen(): React.JSX.Element {
 
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>📅 My Meal Plan</Text>
+          <Text style={styles.headerTitle}>📅 {houseMode ? 'House Meal Plan' : 'My Meal Plan'}</Text>
           <Text style={styles.headerSub}>Next 7 days</Text>
         </View>
+        {house && (
+          <TouchableOpacity
+            style={[styles.modeToggle, houseMode && styles.modeToggleActive]}
+            onPress={() => setHouseMode((v) => !v)}
+          >
+            <Text style={[styles.modeToggleText, houseMode && styles.modeToggleTextActive]}>
+              {houseMode ? '🏠 House' : '👤 Personal'}
+            </Text>
+          </TouchableOpacity>
+        )}
         {plans.length > 0 && (
           <TouchableOpacity
             style={styles.generateBtn}
@@ -481,6 +493,10 @@ const styles = StyleSheet.create({
   headerSub:   { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   generateBtn: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   generateBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  modeToggle: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1.5, borderColor: '#D0D0D0' },
+  modeToggleActive: { backgroundColor: '#FFF3E0', borderColor: '#E85D04' },
+  modeToggleText: { fontSize: 13, color: '#6B6B6B', fontWeight: '600' },
+  modeToggleTextActive: { color: '#E85D04' },
   scroll:      { paddingHorizontal: 16, paddingBottom: 32 },
   centered:    { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyIcon:   { fontSize: 48, marginBottom: 12 },

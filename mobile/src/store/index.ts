@@ -10,21 +10,27 @@ import trackingReducer from './slices/trackingSlice';
 import favoritesReducer from './slices/favoritesSlice';
 import settingsReducer from './slices/settingsSlice';
 import pantryReducer from './slices/pantrySlice';
+import houseReducer from './slices/houseSlice';
+import cookScheduleReducer from './slices/cookScheduleSlice';
+import expenseReducer from './slices/expenseSlice';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 export const store = configureStore({
   reducer: {
-    auth:      authReducer,
-    user:      userReducer,
-    recipes:   recipeReducer,
-    nutrition: nutritionReducer,
-    shopping:  shoppingReducer,
-    mealPlan:  mealPlanReducer,
-    tracking:  trackingReducer,
-    favorites: favoritesReducer,
-    settings: settingsReducer,
-    pantry: pantryReducer,
+    auth:         authReducer,
+    user:         userReducer,
+    recipes:      recipeReducer,
+    nutrition:    nutritionReducer,
+    shopping:     shoppingReducer,
+    mealPlan:     mealPlanReducer,
+    tracking:     trackingReducer,
+    favorites:    favoritesReducer,
+    settings:     settingsReducer,
+    pantry:       pantryReducer,
+    house:        houseReducer,
+    cookSchedule: cookScheduleReducer,
+    expense:      expenseReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -135,3 +141,34 @@ export {
   toggleCookFromPantry,
 } from './slices/pantrySlice';
 export type { PantryState } from './slices/pantrySlice';
+
+export {
+  setHouse,
+  updateHouse,
+  setMembers,
+  removeMember as removeMemberFromStore,
+  clearHouse,
+  setHouseLoading,
+  setHouseError,
+} from './slices/houseSlice';
+export type { } from './slices/houseSlice';
+
+export {
+  setSchedule,
+  addScheduleEntries,
+  updateScheduleEntry as updateScheduleEntryInStore,
+  setScheduleLoading,
+  setScheduleError,
+  clearSchedule,
+} from './slices/cookScheduleSlice';
+
+export {
+  setExpenses,
+  appendExpenses,
+  addExpense,
+  removeExpense,
+  setBalances,
+  clearExpenses,
+  setExpenseLoading,
+  setExpenseError,
+} from './slices/expenseSlice';

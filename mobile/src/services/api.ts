@@ -41,12 +41,14 @@ function makeClient(baseURL: string) {
 
 const NUTRITION_SERVICE = `http://${HOST}:4003`;
 const AI_SERVICE        = `http://${HOST}:4004`;
+const HOUSE_SERVICE     = `http://${HOST}:4006`;
 
 export const userApi       = makeClient(USER_SERVICE);
 export const recipeApi     = makeClient(RECIPE_SERVICE);
 export const shoppingApi   = makeClient(SHOPPING_SERVICE);
 export const nutritionApi  = makeClient(NUTRITION_SERVICE);
 export const aiApi         = makeClient(AI_SERVICE);
+export const houseApi      = makeClient(HOUSE_SERVICE);
 
 // Keep a sync-accessible token for hot-path needs (set after login)
 let _token: string | null = null;

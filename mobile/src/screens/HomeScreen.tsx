@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
+import type { CookScheduleEntry } from '../services/houseService';
 import { colors } from '../theme/colors';
 import { CuisineCard } from '../components/CuisineCard';
 
@@ -81,6 +82,12 @@ const HomeScreen: React.FC = () => {
   const macroProgress = useSelector((s: RootState) => s.user.macroProgress);
   const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
+  const house = useSelector((s: RootState) => s.house.house);
+  const schedule = useSelector((s: RootState) => s.cookSchedule.schedule);
+
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayEntry: CookScheduleEntry | undefined = schedule.find((e) => e.scheduled_date === todayISO);
+  const isMyTurn = todayEntry?.user_id === user?.id;
 
   const userName = user?.name ? user.name.split(' ')[0] : 'Chef';
   const pantryCount = pantryItems.length;
@@ -121,6 +128,28 @@ const HomeScreen: React.FC = () => {
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
         </View>
+
+        {/* Today's Cook Banner */}
+        {house && todayEntry && (
+          <TouchableOpacity
+            style={[styles.cookBanner, isMyTurn ? styles.cookBannerMyTurn : styles.cookBannerOther]}
+            onPress={() => navigation.navigate('Tabs' as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.cookBannerEmoji}>👨‍🍳</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cookBannerText}>
+                {isMyTurn
+                  ? "It's your turn to cook today!"
+                  : `${todayEntry.cook_name?.split(' ')[0]} is cooking tonight`}
+              </Text>
+              {todayEntry.recipe_name && (
+                <Text style={styles.cookBannerRecipe}>{todayEntry.recipe_name}</Text>
+              )}
+            </View>
+            {isMyTurn && <Text style={styles.cookBannerArrow}>→</Text>}
+          </TouchableOpacity>
+        )}
 
         <View style={styles.heroCard}>
           <Text style={styles.heroTitle}>Cook smarter with what you already have.</Text>
@@ -249,6 +278,21 @@ const styles = StyleSheet.create({
   userName:    { fontSize: 26, fontWeight: '800', color: colors.text, marginTop: 2 },
   avatarCircle: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarEmoji: { fontSize: 22 },
+  cookBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 10,
+  },
+  cookBannerMyTurn: { backgroundColor: '#FFF3E0', borderWidth: 1.5, borderColor: '#E85D04' },
+  cookBannerOther: { backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0' },
+  cookBannerEmoji: { fontSize: 24 },
+  cookBannerText: { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
+  cookBannerRecipe: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
+  cookBannerArrow: { fontSize: 18, color: '#E85D04', fontWeight: '700' },
   heroCard: {
     marginHorizontal: 20,
     marginBottom: 16,
