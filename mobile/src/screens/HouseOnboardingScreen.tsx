@@ -28,7 +28,10 @@ export default function HouseOnboardingScreen() {
       const result = await houseService.createHouse(name.trim());
       dispatch(setHouse({ house: result.house, members: [] }));
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error?.message ?? 'Could not create house');
+      const msg = e?.response?.data?.error?.message
+        ?? e?.message
+        ?? 'Could not create house — check that the house-service is running on port 4006';
+      Alert.alert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -41,7 +44,10 @@ export default function HouseOnboardingScreen() {
       const result = await houseService.joinHouse(code.trim());
       dispatch(setHouse({ house: result.house, members: result.members }));
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error?.message ?? 'Invalid invite code');
+      const msg = e?.response?.data?.error?.message
+        ?? e?.message
+        ?? 'Invalid invite code — check that the house-service is running on port 4006';
+      Alert.alert('Error', msg);
     } finally {
       setLoading(false);
     }

@@ -2,9 +2,9 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Real device on same Wi-Fi → use Mac's LAN IP (10.0.0.34)
-// iOS Simulator → use localhost
+// iOS Simulator / Web browser on Mac → use localhost
 // Android Emulator → use 10.0.2.2
-const HOST = '10.0.0.34';
+const HOST = 'localhost';
 const USER_SERVICE     = `http://${HOST}:4001`;
 const RECIPE_SERVICE   = `http://${HOST}:4002`;
 const SHOPPING_SERVICE = `http://${HOST}:4005`;

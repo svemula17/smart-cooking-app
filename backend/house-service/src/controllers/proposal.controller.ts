@@ -141,7 +141,7 @@ export async function closeProposal(req: Request, res: Response, next: NextFunct
 
     const selectedRecipeId = winner.rows[0]?.recipe_id ?? null;
 
-    const { rows } = await withTransaction(async (client) => {
+    const rows = await withTransaction(async (client) => {
       const updated = await client.query(
         `UPDATE cook_recipe_proposals
          SET status = 'decided', selected_recipe_id = $1

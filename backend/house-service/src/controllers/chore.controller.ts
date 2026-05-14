@@ -139,7 +139,8 @@ export async function generateChoreSchedule(req: Request, res: Response, next: N
     }
 
     if (assignments.length === 0) {
-      return res.json({ success: true, data: { schedule: [], message: 'All dates already have assignments' } });
+      res.json({ success: true, data: { schedule: [], message: 'All dates already have assignments' } });
+      return;
     }
 
     const inserted = await withTransaction(async (client) => {

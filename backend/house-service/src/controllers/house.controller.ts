@@ -41,15 +41,18 @@ export async function createHouse(req: Request, res: Response, next: NextFunctio
         "INSERT INTO house_members (house_id, user_id, role) VALUES ($1, $2, 'admin')",
         [houseId, userId],
       );
-      // Seed default chore types for every new house
-      await client.query(
-        `INSERT INTO house_chore_types (house_id, name, emoji, frequency) VALUES
-         ($1, 'Dishwashing',   '🍽️', 'daily'),
-         ($1, 'House Cleaning','🧹', 'weekly')`,
-        [houseId],
-      );
       return rows[0];
     });
+
+    // Seed default chore types — runs after house creation, fails silently if
+    // migration 038 hasn't been applied yet (graceful degradation)
+    pool.query(
+      `INSERT INTO house_chore_types (house_id, name, emoji, frequency) VALUES
+       ($1, 'Dishwashing',   '🍽️', 'daily'),
+       ($1, 'House Cleaning','🧹', 'weekly')
+       ON CONFLICT (house_id, name) DO NOTHING`,
+      [house.id],
+    ).catch(() => { /* table may not exist yet — migrations pending */ });
 
     res.status(201).json({ success: true, data: { house } });
   } catch (err) {

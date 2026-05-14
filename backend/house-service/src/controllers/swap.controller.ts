@@ -85,7 +85,8 @@ export async function respondToSwap(req: Request, res: Response, next: NextFunct
 
     if (action === 'decline') {
       await pool.query("UPDATE cook_swap_requests SET status = 'declined' WHERE id = $1", [swapId]);
-      return res.json({ success: true, data: { message: 'Swap declined' } });
+      res.json({ success: true, data: { message: 'Swap declined' } });
+      return;
     }
 
     // Accept: swap the user_ids on both schedule rows atomically
