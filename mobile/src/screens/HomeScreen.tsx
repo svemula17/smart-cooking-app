@@ -12,9 +12,11 @@ import Svg, { Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
+import { useState } from 'react';
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
 import type { CookScheduleEntry } from '../services/houseService';
+import AttendanceSheet from './AttendanceSheet';
 import { colors } from '../theme/colors';
 import { CuisineCard } from '../components/CuisineCard';
 
@@ -84,10 +86,13 @@ const HomeScreen: React.FC = () => {
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
   const house = useSelector((s: RootState) => s.house.house);
   const schedule = useSelector((s: RootState) => s.cookSchedule.schedule);
+  const attendance = useSelector((s: RootState) => s.attendance);
+  const [showAttendance, setShowAttendance] = useState(false);
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const todayEntry: CookScheduleEntry | undefined = schedule.find((e) => e.scheduled_date === todayISO);
   const isMyTurn = todayEntry?.user_id === user?.id;
+  const hasRespondedToday = attendance.myResponse !== null;
 
   const userName = user?.name ? user.name.split(' ')[0] : 'Chef';
   const pantryCount = pantryItems.length;
@@ -128,6 +133,24 @@ const HomeScreen: React.FC = () => {
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
         </View>
+
+        {/* Attendance Card — shown in the morning if not yet responded */}
+        {house && todayEntry && !hasRespondedToday && (
+          <TouchableOpacity
+            style={styles.attendanceCard}
+            onPress={() => setShowAttendance(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.attendanceEmoji}>🍽️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.attendanceTitle}>Are you eating tonight?</Text>
+              <Text style={styles.attendanceSubtitle}>
+                {attendance.summary.attending} eating · {attendance.summary.pending} haven't responded
+              </Text>
+            </View>
+            <Text style={styles.attendanceArrow}>→</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Today's Cook Banner */}
         {house && todayEntry && (
@@ -262,6 +285,10 @@ const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <AttendanceSheet
+        visible={showAttendance}
+        onClose={() => setShowAttendance(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -287,6 +314,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 10,
   },
+  attendanceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  attendanceEmoji: { fontSize: 22 },
+  attendanceTitle: { fontSize: 14, fontWeight: '700', color: '#1E40AF' },
+  attendanceSubtitle: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
+  attendanceArrow: { fontSize: 16, color: '#1E40AF' },
   cookBannerMyTurn: { backgroundColor: '#FFF3E0', borderWidth: 1.5, borderColor: '#E85D04' },
   cookBannerOther: { backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0' },
   cookBannerEmoji: { fontSize: 24 },

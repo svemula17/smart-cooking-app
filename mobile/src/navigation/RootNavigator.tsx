@@ -20,6 +20,12 @@ import HouseMembersScreen from '../screens/HouseMembersScreen';
 import CookScheduleScreen from '../screens/CookScheduleScreen';
 import ExpensesScreen from '../screens/ExpensesScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
+import RecipeVoteScreen from '../screens/RecipeVoteScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
+import CuisinePassportScreen from '../screens/CuisinePassportScreen';
+import HouseReportScreen from '../screens/HouseReportScreen';
+import PrepMealsScreen from '../screens/PrepMealsScreen';
+import ChoresScreen from '../screens/ChoresScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
 import { colors } from '../theme/colors';
@@ -163,6 +169,36 @@ export function RootNavigator(): React.JSX.Element {
         name="AddExpense"
         component={AddExpenseScreen as AnyComponent}
         options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="RecipeVote"
+        component={RecipeVoteScreen as AnyComponent}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="Leaderboard"
+        component={LeaderboardScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="CuisinePassport"
+        component={CuisinePassportScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="HouseReport"
+        component={HouseReportScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="PrepMeals"
+        component={PrepMealsScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="Chores"
+        component={ChoresScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );

@@ -171,3 +171,83 @@ export async function settleUp(houseId: string, withUserId: string): Promise<voi
 export async function deleteExpense(houseId: string, expenseId: string): Promise<void> {
   await houseApi.delete(`/houses/${houseId}/expenses/${expenseId}`);
 }
+
+// ── Chore Types ──────────────────────────────────────────────────────────────
+
+export interface ChoreType {
+  id: string;
+  house_id: string;
+  name: string;
+  emoji: string;
+  frequency: 'daily' | 'weekly';
+  created_at: string;
+}
+
+export interface ChoreEntry {
+  id: string;
+  house_id: string;
+  chore_type_id: string;
+  user_id: string;
+  scheduled_date: string;
+  status: 'pending' | 'done' | 'skipped';
+  notes: string | null;
+  created_at: string;
+  assignee_name?: string;
+  chore_name?: string;
+  emoji?: string;
+  frequency?: string;
+}
+
+export async function listChoreTypes(houseId: string): Promise<ChoreType[]> {
+  const { data } = await houseApi.get(`/houses/${houseId}/chore-types`);
+  return data.data.chore_types;
+}
+
+export async function createChoreType(
+  houseId: string,
+  params: { name: string; emoji: string; frequency: 'daily' | 'weekly' },
+): Promise<ChoreType> {
+  const { data } = await houseApi.post(`/houses/${houseId}/chore-types`, params);
+  return data.data.chore_type;
+}
+
+export async function deleteChoreType(houseId: string, typeId: string): Promise<void> {
+  await houseApi.delete(`/houses/${houseId}/chore-types/${typeId}`);
+}
+
+export async function generateChoreSchedule(
+  houseId: string,
+  typeId: string,
+  days = 14,
+): Promise<ChoreEntry[]> {
+  const { data } = await houseApi.post(`/houses/${houseId}/chores/${typeId}/generate`, { days });
+  return data.data.schedule;
+}
+
+export async function getChoreSchedule(
+  houseId: string,
+  options: { days?: number; type_id?: string; date?: string } = {},
+): Promise<ChoreEntry[]> {
+  const { data } = await houseApi.get(`/houses/${houseId}/chores`, { params: options });
+  return data.data.schedule;
+}
+
+export async function updateChoreEntry(
+  houseId: string,
+  choreId: string,
+  updates: { status?: 'pending' | 'done' | 'skipped'; notes?: string },
+): Promise<ChoreEntry> {
+  const { data } = await houseApi.patch(`/houses/${houseId}/chores/${choreId}`, updates);
+  return data.data.chore;
+}
+
+export async function swapChore(
+  houseId: string,
+  choreId: string,
+  swapWithDate: string,
+): Promise<ChoreEntry[]> {
+  const { data } = await houseApi.put(`/houses/${houseId}/chores/${choreId}/swap`, {
+    swap_with_date: swapWithDate,
+  });
+  return data.data.schedule;
+}

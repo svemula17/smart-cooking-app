@@ -13,6 +13,8 @@ import pantryReducer from './slices/pantrySlice';
 import houseReducer from './slices/houseSlice';
 import cookScheduleReducer from './slices/cookScheduleSlice';
 import expenseReducer from './slices/expenseSlice';
+import attendanceReducer from './slices/attendanceSlice';
+import proposalReducer from './slices/proposalSlice';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,8 @@ export const store = configureStore({
     house:        houseReducer,
     cookSchedule: cookScheduleReducer,
     expense:      expenseReducer,
+    attendance:   attendanceReducer,
+    proposal:     proposalReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

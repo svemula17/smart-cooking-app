@@ -30,6 +30,8 @@ from app.schemas.nutrition import (
     NutritionTotals,
     WeeklySummary,
 )
+from pydantic import BaseModel
+import asyncio
 from app.services import calculation_service as calc
 from app.services.nutritionix_service import (
     NutritionixUnavailableError,
@@ -362,3 +364,114 @@ async def get_monthly_stats(
         "current_streak":         streak,
         "goals":                  goals,
     })
+
+
+# ============================================================================
+# 9. POST /nutrition/group-log  (house auto-logging)
+# ============================================================================
+
+class GroupLogRequest(BaseModel):
+    user_ids: List[UUID]
+    recipe_id: UUID
+    log_date: date_type
+    meal_type: str
+    servings_consumed: float = 1.0
+    auto_logged: bool = True
+
+
+@router.post(
+    "/group-log",
+    response_model=ApiSuccess[dict],
+    status_code=status.HTTP_201_CREATED,
+    summary="Log a meal for multiple house members at once",
+)
+async def group_log_meal(
+    body: GroupLogRequest,
+    pool: asyncpg.Pool = Depends(get_db),
+) -> ApiSuccess[dict]:
+    """Called by house-service when a cook marks a meal done.
+    Logs the meal for every attending member in parallel."""
+
+    async def log_one(user_id: UUID) -> bool:
+        try:
+            await calc.log_meal(
+                pool,
+                user_id=user_id,
+                recipe_id=body.recipe_id,
+                log_date=body.log_date,
+                meal_type=body.meal_type,
+                servings_consumed=body.servings_consumed,
+                auto_logged=body.auto_logged,
+            )
+            return True
+        except Exception:
+            return False
+
+    results = await asyncio.gather(*[log_one(uid) for uid in body.user_ids])
+    logged = sum(1 for r in results if r)
+
+    return ApiSuccess(data={"logged_count": logged, "total": len(body.user_ids)})
+
+
+# ============================================================================
+# 10. GET /nutrition/house/{house_id}/nudges  (Phase 3 - house health nudges)
+# ============================================================================
+
+@router.get(
+    "/house/{house_id}/nudges",
+    response_model=ApiSuccess[dict],
+    summary="Get house-level health nudges based on members' recent nutrition",
+)
+async def get_house_nudges(
+    house_id: UUID,
+    pool: asyncpg.Pool = Depends(get_db),
+) -> ApiSuccess[dict]:
+    """Computes up to 2 nudges based on collective member nutrition over last 3 days."""
+    three_days_ago = date_type.today() - timedelta(days=3)
+
+    # Get all members of the house
+    members = await pool.fetch(
+        "SELECT user_id FROM house_members WHERE house_id = $1", house_id
+    )
+    if not members:
+        return ApiSuccess(data={"nudges": []})
+
+    nudges = []
+    low_protein_count = 0
+    low_calorie_count = 0
+
+    for member in members:
+        uid = member["user_id"]
+        rows = await pool.fetch(
+            """SELECT dn.total_protein_g, dn.goal_protein_g, dn.total_calories, dn.goal_calories
+               FROM daily_nutrition dn
+               WHERE dn.user_id = $1 AND dn.date >= $2
+               ORDER BY dn.date DESC""",
+            uid, three_days_ago,
+        )
+        if not rows:
+            continue
+        # Check if consistently under 60% protein goal
+        days_low_protein = sum(
+            1 for r in rows if r["goal_protein_g"] > 0 and r["total_protein_g"] / r["goal_protein_g"] < 0.6
+        )
+        if days_low_protein >= 2:
+            low_protein_count += 1
+
+    if low_protein_count >= 2:
+        nudges.append({
+            "type": "protein",
+            "message": f"{low_protein_count} members are low on protein. Tonight, cook something protein-rich!",
+            "emoji": "💪",
+            "filter_hint": "high-protein",
+        })
+
+    if len(nudges) < 2:
+        nudges.append({
+            "type": "variety",
+            "message": "Mix it up! Try a new cuisine tonight.",
+            "emoji": "🌍",
+            "filter_hint": "variety",
+        })
+
+    return ApiSuccess(data={"nudges": nudges[:2]})

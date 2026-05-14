@@ -36,9 +36,17 @@ export async function createHouse(req: Request, res: Response, next: NextFunctio
         'INSERT INTO houses (name, invite_code, created_by) VALUES ($1, $2, $3) RETURNING *',
         [value.name, invite_code, userId],
       );
+      const houseId = rows[0].id;
       await client.query(
         "INSERT INTO house_members (house_id, user_id, role) VALUES ($1, $2, 'admin')",
-        [rows[0].id, userId],
+        [houseId, userId],
+      );
+      // Seed default chore types for every new house
+      await client.query(
+        `INSERT INTO house_chore_types (house_id, name, emoji, frequency) VALUES
+         ($1, 'Dishwashing',   '🍽️', 'daily'),
+         ($1, 'House Cleaning','🧹', 'weekly')`,
+        [houseId],
       );
       return rows[0];
     });

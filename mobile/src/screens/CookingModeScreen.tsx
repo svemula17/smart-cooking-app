@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Alert,
   Animated,
@@ -141,10 +142,28 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
   const qc = useQueryClient();
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
 
-  const { data: recipe, isLoading, isError } = useQuery({
+  const [offlineRecipe, setOfflineRecipe] = useState<any>(null);
+
+  // Load from offline cache first (Phase 6 — offline cooking mode)
+  useEffect(() => {
+    AsyncStorage.getItem(`offline_recipe_${recipeId}`)
+      .then((raw) => { if (raw) setOfflineRecipe(JSON.parse(raw)); })
+      .catch(() => {});
+  }, [recipeId]);
+
+  const { data: networkRecipe, isLoading, isError } = useQuery({
     queryKey: ['recipe-detail', recipeId],
     queryFn: () => recipeService.getById(recipeId),
   });
+
+  // Cache recipe to AsyncStorage whenever we get it from network
+  useEffect(() => {
+    if (networkRecipe) {
+      AsyncStorage.setItem(`offline_recipe_${recipeId}`, JSON.stringify(networkRecipe)).catch(() => {});
+    }
+  }, [networkRecipe, recipeId]);
+
+  const recipe = networkRecipe ?? offlineRecipe;
 
   const deductMutation = useMutation({
     mutationFn: (ingredients: Array<{ name: string; quantity: number; unit: string }>) =>

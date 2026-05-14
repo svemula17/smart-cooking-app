@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,100 @@ import { setHouse, setHouseError, setHouseLoading } from '../store/slices/houseS
 import { setSchedule } from '../store/slices/cookScheduleSlice';
 import { setBalances } from '../store/slices/expenseSlice';
 import * as houseService from '../services/houseService';
+import type { ChoreEntry } from '../services/houseService';
 import HouseOnboardingScreen from './HouseOnboardingScreen';
+
+// ── Today's Duties Card (inline component) ─────────────────────────────────
+
+function TodaysDutiesCard({
+  houseId, currentUserId, navigation,
+}: { houseId: string; currentUserId: string; navigation: any }) {
+  const TODAY = new Date().toISOString().slice(0, 10);
+  const [chores, setChores] = useState<ChoreEntry[]>([]);
+
+  useEffect(() => {
+    houseService.getChoreSchedule(houseId, { date: TODAY })
+      .then(setChores)
+      .catch(() => {});
+  }, [houseId]);
+
+  async function markDone(chore: ChoreEntry) {
+    if (chore.user_id !== currentUserId) return;
+    try {
+      const updated = await houseService.updateChoreEntry(houseId, chore.id, { status: 'done' });
+      setChores((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <TouchableOpacity
+      style={dutiesStyles.card}
+      onPress={() => navigation.navigate('Chores')}
+      activeOpacity={0.9}
+    >
+      <View style={dutiesStyles.cardHeader}>
+        <Text style={dutiesStyles.cardLabel}>TODAY'S DUTIES</Text>
+        <Text style={dutiesStyles.seeAll}>View all →</Text>
+      </View>
+
+      {chores.length === 0 ? (
+        <Text style={dutiesStyles.empty}>No chores scheduled — tap to set up</Text>
+      ) : (
+        chores.map((chore) => {
+          const isMe = chore.user_id === currentUserId;
+          return (
+            <View key={chore.id} style={[dutiesStyles.row, isMe && dutiesStyles.rowMe]}>
+              <Text style={dutiesStyles.emoji}>{chore.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={dutiesStyles.choreName}>{chore.chore_name}</Text>
+                <Text style={dutiesStyles.assignee}>{isMe ? 'Your turn' : chore.assignee_name}</Text>
+              </View>
+              {chore.status === 'done' ? (
+                <Text style={dutiesStyles.done}>✅</Text>
+              ) : isMe ? (
+                <TouchableOpacity
+                  style={dutiesStyles.doneBtn}
+                  onPress={(e) => { e.stopPropagation?.(); markDone(chore); }}
+                >
+                  <Text style={dutiesStyles.doneBtnText}>Done</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={dutiesStyles.pending}>⏳</Text>
+              )}
+            </View>
+          );
+        })
+      )}
+    </TouchableOpacity>
+  );
+}
+
+const dutiesStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  cardLabel:  { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1 },
+  seeAll:     { fontSize: 13, color: '#E85D04' },
+  row:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 10, borderTopWidth: 1, borderColor: '#F5F5F5' },
+  rowMe:      { backgroundColor: '#FFFBF0', borderRadius: 8, paddingHorizontal: 8, marginHorizontal: -8 },
+  emoji:      { fontSize: 20, width: 28, textAlign: 'center' },
+  choreName:  { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
+  assignee:   { fontSize: 12, color: '#9B9B9B', marginTop: 1 },
+  done:       { fontSize: 18 },
+  pending:    { fontSize: 18, opacity: 0.4 },
+  doneBtn:    { backgroundColor: '#E85D04', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
+  doneBtnText:{ color: '#fff', fontWeight: '700', fontSize: 12 },
+  empty:      { fontSize: 13, color: '#9B9B9B', fontStyle: 'italic' },
+});
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -117,6 +210,9 @@ export default function HouseScreen({ navigation }: any) {
         )}
       </View>
 
+      {/* Today's Duties — Chores */}
+      <TodaysDutiesCard houseId={house.id} currentUserId={currentUser?.id ?? ''} navigation={navigation} />
+
       {/* Upcoming Schedule */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -159,6 +255,25 @@ export default function HouseScreen({ navigation }: any) {
             </View>
           ))}
         </ScrollView>
+      </View>
+
+      {/* Quick Links row */}
+      <View style={styles.quickLinks}>
+        {[
+          { label: '🧹 Chores', screen: 'Chores' },
+          { label: '🏆 Leaderboard', screen: 'Leaderboard' },
+          { label: '🌍 Passport', screen: 'CuisinePassport' },
+          { label: '📊 Report', screen: 'HouseReport' },
+          { label: '🍱 Prep', screen: 'PrepMeals' },
+        ].map((link) => (
+          <TouchableOpacity
+            key={link.screen}
+            style={styles.quickLink}
+            onPress={() => navigation.navigate(link.screen)}
+          >
+            <Text style={styles.quickLinkText}>{link.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Expenses / Balances */}
@@ -264,4 +379,14 @@ const styles = StyleSheet.create({
   memberChipName: { fontSize: 12, color: '#6B6B6B' },
   balanceAmount: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
   viewAll: { fontSize: 13, color: '#E85D04', marginTop: 8 },
+  quickLinks: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 16, gap: 8, marginBottom: 14 },
+  quickLink: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  quickLinkText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 });
