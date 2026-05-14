@@ -124,7 +124,7 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
           : activeFilter === 'High Protein'
             ? 'Biasing toward stronger protein options.'
             : cuisine === 'all'
-              ? 'Start from a mode, not from endless scrolling.'
+              ? 'Browse recipes with pantry-aware prioritization.'
               : `A craving lane for ${cuisine.toLowerCase()} nights.`;
 
   const renderItem = ({ item }: { item: Recipe }) => (

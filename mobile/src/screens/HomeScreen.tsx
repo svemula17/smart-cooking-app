@@ -8,51 +8,64 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
 import { colors } from '../theme/colors';
+import { CuisineCard } from '../components/CuisineCard';
 
 type HomeNav = NativeStackNavigationProp<RootStackParamList>;
 
-const DINNER_MODES = [
-  {
-    title: 'Rescue Dinner',
-    subtitle: 'The fastest decent plan from what you have',
-    emoji: '🚨',
-    intent: 'rescue' as const,
-    tone: '#FFF2D8',
-    border: '#F6C56B',
-  },
-  {
-    title: '20 Minutes Max',
-    subtitle: 'Quick wins for low patience nights',
-    emoji: '⚡',
-    intent: 'fast' as const,
-    tone: '#E8F7FF',
-    border: '#86CCF3',
-  },
-  {
-    title: 'Low Effort',
-    subtitle: 'Less cleanup, less decision fatigue',
-    emoji: '🛋️',
-    intent: 'low-effort' as const,
-    tone: '#F2ECFF',
-    border: '#B7A2EF',
-  },
-  {
-    title: 'Use What\'s Close',
-    subtitle: 'Cook around ingredients that need attention',
-    emoji: '🥬',
-    intent: 'use-soon' as const,
-    tone: '#E7F8EA',
-    border: '#85CD92',
-  },
+const CUISINES = [
+  { cuisine: 'Indian',        emoji: '🍛', color: colors.indian },
+  { cuisine: 'Chinese',       emoji: '🥢', color: colors.chinese },
+  { cuisine: 'Indo-Chinese',  emoji: '🍜', color: colors.indoChinese },
+  { cuisine: 'Italian',       emoji: '🍝', color: colors.italian },
+  { cuisine: 'Mexican',       emoji: '🌮', color: colors.mexican },
+  { cuisine: 'Thai',          emoji: '🍜', color: colors.thai },
+  { cuisine: 'Japanese',      emoji: '🍱', color: colors.japanese },
+  { cuisine: 'Mediterranean', emoji: '🫒', color: colors.mediterranean },
 ];
 
-const CUISINE_CHIPS = ['Indian', 'Thai', 'Italian', 'Japanese', 'Mexican', 'Mediterranean'];
+function GoalRing({
+  label, emoji, current, goal, color, size = 70,
+}: { label: string; emoji: string; current: number; goal: number; color: string; size?: number }) {
+  const r = (size - 10) / 2;
+  const circumference = 2 * Math.PI * r;
+  const pct = goal > 0 ? Math.min(current / goal, 1) : 0;
+  const dash = circumference * pct;
+  const cx = size / 2;
+
+  return (
+    <View style={styles.goalRingWrap}>
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size}>
+          <Circle cx={cx} cy={cx} r={r} stroke="#E8EDF3" strokeWidth={7} fill="none" />
+          <Circle
+            cx={cx}
+            cy={cx}
+            r={r}
+            stroke={color}
+            strokeWidth={7}
+            fill="none"
+            strokeDasharray={`${dash} ${circumference}`}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${cx},${cx}`}
+          />
+        </Svg>
+        <View style={styles.goalRingCenter}>
+          <Text style={styles.goalRingEmoji}>{emoji}</Text>
+          <Text style={[styles.goalRingPct, { color }]}>{Math.round(pct * 100)}%</Text>
+        </View>
+      </View>
+      <Text style={styles.goalRingLabel}>{label}</Text>
+    </View>
+  );
+}
 
 const getGreeting = (): string => {
   const hour = new Date().getHours();
@@ -64,6 +77,8 @@ const getGreeting = (): string => {
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNav>();
   const user        = useSelector((s: RootState) => s.auth.user);
+  const preferences = useSelector((s: RootState) => s.user.preferences);
+  const macroProgress = useSelector((s: RootState) => s.user.macroProgress);
   const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
 
@@ -80,6 +95,13 @@ const HomeScreen: React.FC = () => {
   const readinessScore = pantryCount === 0
     ? 0
     : Math.min(100, Math.round(((stableCount * 0.8) + (pantryCount - urgentCount)) / pantryCount * 100));
+  const goals = {
+    calories: preferences?.calories_goal ?? 2000,
+    protein: preferences?.protein_goal ?? 150,
+    carbs: preferences?.carbs_goal ?? 250,
+    fat: preferences?.fat_goal ?? 65,
+  };
+  const topCuisines = CUISINES.slice(0, 6);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -101,21 +123,11 @@ const HomeScreen: React.FC = () => {
         </View>
 
         <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Tonight Control Center</Text>
-            </View>
-            {cookFromPantry && (
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveBadgeText}>PANTRY MODE LIVE</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.heroTitle}>Dinner, figured out from the kitchen you already have.</Text>
+          <Text style={styles.heroTitle}>Cook smarter with what you already have.</Text>
           <Text style={styles.heroSubtitle}>
             {urgentCount > 0
               ? `${urgentCount} ingredient${urgentCount > 1 ? 's' : ''} need attention soon.`
-              : 'No expiry pressure right now.'} Start with a mode instead of browsing endlessly.
+              : 'No expiry pressure right now.'} Browse recipes or check what needs using first.
           </Text>
 
           <View style={styles.heroStatsRow}>
@@ -132,26 +144,26 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.heroStatLabel}>Use soon</Text>
             </View>
           </View>
+          {cookFromPantry && (
+            <View style={styles.liveInline}>
+              <Text style={styles.liveInlineText}>Pantry matching is shaping recipe priority right now.</Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Choose a dinner mode</Text>
-          <Text style={styles.sectionSubtitle}>This should feel like triage, not searching.</Text>
-        </View>
-
-        <View style={styles.modeGrid}>
-          {DINNER_MODES.map((mode) => (
-            <TouchableOpacity
-              key={mode.title}
-              style={[styles.modeCard, { backgroundColor: mode.tone, borderColor: mode.border }]}
-              onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all', intent: mode.intent })}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.modeEmoji}>{mode.emoji}</Text>
-              <Text style={styles.modeTitle}>{mode.title}</Text>
-              <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.goalsCard}>
+          <View style={styles.sectionHeaderCompact}>
+            <View>
+              <Text style={styles.sectionTitle}>Daily goals</Text>
+              <Text style={styles.sectionSubtitle}>{macroProgress.calories} / {goals.calories} kcal today</Text>
+            </View>
+          </View>
+          <View style={styles.goalsRow}>
+            <GoalRing label="Calories" emoji="🔥" current={macroProgress.calories} goal={goals.calories} color={colors.calories} />
+            <GoalRing label="Protein" emoji="💪" current={macroProgress.protein} goal={goals.protein} color={colors.protein} />
+            <GoalRing label="Carbs" emoji="🌾" current={macroProgress.carbs} goal={goals.carbs} color={colors.carbs} />
+            <GoalRing label="Fat" emoji="🫒" current={macroProgress.fat} goal={goals.fat} color={colors.fat} />
+          </View>
         </View>
 
         <View style={styles.sectionHeader}>
@@ -184,21 +196,28 @@ const HomeScreen: React.FC = () => {
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Cook by craving</Text>
-          <Text style={styles.sectionSubtitle}>Keep this secondary, but still fun.</Text>
+          <Text style={styles.sectionTitle}>Cook by cuisine</Text>
+          <Text style={styles.sectionSubtitle}>Keep the familiar browse flow when you know what you’re craving.</Text>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cuisineStrip}>
-          {CUISINE_CHIPS.map((cuisine) => (
-            <TouchableOpacity
-              key={cuisine}
-              style={styles.cuisineChip}
-              onPress={() => navigation.navigate('RecipeBrowser', { cuisine })}
-            >
-              <Text style={styles.cuisineChipText}>{cuisine}</Text>
-            </TouchableOpacity>
+        <View style={styles.cuisineGrid}>
+          {topCuisines.map((item) => (
+            <CuisineCard
+              key={item.cuisine}
+              cuisine={item.cuisine}
+              emoji={item.emoji}
+              color={item.color}
+              onPress={() => navigation.navigate('RecipeBrowser', { cuisine: item.cuisine })}
+            />
           ))}
-        </ScrollView>
+        </View>
+
+        <TouchableOpacity
+          style={styles.moreCuisineBtn}
+          onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
+        >
+          <Text style={styles.moreCuisineText}>Browse all cuisines and dishes →</Text>
+        </TouchableOpacity>
 
         <View style={styles.quickRow}>
           <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Pantry')}>
@@ -232,43 +251,59 @@ const styles = StyleSheet.create({
   avatarEmoji: { fontSize: 22 },
   heroCard: {
     marginHorizontal: 20,
-    marginBottom: 22,
-    borderRadius: 28,
-    padding: 22,
-    backgroundColor: '#1F2A44',
+    marginBottom: 16,
+    borderRadius: 24,
+    padding: 20,
+    backgroundColor: '#F7F4EE',
+    borderWidth: 1,
+    borderColor: '#E8DED1',
   },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  heroBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.14)' },
-  heroBadgeText: { fontSize: 11, fontWeight: '800', color: '#FCE7B2', letterSpacing: 0.8 },
-  liveBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(133,205,146,0.18)' },
-  liveBadgeText: { fontSize: 10, fontWeight: '800', color: '#BAF3C2', letterSpacing: 0.7 },
-  heroTitle: { fontSize: 29, lineHeight: 34, fontWeight: '900', color: '#FFFFFF', marginBottom: 10 },
-  heroSubtitle: { fontSize: 14, lineHeight: 21, color: 'rgba(255,255,255,0.76)' },
+  heroTitle: { fontSize: 28, lineHeight: 33, fontWeight: '900', color: colors.text, marginBottom: 10 },
+  heroSubtitle: { fontSize: 14, lineHeight: 21, color: colors.textSecondary },
   heroStatsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  heroStat: { flex: 1, borderRadius: 18, padding: 14, backgroundColor: 'rgba(255,255,255,0.08)' },
-  heroStatValue: { fontSize: 24, fontWeight: '900', color: '#FFFFFF', marginBottom: 4 },
-  heroStatLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.68)' },
+  heroStat: { flex: 1, borderRadius: 16, padding: 14, backgroundColor: '#FFFFFF' },
+  heroStatValue: { fontSize: 24, fontWeight: '900', color: colors.accent, marginBottom: 4 },
+  heroStatLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
+  liveInline: {
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#EEF7EF',
+  },
+  liveInlineText: { fontSize: 12, fontWeight: '700', color: '#2E7D32' },
+  goalsCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  sectionHeaderCompact: { marginBottom: 14 },
   sectionHeader: { paddingHorizontal: 20, marginBottom: 12 },
   sectionTitle: { fontSize: 19, fontWeight: '800', color: colors.text, marginBottom: 4 },
   sectionSubtitle: { fontSize: 13, lineHeight: 18, color: colors.textSecondary },
-  modeGrid: {
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+  goalsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  goalRingWrap: { alignItems: 'center', flex: 1 },
+  goalRingCenter: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  modeCard: {
-    width: '48%',
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    minHeight: 145,
-  },
-  modeEmoji: { fontSize: 28, marginBottom: 14 },
-  modeTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 8 },
-  modeSubtitle: { fontSize: 12, lineHeight: 18, color: colors.textSecondary },
+  goalRingEmoji: { fontSize: 16 },
+  goalRingPct: { fontSize: 11, fontWeight: '800', marginTop: 2 },
+  goalRingLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginTop: 6 },
   useSoonCard: {
     marginHorizontal: 20,
     marginBottom: 24,
@@ -286,17 +321,24 @@ const styles = StyleSheet.create({
   useSoonEmpty: { fontSize: 14, lineHeight: 20, color: colors.textSecondary, marginBottom: 10 },
   inlineAction: { marginTop: 6, alignSelf: 'flex-start' },
   inlineActionText: { fontSize: 13, fontWeight: '800', color: colors.primary },
-  cuisineStrip: { paddingHorizontal: 20, paddingBottom: 4 },
-  cuisineChip: {
+  cuisineGrid: {
     paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 999,
-    backgroundColor: '#F5F1EA',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#E7D7C4',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  cuisineChipText: { fontSize: 13, fontWeight: '700', color: '#5A4430' },
+  moreCuisineBtn: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  moreCuisineText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+  },
   quickRow: { flexDirection: 'row', marginHorizontal: 20, marginTop: 20, gap: 12 },
   quickBtn: {
     flex: 1, backgroundColor: '#EDF6FF', borderRadius: 18,
