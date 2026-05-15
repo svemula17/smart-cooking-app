@@ -57,16 +57,30 @@ export function Chip({
       ]}
     >
       {leading}
-      <Text
-        style={{
-          color: fg,
-          fontSize: size === 'sm' ? 12 : 13,
-          fontWeight: '600',
-          letterSpacing: 0.2,
-        }}
-      >
-        {label}
-      </Text>
+      {(() => {
+        // Auto-split leading emoji from text so the gap renders reliably on web.
+        const m = label.match(/^(\p{Extended_Pictographic}(?:️)?(?:‍\p{Extended_Pictographic}(?:️)?)*)\s+(.*)$/u);
+        const fontSize = size === 'sm' ? 12 : 13;
+        if (m) {
+          return (
+            <>
+              <Text style={{ fontSize: fontSize + 2, marginRight: 6 }}>{m[1]}</Text>
+              <Text
+                style={{ color: fg, fontSize, fontWeight: '600', letterSpacing: 0.2 }}
+              >
+                {m[2]}
+              </Text>
+            </>
+          );
+        }
+        return (
+          <Text
+            style={{ color: fg, fontSize, fontWeight: '600', letterSpacing: 0.2 }}
+          >
+            {label}
+          </Text>
+        );
+      })()}
       {trailing}
     </Pressable>
   );

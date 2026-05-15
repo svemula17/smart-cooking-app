@@ -103,17 +103,28 @@ export function Button({
       ) : (
         <View style={styles.row}>
           {leading ? <View style={styles.icon}>{leading}</View> : null}
-          <Text
-            style={
-              [
-                typography.button,
-                { color: palette.fg, fontSize: FONT_SIZE[size] },
-              ] as TextStyle[]
+          {(() => {
+            const m = label.match(/^(\p{Extended_Pictographic}(?:️)?(?:‍\p{Extended_Pictographic}(?:️)?)*)\s+(.*)$/u);
+            const textStyle = [
+              typography.button,
+              { color: palette.fg, fontSize: FONT_SIZE[size] },
+            ] as TextStyle[];
+            if (m) {
+              return (
+                <>
+                  <Text style={{ fontSize: FONT_SIZE[size] + 1, marginRight: 8 }}>{m[1]}</Text>
+                  <Text style={textStyle} numberOfLines={1}>
+                    {m[2]}
+                  </Text>
+                </>
+              );
             }
-            numberOfLines={1}
-          >
-            {label}
-          </Text>
+            return (
+              <Text style={textStyle} numberOfLines={1}>
+                {label}
+              </Text>
+            );
+          })()}
           {trailing ? <View style={styles.icon}>{trailing}</View> : null}
         </View>
       )}

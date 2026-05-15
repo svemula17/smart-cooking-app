@@ -55,7 +55,7 @@ export function Header({
       </View>
       <View style={[styles.center, align === 'center' && { alignItems: 'center' }]}>
         {title ? (
-          <Text style={typography.h3} numberOfLines={1}>
+          <Text style={[typography.h3, { color: c.text }]} numberOfLines={1}>
             {title}
           </Text>
         ) : null}

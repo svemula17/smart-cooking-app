@@ -190,7 +190,7 @@ export function PantryScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <StatusBar barStyle="dark-content" />
       <Header
-        title="🏠 Pantry"
+        title="Pantry"
         onBack={() => navigation.goBack()}
         right={<Button label="+ Add" size="sm" onPress={openAdd} />}
       />
@@ -268,10 +268,13 @@ export function PantryScreen() {
               { backgroundColor: c.warningMuted, borderColor: c.warning },
             ]}
           >
-            <Text style={{ fontSize: 13, color: c.warning, fontWeight: '700' }}>
-              ⚠️ {expiring.length} item{expiring.length > 1 ? 's' : ''} expiring soon:{' '}
-              {expiring.map((i) => i.name).join(', ')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>⚠️</Text>
+              <Text style={{ fontSize: 13, color: c.warning, fontWeight: '700', flex: 1 }}>
+                {expiring.length} item{expiring.length > 1 ? 's' : ''} expiring soon:{' '}
+                {expiring.map((i) => i.name).join(', ')}
+              </Text>
+            </View>
           </View>
         ) : null}
 
@@ -305,9 +308,12 @@ export function PantryScreen() {
 
         {Object.entries(grouped).map(([cat, catItems]) => (
           <View key={cat} style={[styles.block, { marginBottom: spacing.lg }]}>
-            <Text style={[typography.h4, { color: c.text, marginBottom: spacing.sm }]}>
-              {CATEGORY_EMOJI[cat] ?? '📦'} {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm }}>
+              <Text style={{ fontSize: 16 }}>{CATEGORY_EMOJI[cat] ?? '📦'}</Text>
+              <Text style={[typography.h4, { color: c.text }]}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </Text>
+            </View>
             {catItems.map((item) => {
               const days = daysUntilExpiry(item.expiry_date);
               const isExpiring = days !== null && days <= EXPIRY_WARNING_DAYS && days >= 0;

@@ -202,7 +202,7 @@ export function ProfileScreen(): React.JSX.Element {
           </View>
           <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.sm }]}>
             {favoriteIds.length === 0
-              ? 'Tap ❤️ on any recipe card to save it here.'
+              ? 'Tap the heart on any recipe card to save it here.'
               : 'Browse your saved recipes from the Home screen.'}
           </Text>
         </Card>
@@ -266,7 +266,8 @@ export function ProfileScreen(): React.JSX.Element {
         <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
           <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>Account</Text>
           <View style={styles.row}>
-            <Text style={[typography.body, { color: c.text, flex: 1 }]}>🌙 Dark mode</Text>
+            <Text style={{ fontSize: 18, marginRight: spacing.sm }}>🌙</Text>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>Dark mode</Text>
             <Switch
               value={isDark}
               onValueChange={() => {
@@ -277,7 +278,7 @@ export function ProfileScreen(): React.JSX.Element {
             />
           </View>
           <Divider inset={spacing.sm} />
-          <View style={styles.row}>
+          <View style={[styles.row, { justifyContent: 'space-between' }]}>
             <Text style={[typography.body, { color: c.textSecondary }]}>Member since</Text>
             <Text style={[typography.body, { color: c.text, fontWeight: '600' }]}>
               {user?.created_at

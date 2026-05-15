@@ -84,5 +84,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingVertical: spacing.md,
   },
-  adornment: { marginHorizontal: spacing.xs },
+  adornment: { marginRight: spacing.sm },
 });
