@@ -7,14 +7,35 @@ export interface User {
   created_at: string;
 }
 
-export async function register(name: string, email: string, password: string): Promise<{ user: User; accessToken: string }> {
-  const res = await userApi.post('/auth/register', { name, email, password });
-  return res.data.data;
+interface RawAuthResponse {
+  user: User;
+  tokens?: { accessToken: string; refreshToken?: string };
+  accessToken?: string;
+  refreshToken?: string;
 }
 
-export async function login(email: string, password: string): Promise<{ user: User; accessToken: string }> {
+export interface AuthResult {
+  user: User;
+  accessToken: string;
+  refreshToken?: string;
+}
+
+function normalize(raw: RawAuthResponse): AuthResult {
+  return {
+    user: raw.user,
+    accessToken: raw.tokens?.accessToken ?? raw.accessToken!,
+    refreshToken: raw.tokens?.refreshToken ?? raw.refreshToken,
+  };
+}
+
+export async function register(name: string, email: string, password: string): Promise<AuthResult> {
+  const res = await userApi.post('/auth/register', { name, email, password });
+  return normalize(res.data.data);
+}
+
+export async function login(email: string, password: string): Promise<AuthResult> {
   const res = await userApi.post('/auth/login', { email, password });
-  return res.data.data;
+  return normalize(res.data.data);
 }
 
 export async function logout(refreshToken: string): Promise<void> {
@@ -23,5 +44,6 @@ export async function logout(refreshToken: string): Promise<void> {
 
 export async function getMe(): Promise<User> {
   const res = await userApi.get('/users/me');
-  return res.data.data;
+  const data = res.data.data;
+  return data?.user ?? data;
 }

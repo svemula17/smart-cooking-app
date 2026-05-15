@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const data = await apiLogin(email, password);
     localStorage.setItem('accessToken', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
   };
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (name: string, email: string, password: string) => {
     const data = await apiRegister(name, email, password);
     localStorage.setItem('accessToken', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
   };

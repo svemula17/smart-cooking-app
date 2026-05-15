@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { chat, ChatMessage } from '../api/ai';
+import { useAuth } from '../context/AuthContext';
 
 const SUGGESTIONS = [
   'What can I cook with chicken and broccoli?',
@@ -9,6 +10,7 @@ const SUGGESTIONS = [
 ];
 
 export default function AIChatPage() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: "Hi! I'm your cooking assistant. Ask me about recipes, substitutions, meal ideas, or cooking tips!" },
   ]);
@@ -22,7 +24,7 @@ export default function AIChatPage() {
 
   const send = async (text: string) => {
     const message = text.trim();
-    if (!message || sending) return;
+    if (!message || sending || !user?.id) return;
 
     const userMsg: ChatMessage = { role: 'user', content: message };
     const newHistory = [...messages, userMsg];
@@ -31,7 +33,7 @@ export default function AIChatPage() {
     setSending(true);
 
     try {
-      const reply = await chat(message, messages);
+      const reply = await chat(user.id, message, messages);
       setMessages([...newHistory, { role: 'assistant', content: reply }]);
     } catch (e: any) {
       setMessages([...newHistory, { role: 'assistant', content: `Sorry, I ran into an error: ${e.message}` }]);

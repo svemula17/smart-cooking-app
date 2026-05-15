@@ -23,12 +23,17 @@ export default function NutritionPage() {
   const [logs, setLogs] = useState<NutritionLog[]>([]);
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
+    setError(null);
     Promise.all([
-      getDailyNutrition(user.id, day).catch(() => null),
+      getDailyNutrition(user.id, day).catch((e) => {
+        setError(e.response?.data?.error?.message ?? e.message);
+        return null;
+      }),
       getLogs(user.id, 20).catch(() => []),
     ]).then(([d, l]) => {
       setDaily(d);
@@ -45,9 +50,10 @@ export default function NutritionPage() {
   }
 
   const cal = daily?.total_calories ?? 0;
-  const protein = daily?.total_protein_g ?? 0;
-  const carbs = daily?.total_carbs_g ?? 0;
-  const fat = daily?.total_fat_g ?? 0;
+  const protein = daily?.total_protein ?? 0;
+  const carbs = daily?.total_carbs ?? 0;
+  const fat = daily?.total_fat ?? 0;
+  const goals = daily?.goals ?? { calories: 2000, protein: 130, carbs: 250, fat: 70 };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -64,25 +70,31 @@ export default function NutritionPage() {
         />
       </div>
 
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl px-4 py-3 mb-4">
+          Could not load daily data: {error}
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold mb-4">Today's Macros</h2>
           <div className="space-y-4">
             <div>
               <p className="text-xs text-gray-500 mb-1">Calories</p>
-              <ProgressBar value={cal} goal={daily?.goal_calories ?? 2000} color="bg-green-500" />
+              <ProgressBar value={cal} goal={goals.calories} color="bg-green-500" />
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Protein (g)</p>
-              <ProgressBar value={protein} goal={daily?.goal_protein_g ?? 130} color="bg-blue-500" />
+              <ProgressBar value={protein} goal={goals.protein} color="bg-blue-500" />
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Carbs (g)</p>
-              <ProgressBar value={carbs} goal={daily?.goal_carbs_g ?? 250} color="bg-amber-500" />
+              <ProgressBar value={carbs} goal={goals.carbs} color="bg-amber-500" />
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Fat (g)</p>
-              <ProgressBar value={fat} goal={daily?.goal_fat_g ?? 70} color="bg-purple-500" />
+              <ProgressBar value={fat} goal={goals.fat} color="bg-purple-500" />
             </div>
           </div>
         </div>
@@ -116,21 +128,26 @@ export default function NutritionPage() {
           <p className="text-gray-400 text-sm">No meals logged yet. Cook a recipe to auto-log nutrition!</p>
         ) : (
           <div className="space-y-2">
-            {logs.map((log) => (
-              <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div>
-                  <p className="text-sm font-medium">{log.recipe_name ?? 'Meal'}</p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(log.consumed_at).toLocaleString()} · {log.servings} serving(s)
-                    {log.auto_logged && <span className="ml-2 text-green-600">• auto</span>}
-                  </p>
+            {logs.map((log) => {
+              const p = log.protein_g ?? log.protein ?? 0;
+              const c = log.carbs_g ?? log.carbs ?? 0;
+              const f = log.fat_g ?? log.fat ?? 0;
+              return (
+                <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="text-sm font-medium">{log.recipe_name ?? 'Meal'}</p>
+                    <p className="text-xs text-gray-500">
+                      {log.consumed_at ? new Date(log.consumed_at).toLocaleString() : '—'} · {log.servings} serving(s)
+                      {log.auto_logged && <span className="ml-2 text-green-600">• auto</span>}
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-gray-600">
+                    <p className="font-semibold text-gray-900">{Math.round(log.calories)} cal</p>
+                    <p>P {Math.round(p)}g · C {Math.round(c)}g · F {Math.round(f)}g</p>
+                  </div>
                 </div>
-                <div className="text-right text-xs text-gray-600">
-                  <p className="font-semibold text-gray-900">{Math.round(log.calories)} cal</p>
-                  <p>P {Math.round(log.protein_g)}g · C {Math.round(log.carbs_g)}g · F {Math.round(log.fat_g)}g</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
