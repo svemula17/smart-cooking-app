@@ -1,26 +1,53 @@
+// Warm-modern, food-app native palette.
+// Existing keys are preserved for backwards compatibility with screens not yet
+// migrated. New semantic tokens (surface*, border*, on*, overlay) are the
+// preferred way for new code to reach for color.
+
 export const colors = {
   // Brand
-  primary: '#F96167',       // Coral red
+  primary: '#F96167', // Coral red
   primaryLight: '#FFEAEB',
   primaryDark: '#D94550',
-  secondary: '#F9E795',     // Gold
-  accent: '#2F3C7E',        // Navy
+  primaryMuted: '#FFF3F3',
+  secondary: '#F4C95D', // Warm gold (slightly tightened from #F9E795)
+  secondaryLight: '#FFF6E0',
+  accent: '#2F3C7E', // Navy
 
-  // Base
-  background: '#FFFFFF',
-  surface: '#F8F9FA',
-  surfaceElevated: '#FFFFFF',
-  text: '#2C2C2C',
-  textSecondary: '#666666',
-  textLight: '#AAAAAA',
-  border: '#E0E0E0',
-  divider: '#F0F0F0',
+  // Semantic surfaces (warm neutrals)
+  background: '#FFFBF7', // Warm off-white
+  surface: '#FFFFFF',
+  surfaceMuted: '#FBF6EF',
+  surfaceRaised: '#FFFFFF',
+  surfaceInverse: '#1A1410',
+  surfaceElevated: '#FFFFFF', // back-compat alias
+
+  // Borders
+  border: '#EFE6DA',
+  borderStrong: '#E0D4C2',
+  borderMuted: '#F4ECDF',
+  divider: '#F4ECDF',
+
+  // Text / on-surface
+  text: '#1F1A15',
+  textSecondary: '#6B5F52',
+  textLight: '#A89B8B',
+  textInverse: '#FFFFFF',
+  onPrimary: '#FFFFFF',
+  onSecondary: '#1F1A15',
+
+  // Overlay (modals, sheets, scrim)
+  overlay: 'rgba(26, 20, 16, 0.45)',
+  overlayStrong: 'rgba(26, 20, 16, 0.65)',
 
   // Feedback
-  success: '#4CAF50',
-  warning: '#FF9800',
-  error: '#F44336',
-  info: '#2196F3',
+  success: '#2E9E6A',
+  successMuted: '#E6F5EE',
+  warning: '#E8932A',
+  warningMuted: '#FDF1E0',
+  error: '#E5484D',
+  errorMuted: '#FCE9EA',
+  info: '#3B82F6',
+  infoMuted: '#E6EFFE',
 
   // Macro colors
   calories: '#F96167',
@@ -30,12 +57,12 @@ export const colors = {
   fiber: '#4CAF50',
 
   // Difficulty badges
-  easy: '#E8F5E9',
-  easyText: '#2E7D32',
-  medium: '#FFF8E1',
-  mediumText: '#F57F17',
-  hard: '#FFEBEE',
-  hardText: '#C62828',
+  easy: '#E6F5EE',
+  easyText: '#1F7A4F',
+  medium: '#FDF1E0',
+  mediumText: '#A66514',
+  hard: '#FCE9EA',
+  hardText: '#A8262A',
 
   // Cuisine card backgrounds
   indian: '#FFE5B4',
@@ -50,9 +77,9 @@ export const colors = {
   french: '#FCE4EC',
 
   // Backward-compat aliases (used by pre-existing stub screens)
-  textMuted: '#666666',
-  danger: '#F44336',
-  primaryDanger: '#F44336',
+  textMuted: '#6B5F52',
+  danger: '#E5484D',
+  primaryDanger: '#E5484D',
 } as const;
 
 export type ColorKey = keyof typeof colors;

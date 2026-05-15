@@ -1,29 +1,38 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Alert,
   Animated,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
-  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
+
 import { recipeService } from '../services/recipeService';
 import { pantryService } from '../services/pantryService';
-import { colors } from '../theme/colors';
-import type { RootStackParamList } from '../types';
+import type { RootStackParamList, RecipeWithDetails, Ingredient, RecipeStep } from '../types';
 import type { RootState } from '../store';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CookingMode'>;
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
+import { typography } from '../theme/typography';
+import {
+  Button,
+  Card,
+  ErrorState,
+  IconButton,
+  Skeleton,
+  useHaptics,
+  useToast,
+} from '../components/ui';
 
-// ─── CountdownTimer ──────────────────────────────────────────────────────────
+type Props = NativeStackScreenProps<RootStackParamList, 'CookingMode'>;
 
 interface CountdownTimerProps {
   seconds: number;
@@ -31,6 +40,8 @@ interface CountdownTimerProps {
 }
 
 function CountdownTimer({ seconds, onDone }: CountdownTimerProps) {
+  const c = useThemeColors();
+  const haptics = useHaptics();
   const [remaining, setRemaining] = useState(seconds);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -44,7 +55,6 @@ function CountdownTimer({ seconds, onDone }: CountdownTimerProps) {
     progress.setValue(1);
   }, [seconds, progress]);
 
-  // Reset when the prop changes (new step)
   useEffect(() => {
     reset();
   }, [seconds, reset]);
@@ -57,6 +67,7 @@ function CountdownTimer({ seconds, onDone }: CountdownTimerProps) {
           clearInterval(intervalRef.current!);
           intervalRef.current = null;
           setRunning(false);
+          haptics.notify('success');
           onDone?.();
           return 0;
         }
@@ -66,9 +77,8 @@ function CountdownTimer({ seconds, onDone }: CountdownTimerProps) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [running, onDone]);
+  }, [running, onDone, haptics]);
 
-  // Animate progress bar
   useEffect(() => {
     Animated.timing(progress, {
       toValue: seconds > 0 ? remaining / seconds : 0,
@@ -87,239 +97,301 @@ function CountdownTimer({ seconds, onDone }: CountdownTimerProps) {
 
   const progressColor = progress.interpolate({
     inputRange: [0, 0.3, 1],
-    outputRange: [colors.error, colors.warning, colors.success],
+    outputRange: [c.error, c.warning, c.success],
   });
 
   return (
-    <View style={timerStyles.container}>
-      <View style={timerStyles.track}>
-        <Animated.View
-          style={[timerStyles.fill, { width: progressWidth, backgroundColor: progressColor }]}
-        />
+    <Card surface="surface" radius="lg" padding="lg" elevation="card" style={{ marginVertical: spacing.lg }}>
+      <View
+        style={{
+          height: 6,
+          backgroundColor: c.surfaceMuted,
+          borderRadius: 3,
+          overflow: 'hidden',
+          marginBottom: spacing.md,
+        }}
+      >
+        <Animated.View style={{ height: '100%', width: progressWidth, backgroundColor: progressColor }} />
       </View>
-      <View style={timerStyles.row}>
-        <Text style={timerStyles.time}>
+      <View style={styles.timerRow}>
+        <Text
+          style={{
+            fontSize: 38,
+            fontWeight: '800',
+            color: c.text,
+            letterSpacing: 2,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
           {mm}:{ss}
         </Text>
-        <View style={timerStyles.buttons}>
-          <TouchableOpacity
-            style={[timerStyles.btn, running ? timerStyles.pauseBtn : timerStyles.startBtn]}
-            onPress={() => setRunning((r) => !r)}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <Button
+            label={running ? 'Pause' : remaining === 0 ? 'Done' : 'Start'}
+            onPress={() => {
+              haptics.impact('light');
+              setRunning((r) => !r);
+            }}
             disabled={remaining === 0}
-          >
-            <Text style={timerStyles.btnText}>{running ? 'Pause' : remaining === 0 ? 'Done' : 'Start'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={timerStyles.resetBtn} onPress={reset}>
-            <Text style={timerStyles.resetText}>↺</Text>
-          </TouchableOpacity>
+            variant={running ? 'secondary' : 'primary'}
+            size="md"
+          />
+          <IconButton icon="↺" accessibilityLabel="Reset timer" onPress={reset} variant="tinted" />
         </View>
       </View>
-    </View>
+    </Card>
   );
 }
 
-const timerStyles = StyleSheet.create({
-  container: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginVertical: 16 },
-  track: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden', marginBottom: 12 },
-  fill: { height: '100%', borderRadius: 3 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { fontSize: 32, fontWeight: '700', color: colors.text, letterSpacing: 2, fontVariant: ['tabular-nums'] },
-  buttons: { flexDirection: 'row', gap: 10 },
-  btn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
-  startBtn: { backgroundColor: colors.primary },
-  pauseBtn: { backgroundColor: colors.warning },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  resetBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  resetText: { fontSize: 18, color: colors.textSecondary },
-});
-
-// ─── CookingModeScreen ────────────────────────────────────────────────────────
-
 export function CookingModeScreen({ route, navigation }: Props): React.JSX.Element {
   const { recipeId } = route.params;
-  const [currentStep, setCurrentStep] = useState(0);
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const c = useThemeColors();
+  const haptics = useHaptics();
+  const toast = useToast();
   const qc = useQueryClient();
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [offlineRecipe, setOfflineRecipe] = useState<RecipeWithDetails | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
 
-  const [offlineRecipe, setOfflineRecipe] = useState<any>(null);
-
-  // Load from offline cache first (Phase 6 — offline cooking mode)
   useEffect(() => {
     AsyncStorage.getItem(`offline_recipe_${recipeId}`)
-      .then((raw) => { if (raw) setOfflineRecipe(JSON.parse(raw)); })
+      .then((raw) => {
+        if (raw) setOfflineRecipe(JSON.parse(raw));
+      })
       .catch(() => {});
   }, [recipeId]);
 
-  const { data: networkRecipe, isLoading, isError } = useQuery({
+  const { data: networkRecipe, isLoading, isError, refetch } = useQuery<RecipeWithDetails>({
     queryKey: ['recipe-detail', recipeId],
     queryFn: () => recipeService.getById(recipeId),
   });
 
-  // Cache recipe to AsyncStorage whenever we get it from network
   useEffect(() => {
     if (networkRecipe) {
-      AsyncStorage.setItem(`offline_recipe_${recipeId}`, JSON.stringify(networkRecipe)).catch(() => {});
+      AsyncStorage.setItem(
+        `offline_recipe_${recipeId}`,
+        JSON.stringify(networkRecipe)
+      ).catch(() => {});
+      setIsOffline(false);
+    } else if (offlineRecipe && isError) {
+      setIsOffline(true);
     }
-  }, [networkRecipe, recipeId]);
+  }, [networkRecipe, recipeId, offlineRecipe, isError]);
 
   const recipe = networkRecipe ?? offlineRecipe;
 
-  const deductMutation = useMutation({
+  const deduct = useMutation({
     mutationFn: (ingredients: Array<{ name: string; quantity: number; unit: string }>) =>
       pantryService.deduct(ingredients),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['pantry'] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pantry'] }),
   });
 
-  const steps = recipe?.instructions ?? [];
+  const steps: RecipeStep[] = recipe?.instructions ?? [];
   const step = steps[currentStep];
   const totalSteps = steps.length;
 
   const animateSlide = useCallback(
-    (direction: 'left' | 'right', cb: () => void) => {
-      const toValue = direction === 'left' ? -300 : 300;
+    (dir: 'left' | 'right', cb: () => void) => {
+      const toValue = dir === 'left' ? -300 : 300;
       Animated.sequence([
         Animated.timing(slideAnim, { toValue, duration: 150, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: direction === 'left' ? 300 : -300, duration: 0, useNativeDriver: true }),
+        Animated.timing(slideAnim, {
+          toValue: dir === 'left' ? 300 : -300,
+          duration: 0,
+          useNativeDriver: true,
+        }),
       ]).start(() => {
         cb();
         Animated.timing(slideAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
       });
     },
-    [slideAnim],
+    [slideAnim]
   );
 
   const goNext = useCallback(() => {
+    haptics.impact('medium');
     if (currentStep >= totalSteps - 1) {
-      // Deduct pantry ingredients matching recipe ingredients
       if (recipe?.ingredients && pantryItems.length > 0) {
         const toDeduct = recipe.ingredients
-          .filter((ing) =>
-            pantryItems.some((p) =>
-              p.name.toLowerCase().includes(ing.ingredient_name.toLowerCase()) ||
-              ing.ingredient_name.toLowerCase().includes(p.name.toLowerCase()),
-            ),
+          .filter((ing: Ingredient) =>
+            pantryItems.some(
+              (p) =>
+                p.name.toLowerCase().includes(ing.ingredient_name.toLowerCase()) ||
+                ing.ingredient_name.toLowerCase().includes(p.name.toLowerCase())
+            )
           )
-          .map((ing) => ({ name: ing.ingredient_name, quantity: ing.quantity ?? 1, unit: ing.unit ?? 'units' }));
+          .map((ing: Ingredient) => ({
+            name: ing.ingredient_name,
+            quantity: ing.quantity ?? 1,
+            unit: ing.unit ?? 'units',
+          }));
         if (toDeduct.length > 0) {
-          deductMutation.mutate(toDeduct);
-          Alert.alert(
-            '🎉 Recipe Complete!',
-            `Great job! Deducted ${toDeduct.length} ingredient${toDeduct.length > 1 ? 's' : ''} from your pantry.`,
-            [{ text: 'Back to Recipe', onPress: () => navigation.goBack() }],
-          );
-          return;
+          deduct.mutate(toDeduct);
+          toast.show(`Deducted ${toDeduct.length} ingredient${toDeduct.length > 1 ? 's' : ''}`, 'success');
         }
       }
-      Alert.alert('🎉 Recipe Complete!', 'Great job! You finished cooking.', [
-        { text: 'Back to Recipe', onPress: () => navigation.goBack() },
-      ]);
+      haptics.notify('success');
+      toast.show('🎉 Recipe complete', 'success');
+      setTimeout(() => navigation.goBack(), 800);
       return;
     }
     animateSlide('left', () => setCurrentStep((s) => s + 1));
-  }, [currentStep, totalSteps, animateSlide, navigation, recipe, pantryItems, deductMutation]);
+  }, [currentStep, totalSteps, animateSlide, navigation, recipe, pantryItems, deduct, haptics, toast]);
 
   const goPrev = useCallback(() => {
     if (currentStep === 0) return;
+    haptics.selection();
     animateSlide('right', () => setCurrentStep((s) => s - 1));
-  }, [currentStep, animateSlide]);
+  }, [currentStep, animateSlide, haptics]);
 
-  if (isLoading) {
+  if (isLoading && !offlineRecipe) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading recipe…</Text>
-      </View>
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+        <View style={{ padding: spacing.lg, gap: spacing.md }}>
+          <Skeleton height={20} width="60%" />
+          <Skeleton height={200} radius={radii.lg} />
+        </View>
+      </SafeAreaView>
     );
   }
 
-  if (isError || !recipe) {
+  if ((isError || !recipe) && !offlineRecipe) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Failed to load recipe.</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+        <ErrorState
+          title="Couldn’t load recipe"
+          body="Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      </SafeAreaView>
     );
   }
+
+  if (!recipe || !step) return <View />;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={styles.closeBtn}>✕</Text>
-        </TouchableOpacity>
-        <Text style={styles.recipeName} numberOfLines={1}>{recipe.name}</Text>
-        <Text style={styles.stepCounter}>{currentStep + 1}/{totalSteps}</Text>
+      <View style={[styles.header, { borderBottomColor: c.border }]}>
+        <IconButton
+          icon="✕"
+          size={36}
+          accessibilityLabel="Close cooking mode"
+          onPress={() => navigation.goBack()}
+        />
+        <Text style={[typography.h4, { flex: 1, textAlign: 'center', color: c.text }]} numberOfLines={1}>
+          {recipe.name}
+        </Text>
+        <Text style={[typography.label, { color: c.textSecondary, width: 36, textAlign: 'right' }]}>
+          {currentStep + 1}/{totalSteps}
+        </Text>
       </View>
+
+      {isOffline ? (
+        <View style={[styles.offlineBanner, { backgroundColor: c.warningMuted }]}>
+          <Text style={{ color: c.warning, fontWeight: '700', fontSize: 12 }}>
+            Offline — using cached recipe
+          </Text>
+        </View>
+      ) : null}
 
       {/* Step dots */}
       <View style={styles.dots}>
-        {steps.map((_, i) => (
+        {steps.map((_step: RecipeStep, i: number) => (
           <View
             key={i}
-            style={[styles.dot, i === currentStep && styles.dotActive, i < currentStep && styles.dotDone]}
+            style={{
+              width: i === currentStep ? 24 : 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor:
+                i === currentStep ? c.primary : i < currentStep ? c.primaryMuted : c.border,
+            }}
           />
         ))}
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-        {/* Step card */}
-        {step ? (
-          <Animated.View style={[styles.stepCard, { transform: [{ translateX: slideAnim }] }]}>
-            <Text style={styles.stepLabel}>STEP {step.step_number}</Text>
-            <Text style={styles.instruction}>{step.instruction}</Text>
-
-            {/* Timer — only if step has a time */}
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing['3xl'] }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
+          <Card surface="surface" radius="2xl" padding="2xl" elevation="card">
+            <Text
+              style={[
+                typography.overline,
+                { color: c.primary, marginBottom: spacing.md },
+              ]}
+            >
+              STEP {step.step_number}
+            </Text>
+            <Text
+              style={{
+                fontSize: 22,
+                lineHeight: 32,
+                color: c.text,
+                fontWeight: '500',
+              }}
+            >
+              {step.instruction}
+            </Text>
             {step.time_minutes && step.time_minutes > 0 ? (
               <CountdownTimer
                 seconds={step.time_minutes * 60}
-                onDone={() =>
-                  Alert.alert('⏱ Timer Done', `Step ${step.step_number} timer is up!`, [{ text: 'OK' }])
-                }
+                onDone={() => toast.show(`Step ${step.step_number} timer done`, 'info')}
               />
             ) : null}
-          </Animated.View>
-        ) : null}
+          </Card>
+        </Animated.View>
 
-        {/* Ingredients reminder (collapsed on first render if many) */}
-        {recipe.ingredients.length > 0 && (
-          <View style={styles.ingredientSection}>
-            <Text style={styles.sectionTitle}>Ingredients</Text>
-            {recipe.ingredients.map((ing) => (
+        {recipe.ingredients.length > 0 ? (
+          <View style={{ marginTop: spacing['2xl'] }}>
+            <Text style={[typography.h4, { color: c.text, marginBottom: spacing.md }]}>
+              Ingredients
+            </Text>
+            {recipe.ingredients.map((ing: Ingredient) => (
               <View key={ing.id} style={styles.ingRow}>
-                <View style={styles.ingBullet} />
-                <Text style={styles.ingText}>
+                <View style={[styles.ingBullet, { backgroundColor: c.primary }]} />
+                <Text style={[typography.body, { color: c.text, flex: 1, fontSize: 15 }]}>
                   {ing.quantity} {ing.unit} {ing.ingredient_name}
-                  {ing.notes ? <Text style={styles.ingNote}> ({ing.notes})</Text> : null}
+                  {ing.notes ? (
+                    <Text style={{ color: c.textSecondary, fontStyle: 'italic' }}>
+                      {' '}
+                      ({ing.notes})
+                    </Text>
+                  ) : null}
                 </Text>
               </View>
             ))}
           </View>
-        )}
+        ) : null}
       </ScrollView>
 
-      {/* Navigation buttons */}
-      <View style={styles.navBar}>
-        <TouchableOpacity
-          style={[styles.navBtn, styles.navPrev, currentStep === 0 && styles.navDisabled]}
+      {/* Nav buttons */}
+      <View style={[styles.navBar, { borderTopColor: c.border }]}>
+        <Button
+          label="← Previous"
           onPress={goPrev}
+          variant="secondary"
           disabled={currentStep === 0}
-        >
-          <Text style={[styles.navBtnText, currentStep === 0 && styles.navBtnTextDisabled]}>← Previous</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.navBtn, styles.navNext]} onPress={goNext}>
-          <Text style={styles.navBtnTextActive}>
-            {currentStep >= totalSteps - 1 ? 'Finish 🎉' : 'Next →'}
-          </Text>
-        </TouchableOpacity>
+          fullWidth
+          size="lg"
+          style={{ flex: 1 }}
+        />
+        <Button
+          label={currentStep >= totalSteps - 1 ? 'Finish 🎉' : 'Next →'}
+          onPress={goNext}
+          fullWidth
+          size="lg"
+          hapticStyle="medium"
+          style={{ flex: 1 }}
+        />
       </View>
     </SafeAreaView>
   );
@@ -328,43 +400,49 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
 export default CookingModeScreen;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-  loadingText: { marginTop: 12, color: colors.textSecondary },
-  errorText: { color: colors.error, fontSize: 16, marginBottom: 16 },
-  backBtn: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 },
-  backBtnText: { color: '#fff', fontWeight: '700' },
-
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  closeBtn: { fontSize: 18, color: colors.textSecondary, width: 28 },
-  recipeName: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text, textAlign: 'center', marginHorizontal: 8 },
-  stepCounter: { fontSize: 14, color: colors.textSecondary, width: 36, textAlign: 'right' },
-
-  dots: { flexDirection: 'row', justifyContent: 'center', paddingVertical: 12, gap: 6, flexWrap: 'wrap', paddingHorizontal: 20 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
-  dotActive: { backgroundColor: colors.primary, width: 20 },
-  dotDone: { backgroundColor: colors.primaryLight },
-
-  scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 32 },
-
-  stepCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 24, marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  stepLabel: { fontSize: 12, fontWeight: '800', color: colors.primary, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14 },
-  instruction: { fontSize: 20, color: colors.text, lineHeight: 30, fontWeight: '400' },
-
-  ingredientSection: { marginTop: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 },
-  ingRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
-  ingBullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginTop: 8, marginRight: 10 },
-  ingText: { flex: 1, fontSize: 15, color: colors.text, lineHeight: 22 },
-  ingNote: { color: colors.textSecondary, fontStyle: 'italic' },
-
-  navBar: { flexDirection: 'row', gap: 12, padding: 20, paddingBottom: 28, borderTopWidth: 1, borderTopColor: colors.divider },
-  navBtn: { flex: 1, paddingVertical: 16, borderRadius: 24, alignItems: 'center' },
-  navPrev: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  navNext: { backgroundColor: colors.primary },
-  navDisabled: { opacity: 0.4 },
-  navBtnText: { fontSize: 15, fontWeight: '700', color: colors.textSecondary },
-  navBtnTextDisabled: { color: colors.textLight },
-  navBtnTextActive: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm,
+  },
+  offlineBanner: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.xl,
+  },
+  timerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  ingBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 8,
+    marginRight: spacing.sm,
+  },
+  navBar: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

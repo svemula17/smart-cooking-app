@@ -187,14 +187,28 @@ export type RootStackParamList = {
   CookingMode: { recipeId: string };
   RecipeSelect: { date: string; mealType: MealType };
   Pantry: undefined;
+  HouseMembers: undefined;
+  CookSchedule: undefined;
+  Expenses: undefined;
+  AddExpense: undefined;
+  RecipeVote: undefined;
+  Leaderboard: undefined;
+  CuisinePassport: undefined;
+  HouseReport: undefined;
+  PrepMeals: undefined;
+  Chores: undefined;
+  HouseOnboarding: undefined;
+  Search: undefined;
+  AIChat: undefined;
 };
 
 export type TabParamList = {
-  Home:       undefined;
+  Home:        undefined;
   MealPlanner: undefined;
-  Shopping:   undefined;
-  Stats:      undefined;
-  Profile:    undefined;
+  House:       undefined;
+  Shopping:    undefined;
+  Stats:       undefined;
+  Profile:     undefined;
 };
 
 // ─── API envelopes ────────────────────────────────────────────────────────────

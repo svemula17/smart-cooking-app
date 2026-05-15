@@ -1,32 +1,47 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   RefreshControl,
+  StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+
 import type { RootState } from '../store';
 import { removeExpense, setBalances, setExpenses } from '../store/slices/expenseSlice';
 import * as houseService from '../services/houseService';
 import type { Expense } from '../services/houseService';
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import {
+  Button,
+  Card,
+  EmptyState,
+  Header,
+  useToast,
+} from '../components/ui';
+
+const timeAgo = (iso: string): string => {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
-  return `${days} days ago`;
-}
+  return `${days}d ago`;
+};
 
 export default function ExpensesScreen({ navigation }: any) {
+  const c = useThemeColors();
   const dispatch = useDispatch();
+  const toast = useToast();
   const { house } = useSelector((s: RootState) => s.house);
-  const { expenses, balances, settlements, isLoading } = useSelector((s: RootState) => s.expense);
+  const { expenses, balances, settlements, isLoading } = useSelector(
+    (s: RootState) => s.expense
+  );
   const currentUser = useSelector((s: RootState) => s.auth.user);
   const [settlingWith, setSettlingWith] = useState<string | null>(null);
 
@@ -37,31 +52,39 @@ export default function ExpensesScreen({ navigation }: any) {
         houseService.listExpenses(house.id, 1),
         houseService.getBalances(house.id),
       ]);
-      dispatch(setExpenses({ expenses: expData.expenses, total: expData.pagination.total, page: 1 }));
+      dispatch(
+        setExpenses({
+          expenses: expData.expenses,
+          total: expData.pagination.total,
+          page: 1,
+        })
+      );
       dispatch(setBalances(balData));
     } catch {
-      Alert.alert('Error', 'Could not load expenses');
+      toast.show('Could not load expenses', 'error');
     }
-  }, [house, dispatch]);
+  }, [house, dispatch, toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function handleSettle(withUserId: string) {
+  const handleSettle = async (withUserId: string) => {
     if (!house) return;
     setSettlingWith(withUserId);
     try {
       await houseService.settleUp(house.id, withUserId);
       const balData = await houseService.getBalances(house.id);
       dispatch(setBalances(balData));
-      Alert.alert('Settled!', 'All debts between you two have been marked as settled.');
+      toast.show('Settled up', 'success');
     } catch {
-      Alert.alert('Error', 'Could not settle up');
+      toast.show('Could not settle', 'error');
     } finally {
       setSettlingWith(null);
     }
-  }
+  };
 
-  async function handleDelete(expense: Expense) {
+  const handleDelete = (expense: Expense) => {
     if (!house) return;
     Alert.alert('Delete expense?', `"${expense.description}" will be removed.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -74,185 +97,180 @@ export default function ExpensesScreen({ navigation }: any) {
             dispatch(removeExpense(expense.id));
             const balData = await houseService.getBalances(house.id);
             dispatch(setBalances(balData));
+            toast.show('Removed', 'info');
           } catch (e: any) {
-            Alert.alert('Error', e?.response?.data?.error?.message ?? 'Could not delete');
+            toast.show(
+              e?.response?.data?.error?.message ?? 'Could not delete',
+              'error'
+            );
           }
         },
       },
     ]);
-  }
+  };
 
   const myBalance = balances.find((b) => b.user_id === currentUser?.id);
   const mySettlements = settlements.filter(
-    (s) => s.from_user_id === currentUser?.id || s.to_user_id === currentUser?.id,
+    (s) => s.from_user_id === currentUser?.id || s.to_user_id === currentUser?.id
   );
 
-  function renderExpense({ item }: { item: Expense }) {
+  const renderExpense = ({ item }: { item: Expense }) => {
     const isPaidByMe = item.paid_by === currentUser?.id;
+    const icon =
+      item.category === 'groceries'
+        ? '🛒'
+        : item.category === 'utilities'
+        ? '⚡'
+        : '🏠';
     return (
-      <TouchableOpacity
-        style={styles.expenseRow}
-        onLongPress={() => handleDelete(item)}
+      <Card
+        surface="surface"
+        radius="lg"
+        padding="md"
+        elevation="card"
+        bordered
+        onPress={() => handleDelete(item)}
+        style={{ marginBottom: spacing.sm }}
       >
-        <View style={styles.expenseIcon}>
-          <Text style={styles.expenseIconText}>
-            {item.category === 'groceries' ? '🛒' : item.category === 'utilities' ? '⚡' : '🏠'}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              backgroundColor: c.surfaceMuted,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>{icon}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.h4, { color: c.text }]}>{item.description}</Text>
+            <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+              Paid by {isPaidByMe ? 'you' : item.paid_by_name} · split {item.splits.length} ways · {timeAgo(item.created_at)}
+            </Text>
+          </View>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '800',
+              color: isPaidByMe ? c.success : c.error,
+            }}
+          >
+            ₹{parseFloat(item.amount).toFixed(2)}
           </Text>
         </View>
-        <View style={styles.expenseInfo}>
-          <Text style={styles.expenseDesc}>{item.description}</Text>
-          <Text style={styles.expenseMeta}>
-            Paid by {isPaidByMe ? 'you' : item.paid_by_name} · Split {item.splits.length} ways · {timeAgo(item.created_at)}
-          </Text>
-        </View>
-        <Text style={[styles.expenseAmount, { color: isPaidByMe ? '#16A34A' : '#DC2626' }]}>
-          ₹{parseFloat(item.amount).toFixed(2)}
-        </Text>
-      </TouchableOpacity>
+      </Card>
     );
-  }
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Expenses</Text>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => navigation.navigate('AddExpense')}
-        >
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <Header
+        title="Expenses"
+        onBack={() => navigation.goBack()}
+        right={<Button label="+ Add" size="sm" onPress={() => navigation.navigate('AddExpense')} />}
+        border
+      />
 
-      {/* Balance Summary */}
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>YOUR BALANCE</Text>
+      {/* Balance card */}
+      <Card
+        surface="surface"
+        radius="2xl"
+        padding="lg"
+        elevation="card"
+        bordered
+        style={{ marginHorizontal: spacing.lg, marginVertical: spacing.md }}
+      >
+        <Text style={[typography.overline, { color: c.textSecondary }]}>Your balance</Text>
         {myBalance !== undefined ? (
-          <Text style={[styles.balanceNet, { color: myBalance.net >= 0 ? '#16A34A' : '#DC2626' }]}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: '800',
+              color: myBalance.net >= 0 ? c.success : c.error,
+              marginTop: spacing.xs,
+              marginBottom: spacing.md,
+            }}
+          >
             {myBalance.net >= 0
               ? `You are owed ₹${myBalance.net.toFixed(2)}`
               : `You owe ₹${Math.abs(myBalance.net).toFixed(2)}`}
           </Text>
         ) : (
-          <Text style={styles.balanceNet}>All settled up!</Text>
+          <Text style={[typography.h2, { color: c.text, marginVertical: spacing.sm }]}>
+            All settled up!
+          </Text>
         )}
 
-        {/* Settlement suggestions */}
         {mySettlements.map((s, idx) => {
           const isOwer = s.from_user_id === currentUser?.id;
           const otherUserId = isOwer ? s.to_user_id : s.from_user_id;
-          const otherName = balances.find((b) => b.user_id === otherUserId)?.name ?? 'someone';
+          const otherName =
+            balances.find((b) => b.user_id === otherUserId)?.name ?? 'someone';
           return (
-            <View key={idx} style={styles.settlementRow}>
-              <Text style={styles.settlementText}>
+            <View
+              key={idx}
+              style={[
+                styles.settleRow,
+                { backgroundColor: c.surfaceMuted },
+              ]}
+            >
+              <Text style={[typography.body, { color: c.text, flex: 1 }]}>
                 {isOwer ? `Pay ${otherName}` : `${otherName} owes you`} ₹{s.amount.toFixed(2)}
               </Text>
-              {isOwer && (
-                <TouchableOpacity
-                  style={[styles.settleBtn, settlingWith === otherUserId && styles.disabled]}
-                  onPress={() => handleSettle(otherUserId)}
+              {isOwer ? (
+                <Button
+                  label="Settle"
+                  size="sm"
+                  loading={settlingWith === otherUserId}
                   disabled={settlingWith !== null}
-                >
-                  {settlingWith === otherUserId ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.settleBtnText}>Settle up</Text>
-                  )}
-                </TouchableOpacity>
-              )}
+                  onPress={() => handleSettle(otherUserId)}
+                />
+              ) : null}
             </View>
           );
         })}
-      </View>
+      </Card>
 
-      <Text style={styles.sectionTitle}>ALL EXPENSES</Text>
+      <Text
+        style={[typography.overline, { color: c.textSecondary, marginHorizontal: spacing.lg, marginBottom: spacing.sm }]}
+      >
+        All expenses
+      </Text>
+
       <FlatList
         data={expenses}
         keyExtractor={(item) => item.id}
         renderItem={renderExpense}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} />}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={load} tintColor={c.primary} />
+        }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No expenses yet</Text>
-            <Text style={styles.emptySub}>Tap "+ Add" to log your first grocery run.</Text>
-          </View>
+          <EmptyState
+            icon="💰"
+            title="No expenses yet"
+            body="Tap “+ Add” to log your first grocery run."
+          />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-  header: {
+  safe: { flex: 1 },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing['4xl'] },
+  settleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    gap: spacing.sm,
   },
-  title: { fontSize: 24, fontWeight: '700', color: '#1C1C1E' },
-  addBtn: { backgroundColor: '#E85D04', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  balanceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  balanceLabel: { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1, marginBottom: 8 },
-  balanceNet: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
-  settlementRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 6,
-  },
-  settlementText: { fontSize: 14, color: '#374151', flex: 1 },
-  settleBtn: {
-    backgroundColor: '#16A34A',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  settleBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  disabled: { opacity: 0.5 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1, marginHorizontal: 16, marginBottom: 8 },
-  list: { paddingHorizontal: 16, paddingBottom: 100 },
-  expenseRow: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  expenseIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#F3F3F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  expenseIconText: { fontSize: 20 },
-  expenseInfo: { flex: 1 },
-  expenseDesc: { fontSize: 15, fontWeight: '600', color: '#1C1C1E' },
-  expenseMeta: { fontSize: 12, color: '#9B9B9B', marginTop: 2 },
-  expenseAmount: { fontSize: 16, fontWeight: '700' },
-  emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1C1C1E', marginBottom: 8 },
-  emptySub: { fontSize: 15, color: '#6B6B6B' },
 });

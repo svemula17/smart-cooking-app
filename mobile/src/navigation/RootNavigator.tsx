@@ -1,7 +1,8 @@
 import React from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SplashScreen from '../screens/SplashScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
@@ -28,89 +29,100 @@ import PrepMealsScreen from '../screens/PrepMealsScreen';
 import ChoresScreen from '../screens/ChoresScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
-import { colors } from '../theme/colors';
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
 
 // React 19 expands ReactNode to include bigint, which breaks @react-navigation
 // v7's ScreenComponentType. Cast all screen components to bypass this.
 type AnyComponent = React.ComponentType<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab   = createBottomTabNavigator<TabParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
 
-// ─── Tab icon map ─────────────────────────────────────────────────────────────
-
-interface TabIconConfig { emoji: string; label: string }
+interface TabIconConfig {
+  emoji: string;
+  label: string;
+  a11y: string;
+}
 
 const TAB_CONFIG: Record<string, TabIconConfig> = {
-  Home:        { emoji: '🌙', label: 'Tonight' },
-  MealPlanner: { emoji: '🧭', label: 'Prep' },
-  House:       { emoji: '🏠', label: 'House' },
-  Shopping:    { emoji: '🪄', label: 'Unlock' },
-  Stats:       { emoji: '📈', label: 'Signals' },
-  Profile:     { emoji: '👤', label: 'You' },
+  Home: { emoji: '🏡', label: 'Home', a11y: 'Home tab' },
+  MealPlanner: { emoji: '📅', label: 'Plan', a11y: 'Meal planner tab' },
+  House: { emoji: '👨‍👩‍👧', label: 'House', a11y: 'Household tab' },
+  Shopping: { emoji: '🛒', label: 'Shop', a11y: 'Shopping list tab' },
+  Stats: { emoji: '📊', label: 'Stats', a11y: 'Stats tab' },
+  Profile: { emoji: '👤', label: 'You', a11y: 'Profile tab' },
 };
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const cfg = TAB_CONFIG[name] ?? { emoji: '●', label: name };
+function TabIcon({ name, focused, color }: { name: string; focused: boolean; color: string }) {
+  const cfg = TAB_CONFIG[name] ?? { emoji: '●', label: name, a11y: name };
   return (
     <View style={tabIconStyles.container}>
-      <Text style={[tabIconStyles.emoji, focused && tabIconStyles.emojiActive]}>
-        {cfg.emoji}
-      </Text>
-      {focused && <View style={tabIconStyles.dot} />}
+      <Text style={[tabIconStyles.emoji, { opacity: focused ? 1 : 0.55 }]}>{cfg.emoji}</Text>
+      <View
+        style={[
+          tabIconStyles.dot,
+          { backgroundColor: focused ? color : 'transparent' },
+        ]}
+      />
     </View>
   );
 }
 
 const tabIconStyles = StyleSheet.create({
-  container: { alignItems: 'center', justifyContent: 'center', width: 44, height: 36 },
-  emoji: { fontSize: 22, opacity: 0.5 },
-  emojiActive: { opacity: 1 },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primary, marginTop: 2 },
+  container: { alignItems: 'center', justifyContent: 'center', width: 48, height: 36 },
+  emoji: { fontSize: 22 },
+  dot: { width: 4, height: 4, borderRadius: 2, marginTop: 3 },
 });
 
-// ─── Tab Navigator ────────────────────────────────────────────────────────────
-
 function TabNavigator() {
+  const c = useThemeColors();
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textLight,
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.textLight,
         tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.divider,
-          borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingTop: 4,
-          height: 64,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 8,
+          backgroundColor: c.background,
+          borderTopColor: c.border,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          paddingBottom: Math.max(insets.bottom, spacing.sm),
+          paddingTop: spacing.xs,
+          height: 56 + Math.max(insets.bottom, spacing.sm),
+          ...Platform.select({
+            ios: {
+              shadowColor: '#1A1410',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.04,
+              shadowRadius: 8,
+            },
+            android: { elevation: 8 },
+          }),
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '600',
           letterSpacing: 0.2,
         },
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarAccessibilityLabel: TAB_CONFIG[route.name]?.a11y ?? route.name,
+        tabBarIcon: ({ focused, color }) => (
+          <TabIcon name={route.name} focused={focused} color={color} />
+        ),
         tabBarLabel: TAB_CONFIG[route.name]?.label ?? route.name,
       })}
     >
-      <Tab.Screen name="Home"        component={HomeScreen            as AnyComponent} />
-      <Tab.Screen name="MealPlanner" component={MealPlannerScreen     as AnyComponent} />
-      <Tab.Screen name="House"       component={HouseScreen           as AnyComponent} />
-      <Tab.Screen name="Shopping"    component={ShoppingListScreen    as AnyComponent} />
-      <Tab.Screen name="Stats"       component={MonthlyTrackingScreen as AnyComponent} />
-      <Tab.Screen name="Profile"     component={ProfileScreen         as AnyComponent} />
+      <Tab.Screen name="Home" component={HomeScreen as AnyComponent} />
+      <Tab.Screen name="MealPlanner" component={MealPlannerScreen as AnyComponent} />
+      <Tab.Screen name="House" component={HouseScreen as AnyComponent} />
+      <Tab.Screen name="Shopping" component={ShoppingListScreen as AnyComponent} />
+      <Tab.Screen name="Stats" component={MonthlyTrackingScreen as AnyComponent} />
+      <Tab.Screen name="Profile" component={ProfileScreen as AnyComponent} />
     </Tab.Navigator>
   );
 }
-
-// ─── Root Stack ───────────────────────────────────────────────────────────────
 
 export function RootNavigator(): React.JSX.Element {
   return (
@@ -118,7 +130,7 @@ export function RootNavigator(): React.JSX.Element {
       initialRouteName="Splash"
       screenOptions={{ headerShown: false, animation: 'fade' }}
     >
-      <Stack.Screen name="Splash"     component={SplashScreen     as AnyComponent} />
+      <Stack.Screen name="Splash" component={SplashScreen as AnyComponent} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen as AnyComponent} />
       <Stack.Screen
         name="Login"
@@ -143,7 +155,7 @@ export function RootNavigator(): React.JSX.Element {
       <Stack.Screen
         name="CookingMode"
         component={CookingModeScreen as AnyComponent}
-        options={{ animation: 'slide_from_bottom' }}
+        options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
       />
       <Stack.Screen
         name="Pantry"

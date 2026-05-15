@@ -1,66 +1,68 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
-  SafeAreaView,
+  Keyboard,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
-  Animated,
-  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
+
 import { recipeService } from '../services/recipeService';
 import { CuisineCard } from '../components/CuisineCard';
 import { RecipeCard } from '../components/RecipeCard';
-import { FilterChip } from '../components/FilterChip';
-import { colors } from '../theme/colors';
 import type { RootStackParamList, Recipe } from '../types';
+
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import {
+  Button,
+  Chip,
+  EmptyState,
+  RecipeCardSkeleton,
+  TextField,
+} from '../components/ui';
 
 type SearchNav = NativeStackNavigationProp<RootStackParamList>;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const CUISINES = [
-  { cuisine: 'Indian',      emoji: '🍛', color: colors.indian },
-  { cuisine: 'Chinese',     emoji: '🥢', color: colors.chinese },
-  { cuisine: 'Indo-Chinese',emoji: '🍜', color: colors.indoChinese },
-  { cuisine: 'Italian',     emoji: '🍝', color: colors.italian },
-  { cuisine: 'Mexican',     emoji: '🌮', color: colors.mexican },
-  { cuisine: 'Thai',        emoji: '🌶️', color: colors.thai },
-  { cuisine: 'Japanese',    emoji: '🍱', color: colors.japanese },
-  { cuisine: 'Mediterranean',emoji: '🫒',color: colors.mediterranean },
+  { cuisine: 'Indian', emoji: '🍛', colorKey: 'indian' as const },
+  { cuisine: 'Chinese', emoji: '🥢', colorKey: 'chinese' as const },
+  { cuisine: 'Indo-Chinese', emoji: '🍜', colorKey: 'indoChinese' as const },
+  { cuisine: 'Italian', emoji: '🍝', colorKey: 'italian' as const },
+  { cuisine: 'Mexican', emoji: '🌮', colorKey: 'mexican' as const },
+  { cuisine: 'Thai', emoji: '🌶️', colorKey: 'thai' as const },
+  { cuisine: 'Japanese', emoji: '🍱', colorKey: 'japanese' as const },
+  { cuisine: 'Mediterranean', emoji: '🫒', colorKey: 'mediterranean' as const },
 ];
 
 const QUICK_FILTERS = [
-  { label: 'High Protein', emoji: '💪', params: { min_protein: 30 } },
-  { label: 'Quick (<30m)', emoji: '⏱',  params: { max_cook_time: 25 } },
-  { label: 'Easy',         emoji: '😊', params: { difficulty: 'Easy' } },
-  { label: 'Low Calorie',  emoji: '🥗', params: {} },
+  { label: '💪 High Protein', key: 'high', params: { min_protein: 30 } },
+  { label: '⏱ Quick (<30m)', key: 'fast', params: { max_cook_time: 25 } },
+  { label: '😊 Easy', key: 'easy', params: { difficulty: 'Easy' } },
+  { label: '🥗 Low Calorie', key: 'low', params: {} },
 ];
-
-// ─── SearchScreen ─────────────────────────────────────────────────────────────
 
 export function SearchScreen(): React.JSX.Element {
   const navigation = useNavigation<SearchNav>();
+  const c = useThemeColors();
   const [query, setQuery] = useState('');
   const [committed, setCommitted] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
-  const searchBarFocused = query.length > 0 || committed.length > 0;
 
-  // Debounced search commit
   const handleChange = useCallback((text: string) => {
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setCommitted(text.trim()), 380);
+    debounceRef.current = setTimeout(() => setCommitted(text.trim()), 250);
   }, []);
 
   const clearSearch = useCallback(() => {
@@ -70,20 +72,15 @@ export function SearchScreen(): React.JSX.Element {
     Keyboard.dismiss();
   }, []);
 
-  // Quick-filter taps set a fake query
-  const handleFilterPress = useCallback((label: string) => {
-    setActiveFilter((prev) => (prev === label ? '' : label));
+  const handleFilter = (key: string) => {
+    setActiveFilter((prev) => (prev === key ? '' : key));
     setCommitted('');
     setQuery('');
-  }, []);
+  };
 
-  // Build query params
   const searchParams = (() => {
-    const f = QUICK_FILTERS.find((x) => x.label === activeFilter);
-    return {
-      q: committed || undefined,
-      ...(f?.params ?? {}),
-    };
+    const f = QUICK_FILTERS.find((x) => x.key === activeFilter);
+    return { q: committed || undefined, ...(f?.params ?? {}) };
   })();
 
   const shouldSearch = committed.length > 0 || !!activeFilter;
@@ -97,87 +94,72 @@ export function SearchScreen(): React.JSX.Element {
 
   const results: Recipe[] = data?.recipes ?? [];
 
-  // ── Render helpers ──────────────────────────────────────────────────────────
-
-  function renderResult({ item }: { item: Recipe }) {
-    return (
-      <RecipeCard
-        recipe={item}
-        onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
-      />
-    );
-  }
-
-  // ── Results view ────────────────────────────────────────────────────────────
-
   if (shouldSearch) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
         <StatusBar barStyle="dark-content" />
-
-        <View style={styles.header}>
-          <View style={styles.searchRow}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              ref={inputRef}
-              value={query}
-              onChangeText={handleChange}
-              style={styles.searchInput}
-              placeholder="Search recipes, cuisines…"
-              placeholderTextColor={colors.textLight}
-              returnKeyType="search"
-              autoFocus={false}
-              clearButtonMode="never"
-            />
-            <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
-              <Text style={styles.clearText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Filter chips */}
+        <View style={[styles.searchHeader, { borderBottomColor: c.border }]}>
+          <TextField
+            ref={inputRef}
+            value={query}
+            onChangeText={handleChange}
+            placeholder="Search recipes…"
+            returnKeyType="search"
+            leading={<Text style={{ fontSize: 16 }}>🔍</Text>}
+            trailing={
+              <Text
+                accessibilityRole="button"
+                onPress={clearSearch}
+                style={{ color: c.textSecondary, fontSize: 16, padding: 4 }}
+              >
+                ✕
+              </Text>
+            }
+          />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersRow}
+            contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm }}
           >
             {QUICK_FILTERS.map((f) => (
-              <FilterChip
-                key={f.label}
+              <Chip
+                key={f.key}
                 label={f.label}
-                emoji={f.emoji}
-                selected={activeFilter === f.label}
-                onPress={() => handleFilterPress(f.label)}
+                selected={activeFilter === f.key}
+                onPress={() => handleFilter(f.key)}
               />
             ))}
           </ScrollView>
         </View>
 
         {isLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Finding recipes…</Text>
+          <View style={{ padding: spacing.lg }}>
+            <RecipeCardSkeleton />
+            <RecipeCardSkeleton />
           </View>
         ) : results.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🔍</Text>
-            <Text style={styles.emptyTitle}>No recipes found</Text>
-            <Text style={styles.emptySub}>
-              Try a different keyword or filter
-            </Text>
-            <TouchableOpacity style={styles.clearSearchBtn} onPress={clearSearch}>
-              <Text style={styles.clearSearchText}>Clear Search</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="🔍"
+            title="No recipes found"
+            body="Try a different keyword or filter."
+            ctaLabel="Clear search"
+            onCta={clearSearch}
+          />
         ) : (
           <FlatList
             data={results}
             keyExtractor={(r) => r.id}
-            renderItem={renderResult}
+            renderItem={({ item }) => (
+              <RecipeCard
+                recipe={item}
+                onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
+              />
+            )}
             contentContainerStyle={styles.resultsList}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             ListHeaderComponent={
-              <Text style={styles.resultCount}>
+              <Text style={[typography.bodySmall, { color: c.textSecondary, marginBottom: spacing.md }]}>
                 {results.length} recipe{results.length !== 1 ? 's' : ''} found
               </Text>
             }
@@ -187,86 +169,84 @@ export function SearchScreen(): React.JSX.Element {
     );
   }
 
-  // ── Discovery view (no search) ──────────────────────────────────────────────
-
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <StatusBar barStyle="dark-content" />
-
       <ScrollView
-        contentContainerStyle={styles.discoveryContent}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: spacing['3xl'] }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Title */}
-        <View style={styles.titleBlock}>
-          <Text style={styles.screenTitle}>Discover</Text>
-          <Text style={styles.screenSubtitle}>Find your next favourite dish</Text>
+        <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.lg }}>
+          <Text style={[typography.h1, { color: c.text }]}>Discover</Text>
+          <Text style={[typography.body, { color: c.textSecondary, marginTop: spacing.xs }]}>
+            Find your next favourite dish
+          </Text>
         </View>
 
-        {/* Search bar */}
-        <TouchableOpacity
-          style={styles.searchBarStatic}
-          onPress={() => inputRef.current?.focus()}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          <TextField
             ref={inputRef}
             value={query}
             onChangeText={handleChange}
-            style={styles.searchInput}
             placeholder="Search recipes, cuisines, ingredients…"
-            placeholderTextColor={colors.textLight}
             returnKeyType="search"
+            leading={<Text style={{ fontSize: 16 }}>🔍</Text>}
           />
-        </TouchableOpacity>
-
-        {/* Quick filters */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionLabel}>Quick Filters</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersRow}
-          >
-            {QUICK_FILTERS.map((f) => (
-              <FilterChip
-                key={f.label}
-                label={f.label}
-                emoji={f.emoji}
-                selected={activeFilter === f.label}
-                onPress={() => handleFilterPress(f.label)}
-              />
-            ))}
-          </ScrollView>
         </View>
 
-        {/* Cuisines grid */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionLabel}>Browse by Cuisine</Text>
-          <View style={styles.cuisineGrid}>
-            {CUISINES.map((c) => (
-              <CuisineCard
-                key={c.cuisine}
-                cuisine={c.cuisine}
-                emoji={c.emoji}
-                color={c.color}
-                onPress={() =>
-                  navigation.navigate('RecipeBrowser', { cuisine: c.cuisine })
-                }
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Browse all */}
-        <TouchableOpacity
-          style={styles.browseAllBtn}
-          onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
+        <Text
+          style={[
+            typography.h4,
+            { color: c.text, paddingHorizontal: spacing.xl, marginBottom: spacing.md },
+          ]}
         >
-          <Text style={styles.browseAllText}>Browse All Recipes →</Text>
-        </TouchableOpacity>
+          Quick filters
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: spacing.xl, gap: spacing.sm, paddingBottom: spacing.lg }}
+        >
+          {QUICK_FILTERS.map((f) => (
+            <Chip
+              key={f.key}
+              label={f.label}
+              selected={activeFilter === f.key}
+              onPress={() => handleFilter(f.key)}
+            />
+          ))}
+        </ScrollView>
+
+        <Text
+          style={[
+            typography.h4,
+            { color: c.text, paddingHorizontal: spacing.xl, marginBottom: spacing.md },
+          ]}
+        >
+          Browse by cuisine
+        </Text>
+        <View style={styles.cuisineGrid}>
+          {CUISINES.map((u) => (
+            <CuisineCard
+              key={u.cuisine}
+              cuisine={u.cuisine}
+              emoji={u.emoji}
+              color={(c as any)[u.colorKey] ?? c.surfaceMuted}
+              onPress={() => navigation.navigate('RecipeBrowser', { cuisine: u.cuisine })}
+            />
+          ))}
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.md }}>
+          <Button
+            label="Browse all recipes →"
+            variant="secondary"
+            fullWidth
+            size="lg"
+            onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -274,43 +254,19 @@ export function SearchScreen(): React.JSX.Element {
 
 export default SearchScreen;
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-
-  // Header with search bar
-  header: { paddingTop: 8, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  searchRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 10, backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
-  searchBarStatic: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border, height: 48 },
-  searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, paddingVertical: 12, fontSize: 15, color: colors.text },
-  clearBtn: { padding: 6 },
-  clearText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
-  filtersRow: { paddingHorizontal: 16, paddingBottom: 10, gap: 8 },
-
-  // Discovery view
-  discoveryContent: { paddingBottom: 40 },
-  titleBlock: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
-  screenTitle: { fontSize: 30, fontWeight: '800', color: colors.text },
-  screenSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
-  sectionBlock: { marginBottom: 8 },
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: colors.text, paddingHorizontal: 20, marginBottom: 14 },
-  cuisineGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 12 },
-  browseAllBtn: { marginHorizontal: 20, marginTop: 12, backgroundColor: colors.primaryLight, borderRadius: 14, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: colors.primary + '40' },
-  browseAllText: { fontSize: 15, fontWeight: '700', color: colors.primary },
-
-  // Results view
-  resultsList: { paddingHorizontal: 16, paddingBottom: 32 },
-  resultCount: { fontSize: 13, color: colors.textSecondary, marginBottom: 12, marginTop: 8 },
-
-  // States
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { color: colors.textSecondary, fontSize: 14 },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 8 },
-  emptyEmoji: { fontSize: 54, marginBottom: 8 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
-  emptySub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-  clearSearchBtn: { marginTop: 12, backgroundColor: colors.primaryLight, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 12 },
-  clearSearchText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
+  safe: { flex: 1 },
+  searchHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  resultsList: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing['3xl'] },
+  cuisineGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'space-between',
+  },
 });

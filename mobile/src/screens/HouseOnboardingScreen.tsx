@@ -1,153 +1,186 @@
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
+
 import { setHouse } from '../store/slices/houseSlice';
 import * as houseService from '../services/houseService';
+
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { Button, IconButton, TextField, useToast } from '../components/ui';
 
 type Mode = 'choose' | 'create' | 'join';
 
 export default function HouseOnboardingScreen() {
+  const c = useThemeColors();
   const dispatch = useDispatch();
+  const toast = useToast();
   const [mode, setMode] = useState<Mode>('choose');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleCreate() {
+  const handleCreate = async () => {
     if (!name.trim()) return Alert.alert('Enter a house name');
     setLoading(true);
     try {
       const result = await houseService.createHouse(name.trim());
       dispatch(setHouse({ house: result.house, members: [] }));
+      toast.show('House created', 'success');
     } catch (e: any) {
-      const msg = e?.response?.data?.error?.message
-        ?? e?.message
-        ?? 'Could not create house — check that the house-service is running on port 4006';
-      Alert.alert('Error', msg);
+      toast.show(e?.response?.data?.error?.message ?? 'Could not create house', 'error');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleJoin() {
+  const handleJoin = async () => {
     if (code.trim().length !== 7) return Alert.alert('Enter the 7-character invite code');
     setLoading(true);
     try {
       const result = await houseService.joinHouse(code.trim());
       dispatch(setHouse({ house: result.house, members: result.members }));
+      toast.show('Joined house', 'success');
     } catch (e: any) {
-      const msg = e?.response?.data?.error?.message
-        ?? e?.message
-        ?? 'Invalid invite code — check that the house-service is running on port 4006';
-      Alert.alert('Error', msg);
+      toast.show(e?.response?.data?.error?.message ?? 'Invalid invite code', 'error');
     } finally {
       setLoading(false);
     }
-  }
-
-  if (mode === 'choose') {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Set up your house</Text>
-        <Text style={styles.subtitle}>
-          Coordinate cooking with your roommates — plan meals, share costs, track ingredients.
-        </Text>
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => setMode('create')}>
-          <Text style={styles.primaryBtnText}>🏠 Create a new house</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryBtn} onPress={() => setMode('join')}>
-          <Text style={styles.secondaryBtnText}>🔑 Join with invite code</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (mode === 'create') {
-    return (
-      <View style={styles.container}>
-        <TouchableOpacity onPress={() => setMode('choose')} style={styles.back}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Name your house</Text>
-        <Text style={styles.subtitle}>Give your place a fun name your roommates will recognise.</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. The Boys' Kitchen"
-          value={name}
-          onChangeText={setName}
-          maxLength={50}
-          autoFocus
-        />
-        <TouchableOpacity style={[styles.primaryBtn, loading && styles.disabled]} onPress={handleCreate} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Create house</Text>}
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => setMode('choose')} style={styles.back}>
-        <Text style={styles.backText}>← Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.title}>Join a house</Text>
-      <Text style={styles.subtitle}>Ask a roommate for the 7-character invite code.</Text>
-      <TextInput
-        style={[styles.input, styles.codeInput]}
-        placeholder="e.g. SAIRAJ7"
-        value={code}
-        onChangeText={(t) => setCode(t.toUpperCase())}
-        maxLength={7}
-        autoCapitalize="characters"
-        autoFocus
-      />
-      <TouchableOpacity style={[styles.primaryBtn, loading && styles.disabled]} onPress={handleJoin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Join house</Text>}
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.topBar}>
+        {mode !== 'choose' ? (
+          <IconButton
+            icon="‹"
+            size={40}
+            accessibilityLabel="Back"
+            onPress={() => setMode('choose')}
+          />
+        ) : null}
+      </View>
+      <View style={styles.content}>
+        {mode === 'choose' ? (
+          <>
+            <Text style={{ fontSize: 64, marginBottom: spacing.lg }}>🏠</Text>
+            <Text style={[typography.h1, { color: c.text, textAlign: 'center' }]}>
+              Set up your house
+            </Text>
+            <Text
+              style={[
+                typography.body,
+                {
+                  color: c.textSecondary,
+                  textAlign: 'center',
+                  marginTop: spacing.md,
+                  marginBottom: spacing['2xl'],
+                  fontSize: 15,
+                },
+              ]}
+            >
+              Coordinate cooking with roommates — plan meals, share costs, track ingredients.
+            </Text>
+            <Button
+              label="🏠  Create a new house"
+              size="lg"
+              fullWidth
+              onPress={() => setMode('create')}
+            />
+            <View style={{ height: spacing.md }} />
+            <Button
+              label="🔑  Join with invite code"
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onPress={() => setMode('join')}
+            />
+          </>
+        ) : mode === 'create' ? (
+          <>
+            <Text style={[typography.h1, { color: c.text, textAlign: 'center' }]}>
+              Name your house
+            </Text>
+            <Text
+              style={[
+                typography.body,
+                {
+                  color: c.textSecondary,
+                  textAlign: 'center',
+                  marginTop: spacing.md,
+                  marginBottom: spacing['2xl'],
+                },
+              ]}
+            >
+              A fun name your roommates will recognise.
+            </Text>
+            <TextField
+              placeholder="e.g. The Boys' Kitchen"
+              value={name}
+              onChangeText={setName}
+              maxLength={50}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleCreate}
+            />
+            <Button
+              label="Create house"
+              size="lg"
+              fullWidth
+              loading={loading}
+              onPress={handleCreate}
+              style={{ marginTop: spacing.lg }}
+            />
+          </>
+        ) : (
+          <>
+            <Text style={[typography.h1, { color: c.text, textAlign: 'center' }]}>
+              Join a house
+            </Text>
+            <Text
+              style={[
+                typography.body,
+                {
+                  color: c.textSecondary,
+                  textAlign: 'center',
+                  marginTop: spacing.md,
+                  marginBottom: spacing['2xl'],
+                },
+              ]}
+            >
+              Ask a roommate for the 7-character invite code.
+            </Text>
+            <TextField
+              placeholder="SAIRAJ7"
+              value={code}
+              onChangeText={(t) => setCode(t.toUpperCase())}
+              maxLength={7}
+              autoCapitalize="characters"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleJoin}
+              accessibilityLabel="Invite code"
+            />
+            <Button
+              label="Join house"
+              size="lg"
+              fullWidth
+              loading={loading}
+              onPress={handleJoin}
+              style={{ marginTop: spacing.lg }}
+            />
+          </>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8', padding: 28, justifyContent: 'center' },
-  back: { position: 'absolute', top: 60, left: 28 },
-  backText: { fontSize: 16, color: '#E85D04' },
-  title: { fontSize: 28, fontWeight: '700', color: '#1C1C1E', marginBottom: 12 },
-  subtitle: { fontSize: 16, color: '#6B6B6B', marginBottom: 36, lineHeight: 24 },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  codeInput: { fontSize: 24, fontWeight: '700', textAlign: 'center', letterSpacing: 6 },
-  primaryBtn: {
-    backgroundColor: '#E85D04',
-    borderRadius: 14,
-    padding: 18,
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  primaryBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  secondaryBtn: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#E85D04',
-    borderRadius: 14,
-    padding: 18,
-    alignItems: 'center',
-  },
-  secondaryBtnText: { color: '#E85D04', fontSize: 17, fontWeight: '600' },
-  disabled: { opacity: 0.6 },
+  safe: { flex: 1 },
+  topBar: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, height: 56, justifyContent: 'center' },
+  content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing['2xl'], alignItems: 'center' },
 });

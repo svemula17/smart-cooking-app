@@ -1,58 +1,66 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Linking,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
-import { shoppingService } from '../services/shoppingService';
-import { colors } from '../theme/colors';
-import type { RootState } from '../store';
-import type { ShoppingList, ShoppingItem } from '../types';
 
-// ─── Smart Grocery Consolidation ─────────────────────────────────────────────
+import { shoppingService } from '../services/shoppingService';
+import type { RootState } from '../store';
+import type { ShoppingItem, ShoppingList } from '../types';
+
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
+import { typography } from '../theme/typography';
+import {
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  ErrorState,
+  Header,
+  IconButton,
+  ListRowSkeleton,
+  useHaptics,
+  useToast,
+} from '../components/ui';
+
+// ── Aisle mapping ─────────────────────────────────────────────────────────
 
 const AISLE_MAP: Record<string, string> = {
-  // produce
   tomato: 'Produce', lettuce: 'Produce', onion: 'Produce', garlic: 'Produce',
   carrot: 'Produce', potato: 'Produce', spinach: 'Produce', pepper: 'Produce',
   lemon: 'Produce', lime: 'Produce', ginger: 'Produce', coriander: 'Produce',
-  // protein
   chicken: 'Meat & Seafood', beef: 'Meat & Seafood', pork: 'Meat & Seafood',
   fish: 'Meat & Seafood', shrimp: 'Meat & Seafood', egg: 'Dairy & Eggs',
-  // dairy
   milk: 'Dairy & Eggs', butter: 'Dairy & Eggs', cheese: 'Dairy & Eggs',
   cream: 'Dairy & Eggs', yogurt: 'Dairy & Eggs',
-  // grains
   rice: 'Grains & Pasta', pasta: 'Grains & Pasta', flour: 'Grains & Pasta',
   bread: 'Grains & Pasta', noodle: 'Grains & Pasta',
-  // canned
   sauce: 'Canned & Jarred', tomato_paste: 'Canned & Jarred', bean: 'Canned & Jarred',
   stock: 'Canned & Jarred', broth: 'Canned & Jarred',
-  // spices
-  salt: 'Spices & Condiments', pepper_spice: 'Spices & Condiments', cumin: 'Spices & Condiments',
-  turmeric: 'Spices & Condiments', paprika: 'Spices & Condiments', oil: 'Spices & Condiments',
-  vinegar: 'Spices & Condiments', soy: 'Spices & Condiments',
+  salt: 'Spices & Condiments', cumin: 'Spices & Condiments', turmeric: 'Spices & Condiments',
+  paprika: 'Spices & Condiments', oil: 'Spices & Condiments', vinegar: 'Spices & Condiments',
+  soy: 'Spices & Condiments',
 };
 
-function getAisle(name: string): string {
+const getAisle = (name: string): string => {
   const lower = name.toLowerCase();
-  for (const [key, aisle] of Object.entries(AISLE_MAP)) {
-    if (lower.includes(key)) return aisle;
-  }
+  for (const [k, aisle] of Object.entries(AISLE_MAP)) if (lower.includes(k)) return aisle;
   return 'Other';
-}
+};
 
 interface ConsolidatedItem {
   name: string;
@@ -62,17 +70,17 @@ interface ConsolidatedItem {
   ids: string[];
 }
 
-function consolidateItems(items: ShoppingItem[]): Record<string, ConsolidatedItem[]> {
+const consolidateItems = (items: ShoppingItem[]): Record<string, ConsolidatedItem[]> => {
   const map = new Map<string, ConsolidatedItem>();
   for (const item of items) {
     const key = item.ingredient_name.toLowerCase().trim();
     if (map.has(key)) {
-      const existing = map.get(key)!;
-      const qEntry = existing.quantities.find((q) => q.unit === item.unit);
-      if (qEntry) qEntry.qty += item.quantity;
-      else existing.quantities.push({ qty: item.quantity, unit: item.unit });
-      if (!item.is_checked) existing.checked = false;
-      existing.ids.push(item.id);
+      const ex = map.get(key)!;
+      const q = ex.quantities.find((x) => x.unit === item.unit);
+      if (q) q.qty += item.quantity;
+      else ex.quantities.push({ qty: item.quantity, unit: item.unit });
+      if (!item.is_checked) ex.checked = false;
+      ex.ids.push(item.id);
     } else {
       map.set(key, {
         name: item.ingredient_name,
@@ -84,31 +92,97 @@ function consolidateItems(items: ShoppingItem[]): Record<string, ConsolidatedIte
     }
   }
   const grouped: Record<string, ConsolidatedItem[]> = {};
-  for (const item of map.values()) {
-    const aisle = item.aisle;
-    if (!grouped[aisle]) grouped[aisle] = [];
-    grouped[aisle].push(item);
+  for (const it of map.values()) {
+    if (!grouped[it.aisle]) grouped[it.aisle] = [];
+    grouped[it.aisle].push(it);
   }
   return grouped;
-}
+};
 
-function buildInstacartUrl(items: ShoppingItem[]): string {
+const buildInstacartUrl = (items: ShoppingItem[]): string => {
   const ingNames = [...new Set(items.map((i) => i.ingredient_name))].slice(0, 20);
-  const query = ingNames.join(', ');
-  return `https://www.instacart.com/store/publix/search_v3/${encodeURIComponent(query)}`;
+  return `https://www.instacart.com/store/publix/search_v3/${encodeURIComponent(ingNames.join(', '))}`;
+};
+
+// ── Item row ──────────────────────────────────────────────────────────────
+
+function ItemRow({
+  name,
+  qty,
+  checked,
+  onToggle,
+}: {
+  name: string;
+  qty: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const c = useThemeColors();
+  const haptics = useHaptics();
+  return (
+    <Card
+      onPress={() => {
+        haptics.selection();
+        onToggle();
+      }}
+      surface="surface"
+      radius="md"
+      padding="md"
+      elevation="flat"
+      bordered
+      style={{ marginBottom: spacing.sm, opacity: checked ? 0.55 : 1 }}
+      accessibilityLabel={`${name}, ${checked ? 'checked' : 'unchecked'}`}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <View
+          style={[
+            styles.checkbox,
+            {
+              backgroundColor: checked ? c.success : 'transparent',
+              borderColor: checked ? c.success : c.borderStrong,
+            },
+          ]}
+        >
+          {checked ? <Text style={{ color: c.onPrimary, fontWeight: '800' }}>✓</Text> : null}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[
+              typography.body,
+              {
+                color: c.text,
+                fontWeight: '600',
+                textDecorationLine: checked ? 'line-through' : 'none',
+              },
+            ]}
+          >
+            {name}
+          </Text>
+          <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+            {qty}
+          </Text>
+        </View>
+      </View>
+    </Card>
+  );
 }
 
-// ─── List detail modal (inline expanded list) ─────────────────────────────────
+// ── List detail ───────────────────────────────────────────────────────────
 
-interface ListDetailProps {
+function ListDetailView({
+  list,
+  onClose,
+  onDelete,
+}: {
   list: ShoppingList;
   onClose: () => void;
   onDelete: (id: string) => void;
-}
-
-function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
+}) {
+  const c = useThemeColors();
+  const toast = useToast();
   const qc = useQueryClient();
-  const [showConsolidated, setShowConsolidated] = useState(false);
+  const [showSmart, setShowSmart] = useState(true);
+
   const { data, isLoading } = useQuery({
     queryKey: ['shopping-detail', list.id],
     queryFn: () => shoppingService.getList(list.id),
@@ -124,6 +198,7 @@ function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
     mutationFn: () => shoppingService.completeList(list.id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['shopping-lists'] });
+      toast.show('List complete', 'success');
       onClose();
     },
   });
@@ -133,272 +208,230 @@ function ListDetailView({ list, onClose, onDelete }: ListDetailProps) {
   const consolidated = useMemo(() => consolidateItems(items), [items]);
   const instacartUrl = useMemo(() => buildInstacartUrl(items), [items]);
 
-  function renderItem({ item }: { item: ShoppingItem }) {
-    return (
-      <TouchableOpacity
-        style={detailStyles.row}
-        onPress={() => checkMutation.mutate({ itemId: item.id, checked: !item.is_checked })}
-      >
-        <View style={[detailStyles.checkbox, item.is_checked && detailStyles.checkboxChecked]}>
-          {item.is_checked && <Text style={detailStyles.checkmark}>✓</Text>}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[detailStyles.itemName, item.is_checked && detailStyles.strikethrough]}>
-            {item.ingredient_name}
-          </Text>
-          <Text style={detailStyles.itemQty}>
-            {item.quantity} {item.unit}
-            {item.aisle ? ` · ${item.aisle}` : ''}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
   return (
-    <View style={detailStyles.container}>
-      {/* Detail header */}
-      <View style={detailStyles.header}>
-        <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={detailStyles.backText}>← Lists</Text>
-        </TouchableOpacity>
-        <Text style={detailStyles.title} numberOfLines={1}>{list.name}</Text>
-        <TouchableOpacity
-          onPress={() =>
-            Alert.alert('Delete List', 'Remove this shopping list?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive', onPress: () => { onDelete(list.id); onClose(); } },
-            ])
-          }
-        >
-          <Text style={detailStyles.deleteText}>🗑</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
+      <Header
+        title={list.name}
+        onBack={onClose}
+        right={
+          <IconButton
+            icon="🗑"
+            size={36}
+            accessibilityLabel="Delete list"
+            onPress={() =>
+              Alert.alert('Delete list', 'Remove this shopping list?', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: () => {
+                    onDelete(list.id);
+                    onClose();
+                  },
+                },
+              ])
+            }
+          />
+        }
+        border
+      />
 
-      {/* Instacart + Consolidate buttons */}
-      {items.length > 0 && (
-        <View style={detailStyles.actionRow}>
-          <TouchableOpacity
-            style={[detailStyles.actionBtn, detailStyles.instacartBtn]}
-            onPress={() => {
-              Alert.alert(
-                '🛒 Open in Instacart',
-                'This will open Instacart with your ingredients. You can add them to your cart there.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Open Instacart', onPress: () => Linking.openURL(instacartUrl) },
-                ],
-              );
-            }}
-          >
-            <Text style={detailStyles.instacartBtnText}>🛒 Order via Instacart</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[detailStyles.actionBtn, showConsolidated && detailStyles.consolidatedBtnActive]}
-            onPress={() => setShowConsolidated((v) => !v)}
-          >
-            <Text style={[detailStyles.consolidatedBtnText, showConsolidated && { color: '#fff' }]}>
-              {showConsolidated ? '📋 Standard' : '✨ Smart View'}
-            </Text>
-          </TouchableOpacity>
+      {items.length > 0 ? (
+        <View style={styles.actionRow}>
+          <Button
+            label="🛒 Instacart"
+            variant="secondary"
+            onPress={() =>
+              Alert.alert('Open Instacart?', 'This opens Instacart with these ingredients.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open', onPress: () => Linking.openURL(instacartUrl) },
+              ])
+            }
+            style={{ flex: 1 }}
+          />
+          <Chip
+            label={showSmart ? '✨ Smart' : '📋 Plain'}
+            selected={showSmart}
+            onPress={() => setShowSmart((v) => !v)}
+          />
         </View>
-      )}
+      ) : null}
 
-      {/* Progress bar */}
-      {items.length > 0 && (
-        <View style={detailStyles.progressSection}>
-          <View style={detailStyles.progressTrack}>
-            <View style={[detailStyles.progressFill, { width: `${(checkedCount / items.length) * 100}%` }]} />
+      {items.length > 0 ? (
+        <View style={styles.progressSection}>
+          <View style={[styles.progressTrack, { backgroundColor: c.surfaceMuted }]}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${(checkedCount / items.length) * 100}%`,
+                  backgroundColor: c.success,
+                },
+              ]}
+            />
           </View>
-          <Text style={detailStyles.progressText}>{checkedCount}/{items.length} items</Text>
+          <Text style={[typography.caption, { color: c.textSecondary, marginTop: spacing.xs }]}>
+            {checkedCount}/{items.length} items
+          </Text>
         </View>
-      )}
+      ) : null}
 
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 32 }} color={colors.primary} />
-      ) : showConsolidated ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingTop: spacing.lg }}>
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+        </View>
+      ) : showSmart ? (
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+        >
           {Object.entries(consolidated).map(([aisle, aisleItems]) => (
-            <View key={aisle}>
-              <View style={detailStyles.aisleHeader}>
-                <Text style={detailStyles.aisleTitle}>{aisle}</Text>
-              </View>
+            <View key={aisle} style={{ marginTop: spacing.lg }}>
+              <Text style={[typography.overline, { color: c.textSecondary, marginBottom: spacing.sm }]}>
+                {aisle}
+              </Text>
               {aisleItems.map((item) => (
-                <View key={item.name} style={[detailStyles.row, item.checked && { opacity: 0.5 }]}>
-                  <View style={[detailStyles.checkbox, item.checked && detailStyles.checkboxChecked]}>
-                    {item.checked && <Text style={detailStyles.checkmark}>✓</Text>}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[detailStyles.itemName, item.checked && detailStyles.strikethrough]}>{item.name}</Text>
-                    <Text style={detailStyles.itemQty}>
-                      {item.quantities.map((q) => `${q.qty} ${q.unit}`).join(' + ')}
-                    </Text>
-                  </View>
-                </View>
+                <ItemRow
+                  key={item.name}
+                  name={item.name}
+                  qty={item.quantities.map((q) => `${q.qty} ${q.unit}`).join(' + ')}
+                  checked={item.checked}
+                  onToggle={() => {
+                    item.ids.forEach((id) =>
+                      checkMutation.mutate({ itemId: id, checked: !item.checked })
+                    );
+                  }}
+                />
               ))}
             </View>
           ))}
-          {items.length === 0 && (
-            <View style={detailStyles.empty}><Text style={detailStyles.emptyText}>No items in this list.</Text></View>
-          )}
+          {items.length === 0 ? (
+            <EmptyState icon="🛒" title="Empty list" body="Add items to get started." />
+          ) : null}
         </ScrollView>
       ) : (
         <FlatList
           data={items}
           keyExtractor={(i) => i.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
+          renderItem={({ item }) => (
+            <ItemRow
+              name={item.ingredient_name}
+              qty={`${item.quantity} ${item.unit}${item.aisle ? ` · ${item.aisle}` : ''}`}
+              checked={item.is_checked}
+              onToggle={() =>
+                checkMutation.mutate({ itemId: item.id, checked: !item.is_checked })
+              }
+            />
+          )}
           ListEmptyComponent={
-            <View style={detailStyles.empty}>
-              <Text style={detailStyles.emptyText}>No items in this list.</Text>
-            </View>
+            <EmptyState icon="🛒" title="Empty list" body="Add items to get started." />
           }
         />
       )}
 
-      {/* Complete button */}
-      {list.status === 'active' && items.length > 0 && (
-        <View style={detailStyles.completeBar}>
-          <TouchableOpacity
-            style={[detailStyles.completeBtn, checkedCount < items.length && detailStyles.completeBtnPartial]}
+      {list.status === 'active' && items.length > 0 ? (
+        <View style={[styles.completeBar, { backgroundColor: c.background, borderTopColor: c.border }]}>
+          <Button
+            label="Mark complete ✓"
+            variant={checkedCount === items.length ? 'primary' : 'secondary'}
+            size="lg"
+            fullWidth
+            loading={completeMutation.isPending}
             onPress={() =>
               Alert.alert(
-                'Mark Complete?',
-                checkedCount < items.length ? `Only ${checkedCount}/${items.length} items checked. Mark done anyway?` : 'Mark this list as complete?',
+                'Mark complete?',
+                checkedCount < items.length
+                  ? `Only ${checkedCount}/${items.length} items checked. Mark done anyway?`
+                  : 'Mark this list as complete?',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Complete', onPress: () => completeMutation.mutate() },
-                ],
+                ]
               )
             }
-          >
-            {completeMutation.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={detailStyles.completeBtnText}>Mark Complete ✓</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
-      )}
-    </View>
+      ) : null}
+    </SafeAreaView>
   );
 }
 
-const detailStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider, gap: 8 },
-  actionRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  instacartBtn: { backgroundColor: '#F0FFF4', borderColor: '#38A169' },
-  instacartBtnText: { fontSize: 13, fontWeight: '700', color: '#38A169' },
-  consolidatedBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  consolidatedBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  aisleHeader: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  aisleTitle: { fontSize: 12, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 },
-  backText: { fontSize: 15, color: colors.primary, fontWeight: '600', width: 64 },
-  title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center' },
-  deleteText: { fontSize: 18, width: 32, textAlign: 'right' },
-  progressSection: { paddingHorizontal: 20, paddingVertical: 12 },
-  progressTrack: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden', marginBottom: 6 },
-  progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 3 },
-  progressText: { fontSize: 12, color: colors.textSecondary },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
-  checkboxChecked: { backgroundColor: colors.success, borderColor: colors.success },
-  checkmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  itemName: { fontSize: 16, color: colors.text, fontWeight: '500' },
-  strikethrough: { textDecorationLine: 'line-through', color: colors.textLight },
-  itemQty: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  empty: { alignItems: 'center', paddingTop: 48 },
-  emptyText: { color: colors.textSecondary, fontSize: 15 },
-  completeBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 32, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.divider },
-  completeBtn: { backgroundColor: colors.success, borderRadius: 24, paddingVertical: 16, alignItems: 'center' },
-  completeBtnPartial: { backgroundColor: colors.warning },
-  completeBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-});
-
-// ─── Shopping list card ───────────────────────────────────────────────────────
+// ── List card ─────────────────────────────────────────────────────────────
 
 function ListCard({ list, onPress }: { list: ShoppingList; onPress: () => void }) {
+  const c = useThemeColors();
   const isActive = list.status === 'active';
-  const date = new Date(list.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' });
-
+  const date = new Date(list.created_at).toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+  });
   return (
-    <TouchableOpacity style={cardStyles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={cardStyles.left}>
-        <View style={[cardStyles.badge, isActive ? cardStyles.badgeActive : cardStyles.badgeDone]}>
-          <Text style={[cardStyles.badgeText, isActive ? cardStyles.badgeTextActive : cardStyles.badgeTextDone]}>
-            {isActive ? 'Active' : 'Done'}
+    <Card
+      onPress={onPress}
+      surface="surface"
+      radius="xl"
+      padding="lg"
+      elevation="card"
+      bordered
+      style={{ marginBottom: spacing.md }}
+      accessibilityLabel={`${list.name}, ${isActive ? 'active' : 'completed'}`}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <Badge label={isActive ? 'Active' : 'Done'} tone={isActive ? 'primary' : 'success'} />
+          <Text style={[typography.h3, { color: c.text }]} numberOfLines={2}>
+            {list.name}
+          </Text>
+          <Text style={[typography.caption, { color: c.textSecondary }]}>
+            {list.recipe_ids.length} recipe{list.recipe_ids.length !== 1 ? 's' : ''} · {date}
           </Text>
         </View>
-        <Text style={cardStyles.name} numberOfLines={2}>{list.name}</Text>
-        <Text style={cardStyles.meta}>{list.recipe_ids.length} recipe{list.recipe_ids.length !== 1 ? 's' : ''} · {date}</Text>
+        <Text style={{ fontSize: 22, color: c.textLight }}>›</Text>
       </View>
-      <Text style={cardStyles.arrow}>›</Text>
-    </TouchableOpacity>
+    </Card>
   );
 }
 
-const cardStyles = StyleSheet.create({
-  card: { backgroundColor: colors.surfaceElevated, borderRadius: 16, padding: 18, marginBottom: 12, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2, borderWidth: 1, borderColor: colors.divider },
-  left: { flex: 1 },
-  badge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
-  badgeActive: { backgroundColor: colors.primaryLight },
-  badgeDone: { backgroundColor: '#E8F5E9' },
-  badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  badgeTextActive: { color: colors.primary },
-  badgeTextDone: { color: colors.success },
-  name: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  meta: { fontSize: 13, color: colors.textSecondary },
-  arrow: { fontSize: 22, color: colors.textLight, marginLeft: 8 },
-});
-
-// ─── ShoppingListScreen ───────────────────────────────────────────────────────
+// ── Screen ────────────────────────────────────────────────────────────────
 
 export function ShoppingListScreen(): React.JSX.Element {
+  const c = useThemeColors();
   const user = useSelector((s: RootState) => s.auth.user);
   const house = useSelector((s: RootState) => s.house.house);
   const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
   const [houseMode, setHouseMode] = useState(false);
   const qc = useQueryClient();
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-    isRefetching,
-  } = useQuery({
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['shopping-lists', user?.id],
-    // Identity comes from the JWT — no userId in path
     queryFn: () => shoppingService.getLists(),
     enabled: !!user?.id,
   });
 
-  // Refresh when tab is focused
   useFocusEffect(
     useCallback(() => {
       if (user?.id) refetch();
-    }, [user?.id, refetch]),
+    }, [user?.id, refetch])
   );
 
   const deleteMutation = useMutation({
     mutationFn: (listId: string) => shoppingService.deleteList(listId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['shopping-lists'] }),
-    onError: () => Alert.alert('Error', 'Failed to delete the list. Try again.'),
   });
 
-  // If a list is selected, show detail view
   if (selectedList) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="dark-content" />
-        <ListDetailView
-          list={selectedList}
-          onClose={() => { setSelectedList(null); refetch(); }}
-          onDelete={(id) => deleteMutation.mutate(id)}
-        />
-      </SafeAreaView>
+      <ListDetailView
+        list={selectedList}
+        onClose={() => {
+          setSelectedList(null);
+          refetch();
+        }}
+        onDelete={(id) => deleteMutation.mutate(id)}
+      />
     );
   }
 
@@ -407,41 +440,35 @@ export function ShoppingListScreen(): React.JSX.Element {
   const completed = lists.filter((l) => l.status === 'completed');
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <StatusBar barStyle="dark-content" />
-
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{houseMode ? 'House Lists' : 'Shopping Lists'}</Text>
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          {house && (
-            <TouchableOpacity
-              style={[styles.modeToggle, houseMode && styles.modeToggleActive]}
-              onPress={() => setHouseMode((v) => !v)}
-            >
-              <Text style={[styles.modeToggleText, houseMode && styles.modeToggleTextActive]}>
-                {houseMode ? '🏠' : '👤'}
-              </Text>
-            </TouchableOpacity>
-          )}
-          {lists.length > 0 && (
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>{active.length} active</Text>
-            </View>
-          )}
+        <View style={{ flex: 1 }}>
+          <Text style={[typography.h1, { color: c.text }]}>
+            {houseMode ? 'House lists' : 'Shopping lists'}
+          </Text>
+          {lists.length > 0 ? (
+            <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+              {active.length} active · {completed.length} done
+            </Text>
+          ) : null}
         </View>
+        {house ? (
+          <Chip
+            label={houseMode ? '🏠 House' : '👤 Personal'}
+            selected={houseMode}
+            onPress={() => setHouseMode((v) => !v)}
+          />
+        ) : null}
       </View>
 
       {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
+          <ListRowSkeleton />
+          <ListRowSkeleton />
         </View>
       ) : isError ? (
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>Couldn't load your lists.</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
-            <Text style={styles.retryText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState onRetry={() => refetch()} />
       ) : (
         <FlatList
           data={[...active, ...completed]}
@@ -451,26 +478,18 @@ export function ShoppingListScreen(): React.JSX.Element {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
+              tintColor={c.primary}
             />
           }
           renderItem={({ item }) => (
             <ListCard list={item} onPress={() => setSelectedList(item)} />
           )}
-          ListHeaderComponent={
-            active.length > 0 && completed.length > 0 ? (
-              <Text style={styles.sectionLabel}>Active</Text>
-            ) : null
-          }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🛒</Text>
-              <Text style={styles.emptyTitle}>No shopping lists yet</Text>
-              <Text style={styles.emptySub}>
-                Generate a shopping list from a recipe's detail page to get started.
-              </Text>
-            </View>
+            <EmptyState
+              icon="🛒"
+              title="No shopping lists yet"
+              body="Generate a list from a recipe to get started."
+            />
           }
         />
       )}
@@ -481,23 +500,41 @@ export function ShoppingListScreen(): React.JSX.Element {
 export default ShoppingListScreen;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
-  headerBadge: { backgroundColor: colors.primaryLight, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  headerBadgeText: { fontSize: 13, fontWeight: '600', color: colors.primary },
-  modeToggle: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1.5, borderColor: '#D0D0D0' },
-  modeToggleActive: { backgroundColor: '#FFF3E0', borderColor: '#E85D04' },
-  modeToggleText: { fontSize: 15 },
-  modeToggleTextActive: { color: '#E85D04' },
-  list: { paddingHorizontal: 20, paddingBottom: 32 },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { color: colors.error, fontSize: 16, marginBottom: 16 },
-  retryBtn: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 12 },
-  retryText: { color: '#fff', fontWeight: '700' },
-  emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8 },
-  emptySub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing['2xl'] },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  progressSection: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.lg,
+    paddingBottom: spacing['2xl'],
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

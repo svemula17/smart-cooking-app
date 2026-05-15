@@ -1,224 +1,306 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
   FlatList,
-  Modal,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+
 import type { RootState } from '../store';
 import * as houseService from '../services/houseService';
 import type { ChoreEntry, ChoreType } from '../services/houseService';
 
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Header,
+  IconButton,
+  Sheet,
+  Skeleton,
+  TextField,
+  useToast,
+} from '../components/ui';
+
 const TODAY = new Date().toISOString().slice(0, 10);
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: '#F9FAFB',
-  done:    '#F0FDF4',
-  skipped: '#FEF2F2',
-};
-const STATUS_LABEL: Record<string, string> = {
-  pending: '',
-  done:    '✅ Done',
-  skipped: '⏭ Skipped',
-};
-
-function formatDate(iso: string): string {
+const formatDate = (iso: string): string => {
   const d = new Date(iso + 'T00:00:00');
   if (iso === TODAY) return 'Today';
-  const tom = new Date(); tom.setDate(tom.getDate() + 1);
+  const tom = new Date();
+  tom.setDate(tom.getDate() + 1);
   if (iso === tom.toISOString().slice(0, 10)) return 'Tomorrow';
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-// ── Add Chore Modal ──────────────────────────────────────────────────────────
+};
 
 const EMOJI_PICKS = ['🧽', '🪣', '🧺', '🪴', '🗑️', '🚽', '🪟', '💡', '🔧', '📦'];
 
-function AddChoreModal({
-  visible, houseId, onClose, onCreated,
+function AddChoreSheet({
+  visible,
+  houseId,
+  onClose,
+  onCreated,
 }: {
-  visible: boolean; houseId: string;
-  onClose: () => void; onCreated: (ct: ChoreType) => void;
+  visible: boolean;
+  houseId: string;
+  onClose: () => void;
+  onCreated: (ct: ChoreType) => void;
 }) {
-  const [name, setName]         = useState('');
-  const [emoji, setEmoji]       = useState('🧽');
-  const [freq, setFreq]         = useState<'daily' | 'weekly'>('daily');
-  const [loading, setLoading]   = useState(false);
+  const c = useThemeColors();
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [emoji, setEmoji] = useState('🧽');
+  const [freq, setFreq] = useState<'daily' | 'weekly'>('daily');
+  const [loading, setLoading] = useState(false);
 
-  async function handleCreate() {
-    if (!name.trim()) return Alert.alert('Enter a chore name');
+  const handleCreate = async () => {
+    if (!name.trim()) return toast.show('Enter a chore name', 'warning');
     setLoading(true);
     try {
-      const ct = await houseService.createChoreType(houseId, { name: name.trim(), emoji, frequency: freq });
+      const ct = await houseService.createChoreType(houseId, {
+        name: name.trim(),
+        emoji,
+        frequency: freq,
+      });
       onCreated(ct);
-      setName(''); setEmoji('🧽'); setFreq('daily');
+      setName('');
+      setEmoji('🧽');
+      setFreq('daily');
       onClose();
+      toast.show('Chore added', 'success');
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error?.message ?? 'Could not create chore');
-    } finally { setLoading(false); }
-  }
+      toast.show(e?.response?.data?.error?.message ?? 'Could not create', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
-      <View style={styles.modalSheet}>
-        <View style={styles.handle} />
-        <Text style={styles.modalTitle}>New Chore</Text>
-
-        <Text style={styles.fieldLabel}>NAME</Text>
-        <TextInput
-          style={styles.textInput}
+    <Sheet visible={visible} onClose={onClose} title="New chore" height={520}>
+      <View style={{ gap: spacing.md }}>
+        <TextField
+          label="Name"
           placeholder="e.g. Take out trash"
           value={name}
           onChangeText={setName}
           maxLength={50}
           autoFocus
         />
-
-        <Text style={styles.fieldLabel}>EMOJI</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          {EMOJI_PICKS.map((e) => (
-            <TouchableOpacity
-              key={e}
-              style={[styles.emojiPick, emoji === e && styles.emojiPickSelected]}
-              onPress={() => setEmoji(e)}
-            >
-              <Text style={styles.emojiPickText}>{e}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={styles.fieldLabel}>FREQUENCY</Text>
-        <View style={styles.freqRow}>
-          {(['daily', 'weekly'] as const).map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.freqBtn, freq === f && styles.freqBtnActive]}
-              onPress={() => setFreq(f)}
-            >
-              <Text style={[styles.freqBtnText, freq === f && styles.freqBtnTextActive]}>
-                {f === 'daily' ? '📅 Daily' : '🗓 Weekly'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View>
+          <Text style={[typography.label, { color: c.textSecondary, marginBottom: spacing.xs }]}>
+            Emoji
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {EMOJI_PICKS.map((e) => (
+                <View
+                  key={e}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: emoji === e ? c.primaryMuted : c.surfaceMuted,
+                    borderWidth: emoji === e ? 2 : 0,
+                    borderColor: c.primary,
+                  }}
+                >
+                  <Text
+                    accessibilityRole="button"
+                    accessibilityLabel={`Pick ${e}`}
+                    onPress={() => setEmoji(e)}
+                    style={{ fontSize: 22 }}
+                  >
+                    {e}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
         </View>
-
-        <TouchableOpacity
-          style={[styles.createBtn, loading && styles.disabled]}
+        <View>
+          <Text style={[typography.label, { color: c.textSecondary, marginBottom: spacing.xs }]}>
+            Frequency
+          </Text>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <Chip label="📅 Daily" selected={freq === 'daily'} onPress={() => setFreq('daily')} />
+            <Chip label="🗓 Weekly" selected={freq === 'weekly'} onPress={() => setFreq('weekly')} />
+          </View>
+        </View>
+        <Button
+          label="Create chore"
           onPress={handleCreate}
-          disabled={loading}
-        >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>Create Chore</Text>}
-        </TouchableOpacity>
+          loading={loading}
+          fullWidth
+          size="lg"
+          style={{ marginTop: spacing.md }}
+        />
       </View>
-    </Modal>
+    </Sheet>
   );
 }
 
-// ── Per-Chore Schedule List ──────────────────────────────────────────────────
-
 function ChoreScheduleTab({
-  houseId, choreType, currentUserId, isAdmin,
+  houseId,
+  choreType,
+  currentUserId,
+  isAdmin,
 }: {
-  houseId: string; choreType: ChoreType;
-  currentUserId: string; isAdmin: boolean;
+  houseId: string;
+  choreType: ChoreType;
+  currentUserId: string;
+  isAdmin: boolean;
 }) {
+  const c = useThemeColors();
+  const toast = useToast();
   const [schedule, setSchedule] = useState<ChoreEntry[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const entries = await houseService.getChoreSchedule(houseId, { type_id: choreType.id, days: 14 });
+      const entries = await houseService.getChoreSchedule(houseId, {
+        type_id: choreType.id,
+        days: 14,
+      });
       setSchedule(entries);
-    } catch { /* ignore */ } finally { setLoading(false); }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, [houseId, choreType.id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function handleGenerate() {
+  const handleGenerate = async () => {
     setGenerating(true);
     try {
       const newEntries = await houseService.generateChoreSchedule(houseId, choreType.id, 14);
-      if (newEntries.length === 0) Alert.alert('All set', 'All dates already have assignments.');
+      if (newEntries.length === 0) {
+        toast.show('All dates already assigned', 'info');
+      } else {
+        toast.show(`Added ${newEntries.length} entries`, 'success');
+      }
       await load();
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error?.message ?? 'Could not generate');
-    } finally { setGenerating(false); }
-  }
+      toast.show(e?.response?.data?.error?.message ?? 'Could not generate', 'error');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
-  async function handleMarkDone(entry: ChoreEntry) {
+  const handleMarkDone = async (entry: ChoreEntry) => {
     if (entry.user_id !== currentUserId && !isAdmin) return;
     try {
       const updated = await houseService.updateChoreEntry(houseId, entry.id, { status: 'done' });
       setSchedule((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
-    } catch { Alert.alert('Error', 'Could not update status'); }
-  }
+      toast.show('Marked done', 'success');
+    } catch {
+      toast.show('Could not update', 'error');
+    }
+  };
 
-  function renderEntry({ item }: { item: ChoreEntry }) {
-    const isMe     = item.user_id === currentUserId;
-    const isToday  = item.scheduled_date === TODAY;
+  const renderEntry = ({ item }: { item: ChoreEntry }) => {
+    const isMe = item.user_id === currentUserId;
+    const isToday = item.scheduled_date === TODAY;
+    const tone =
+      item.status === 'done'
+        ? c.successMuted
+        : item.status === 'skipped'
+        ? c.errorMuted
+        : c.surface;
+
     return (
-      <View style={[styles.entryCard, { backgroundColor: STATUS_COLOR[item.status] }, isToday && styles.todayBorder]}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.entryDate, isToday && styles.entryDateToday]}>{formatDate(item.scheduled_date)}</Text>
-          <View style={styles.entryRow}>
-            <View style={styles.entryAvatar}>
-              <Text style={styles.entryAvatarText}>{item.assignee_name?.[0]?.toUpperCase() ?? '?'}</Text>
-            </View>
-            <Text style={styles.entryName}>{isMe ? 'You' : item.assignee_name}</Text>
+      <Card
+        surface="surface"
+        radius="lg"
+        padding="md"
+        elevation="card"
+        bordered
+        style={{
+          marginBottom: spacing.sm,
+          backgroundColor: tone,
+          borderColor: isToday ? c.primary : c.border,
+          borderWidth: isToday ? 2 : 1,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <Avatar name={item.assignee_name ?? '?'} size={36} />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[
+                typography.caption,
+                { color: isToday ? c.primary : c.textSecondary, fontWeight: '700' },
+              ]}
+            >
+              {formatDate(item.scheduled_date)}
+            </Text>
+            <Text style={[typography.h4, { color: c.text, marginTop: 2 }]}>
+              {isMe ? 'You' : item.assignee_name}
+            </Text>
           </View>
+          {item.status === 'done' ? (
+            <Badge label="✅ Done" tone="success" />
+          ) : item.status === 'skipped' ? (
+            <Badge label="⏭ Skipped" tone="neutral" />
+          ) : (isMe || isAdmin) && item.status === 'pending' ? (
+            <Button
+              label={isMe ? 'Done ✓' : 'Mark done'}
+              size="sm"
+              variant={isMe ? 'primary' : 'secondary'}
+              onPress={() => handleMarkDone(item)}
+            />
+          ) : null}
         </View>
-        {STATUS_LABEL[item.status] ? (
-          <Text style={styles.statusLabel}>{STATUS_LABEL[item.status]}</Text>
-        ) : isMe && item.status === 'pending' ? (
-          <TouchableOpacity style={styles.doneBtn} onPress={() => handleMarkDone(item)}>
-            <Text style={styles.doneBtnText}>Done ✓</Text>
-          </TouchableOpacity>
-        ) : isAdmin && item.status === 'pending' ? (
-          <TouchableOpacity style={[styles.doneBtn, styles.adminDoneBtn]} onPress={() => handleMarkDone(item)}>
-            <Text style={styles.doneBtnText}>Mark done</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+      </Card>
     );
-  }
+  };
 
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.tabTopBar}>
-        <Text style={styles.tabTopBarTitle}>{choreType.emoji} {choreType.name}</Text>
-        <TouchableOpacity
-          style={[styles.generateBtn, generating && styles.disabled]}
+        <Text style={[typography.h3, { color: c.text }]}>
+          {choreType.emoji} {choreType.name}
+        </Text>
+        <Button
+          label={`+ ${choreType.frequency === 'daily' ? '2 weeks' : '4 weeks'}`}
+          size="sm"
+          variant="secondary"
+          loading={generating}
           onPress={handleGenerate}
-          disabled={generating}
-        >
-          {generating
-            ? <ActivityIndicator size="small" color="#E85D04" />
-            : <Text style={styles.generateBtnText}>+ {choreType.frequency === 'daily' ? '2 weeks' : '4 weeks'}</Text>}
-        </TouchableOpacity>
+        />
       </View>
       <FlatList
         data={schedule}
         keyExtractor={(item) => item.id}
         renderItem={renderEntry}
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.primary} />
+        }
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No schedule yet</Text>
-              <Text style={styles.emptySub}>Tap "+ {choreType.frequency === 'daily' ? '2 weeks' : '4 weeks'}" to auto-assign.</Text>
-            </View>
+            <EmptyState
+              icon="📅"
+              title="No schedule yet"
+              body={`Tap "+ ${choreType.frequency === 'daily' ? '2 weeks' : '4 weeks'}" to auto-assign.`}
+            />
           ) : null
         }
       />
@@ -226,87 +308,99 @@ function ChoreScheduleTab({
   );
 }
 
-// ── Today Overview Tab ───────────────────────────────────────────────────────
-
 function TodayTab({
-  houseId, currentUserId, cookToday,
+  houseId,
+  currentUserId,
+  cookToday,
 }: {
-  houseId: string; currentUserId: string;
+  houseId: string;
+  currentUserId: string;
   cookToday?: { cook_name: string; status: string; recipe_name?: string };
 }) {
+  const c = useThemeColors();
+  const toast = useToast();
   const [entries, setEntries] = useState<ChoreEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    houseService.getChoreSchedule(houseId, { date: TODAY })
+  const load = useCallback(() => {
+    setLoading(true);
+    houseService
+      .getChoreSchedule(houseId, { date: TODAY })
       .then(setEntries)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [houseId]);
 
-  async function handleMark(entry: ChoreEntry) {
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleMark = async (entry: ChoreEntry) => {
     if (entry.user_id !== currentUserId) return;
     try {
       const updated = await houseService.updateChoreEntry(houseId, entry.id, { status: 'done' });
       setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
-    } catch { Alert.alert('Error', 'Could not update'); }
-  }
+      toast.show('Marked done', 'success');
+    } catch {
+      toast.show('Could not update', 'error');
+    }
+  };
 
   const today = new Date();
-  const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateStr = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
-    <ScrollView contentContainerStyle={styles.todayContent} refreshControl={<RefreshControl refreshing={loading} onRefresh={() => {}} />}>
-      <Text style={styles.todayDate}>{dateStr}</Text>
+    <ScrollView
+      contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
+      refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.primary} />
+      }
+    >
+      <Text
+        style={[typography.label, { color: c.textSecondary, marginBottom: spacing.md, fontWeight: '700' }]}
+      >
+        {dateStr}
+      </Text>
 
-      {/* Cooking row */}
-      {cookToday && (
-        <View style={[styles.dutyRow, cookToday.status === 'done' && styles.dutyRowDone]}>
-          <Text style={styles.dutyEmoji}>🍳</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.dutyChore}>Cooking</Text>
-            <Text style={styles.dutyAssignee}>
-              {cookToday.cook_name}
-              {cookToday.recipe_name ? ` — ${cookToday.recipe_name}` : ''}
-            </Text>
-          </View>
-          {cookToday.status === 'done'
-            ? <Text style={styles.dutyDone}>✅</Text>
-            : <Text style={styles.dutyPending}>⏳</Text>}
-        </View>
-      )}
+      {cookToday ? (
+        <DutyRow
+          emoji="🍳"
+          chore="Cooking"
+          assignee={
+            cookToday.cook_name + (cookToday.recipe_name ? ` — ${cookToday.recipe_name}` : '')
+          }
+          status={cookToday.status}
+        />
+      ) : null}
 
-      {/* Other chore rows */}
       {loading ? (
-        <ActivityIndicator color="#E85D04" style={{ marginTop: 24 }} />
-      ) : entries.length === 0 ? (
-        <View style={styles.todayNoChores}>
-          <Text style={styles.todayNoChoresText}>No chores scheduled today</Text>
-          <Text style={styles.todayNoChoresSub}>Generate a schedule in each chore tab.</Text>
+        <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
+          <Skeleton height={64} radius={14} />
+          <Skeleton height={64} radius={14} />
         </View>
+      ) : entries.length === 0 ? (
+        <EmptyState
+          icon="🧹"
+          title="No chores scheduled today"
+          body="Generate a schedule in each chore tab."
+        />
       ) : (
         entries.map((entry) => {
           const isMe = entry.user_id === currentUserId;
           return (
-            <View
+            <DutyRow
               key={entry.id}
-              style={[styles.dutyRow, entry.status === 'done' && styles.dutyRowDone, isMe && styles.dutyRowMe]}
-            >
-              <Text style={styles.dutyEmoji}>{entry.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.dutyChore}>{entry.chore_name}</Text>
-                <Text style={styles.dutyAssignee}>{isMe ? 'Your turn' : entry.assignee_name}</Text>
-              </View>
-              {entry.status === 'done' ? (
-                <Text style={styles.dutyDone}>✅</Text>
-              ) : isMe ? (
-                <TouchableOpacity style={styles.markDoneBtn} onPress={() => handleMark(entry)}>
-                  <Text style={styles.markDoneBtnText}>Done</Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.dutyPending}>⏳</Text>
-              )}
-            </View>
+              emoji={entry.emoji ?? '🧹'}
+              chore={entry.chore_name ?? 'Chore'}
+              assignee={isMe ? 'Your turn' : entry.assignee_name ?? 'Someone'}
+              status={entry.status ?? 'pending'}
+              isMe={isMe}
+              onMark={isMe ? () => handleMark(entry) : undefined}
+            />
           );
         })
       )}
@@ -314,19 +408,69 @@ function TodayTab({
   );
 }
 
-// ── Root ChoresScreen ────────────────────────────────────────────────────────
+function DutyRow({
+  emoji,
+  chore,
+  assignee,
+  status,
+  isMe,
+  onMark,
+}: {
+  emoji: string;
+  chore: string;
+  assignee: string;
+  status: string;
+  isMe?: boolean;
+  onMark?: () => void;
+}) {
+  const c = useThemeColors();
+  const done = status === 'done';
+  return (
+    <Card
+      surface="surface"
+      radius="lg"
+      padding="md"
+      elevation="card"
+      bordered
+      style={{
+        marginBottom: spacing.sm,
+        backgroundColor: done ? c.successMuted : isMe ? c.primaryMuted : c.surface,
+        borderColor: isMe ? c.primary : c.border,
+        borderWidth: isMe ? 1.5 : 1,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <Text style={{ fontSize: 24, width: 32, textAlign: 'center' }}>{emoji}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[typography.h4, { color: c.text }]}>{chore}</Text>
+          <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: 2 }]}>
+            {assignee}
+          </Text>
+        </View>
+        {done ? (
+          <Text style={{ fontSize: 20 }}>✅</Text>
+        ) : onMark ? (
+          <Button label="Done" size="sm" onPress={onMark} hapticStyle="medium" />
+        ) : (
+          <Text style={{ fontSize: 20, opacity: 0.4 }}>⏳</Text>
+        )}
+      </View>
+    </Card>
+  );
+}
 
 export default function ChoresScreen({ navigation }: any) {
+  const c = useThemeColors();
   const { house, members } = useSelector((s: RootState) => s.house);
   const currentUser = useSelector((s: RootState) => s.auth.user);
-  const todayEntry  = useSelector((s: RootState) =>
-    s.cookSchedule.schedule.find((e) => e.scheduled_date === TODAY),
+  const todayEntry = useSelector((s: RootState) =>
+    s.cookSchedule.schedule.find((e) => e.scheduled_date === TODAY)
   );
 
-  const [choreTypes, setChoreTypes]       = useState<ChoreType[]>([]);
-  const [activeTab, setActiveTab]         = useState(0); // 0 = Today, 1+ = chore types
-  const [showAddModal, setShowAddModal]   = useState(false);
-  const [loading, setLoading]             = useState(true);
+  const [choreTypes, setChoreTypes] = useState<ChoreType[]>([]);
+  const [activeTab, setActiveTab] = useState(0);
+  const [showAdd, setShowAdd] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const isAdmin = members.find((m) => m.user_id === currentUser?.id)?.role === 'admin';
 
@@ -336,61 +480,68 @@ export default function ChoresScreen({ navigation }: any) {
     try {
       const types = await houseService.listChoreTypes(house.id);
       setChoreTypes(types);
-    } catch { /* ignore */ } finally { setLoading(false); }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, [house]);
 
-  useEffect(() => { loadChoreTypes(); }, [loadChoreTypes]);
+  useEffect(() => {
+    loadChoreTypes();
+  }, [loadChoreTypes]);
 
   if (!house) return null;
 
   const tabs = ['Today', ...choreTypes.map((ct) => `${ct.emoji} ${ct.name}`)];
-  const cookToday = todayEntry
-    ? {
-        cook_name:   todayEntry.cook_name ?? 'Someone',
-        status:      todayEntry.status,
-        recipe_name: todayEntry.recipe_name,
-      }
-    : undefined;
+  const cookToday: { cook_name: string; status: string; recipe_name?: string } | undefined =
+    todayEntry
+      ? {
+          cook_name: todayEntry.cook_name ?? 'Someone',
+          status: todayEntry.status ?? 'pending',
+          recipe_name: todayEntry.recipe_name ?? undefined,
+        }
+      : undefined;
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>House Chores</Text>
-        {isAdmin && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <Header
+        title="House chores"
+        onBack={() => navigation.goBack()}
+        right={
+          isAdmin ? (
+            <IconButton
+              icon="+"
+              size={36}
+              variant="filled"
+              accessibilityLabel="Add chore"
+              onPress={() => setShowAdd(true)}
+            />
+          ) : null
+        }
+        border
+      />
 
-      {/* Tab strip */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.tabStrip}
-        contentContainerStyle={styles.tabStripContent}
+        style={{ borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth, maxHeight: 56 }}
+        contentContainerStyle={styles.tabStrip}
       >
-        {loading ? (
-          <ActivityIndicator color="#E85D04" />
-        ) : (
-          tabs.map((label, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.tab, activeTab === idx && styles.tabActive]}
-              onPress={() => setActiveTab(idx)}
-            >
-              <Text style={[styles.tabText, activeTab === idx && styles.tabTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))
-        )}
+        {loading
+          ? null
+          : tabs.map((label, idx) => (
+              <Chip
+                key={idx}
+                label={label}
+                selected={activeTab === idx}
+                onPress={() => setActiveTab(idx)}
+              />
+            ))}
       </ScrollView>
 
-      {/* Tab content */}
-      {!loading && (
+      {!loading ? (
         activeTab === 0 ? (
           <TodayTab
             houseId={house.id}
@@ -406,90 +557,31 @@ export default function ChoresScreen({ navigation }: any) {
             isAdmin={isAdmin}
           />
         )
-      )}
+      ) : null}
 
-      <AddChoreModal
-        visible={showAddModal}
+      <AddChoreSheet
+        visible={showAdd}
         houseId={house.id}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => setShowAdd(false)}
         onCreated={(ct) => setChoreTypes((prev) => [...prev, ct])}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-
-  // Header
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 60 },
-  back:   { fontSize: 15, color: '#E85D04' },
-  title:  { fontSize: 20, fontWeight: '700', color: '#1C1C1E' },
-  addBtn: { backgroundColor: '#E85D04', borderRadius: 10, paddingVertical: 6, paddingHorizontal: 14 },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-
-  // Tab strip
-  tabStrip:        { borderBottomWidth: 1, borderColor: '#F0F0F0', maxHeight: 48 },
-  tabStripContent: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
-  tab:             { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 },
-  tabActive:       { backgroundColor: '#FFF3E0' },
-  tabText:         { fontSize: 14, color: '#9B9B9B', fontWeight: '600' },
-  tabTextActive:   { color: '#E85D04' },
-
-  // Today tab
-  todayContent:    { padding: 16 },
-  todayDate:       { fontSize: 14, color: '#9B9B9B', fontWeight: '600', marginBottom: 16, letterSpacing: 0.5 },
-  dutyRow:         { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, gap: 12 },
-  dutyRowDone:     { backgroundColor: '#F0FDF4' },
-  dutyRowMe:       { borderWidth: 1.5, borderColor: '#E85D04' },
-  dutyEmoji:       { fontSize: 24, width: 32, textAlign: 'center' },
-  dutyChore:       { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
-  dutyAssignee:    { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
-  dutyDone:        { fontSize: 20 },
-  dutyPending:     { fontSize: 20 },
-  markDoneBtn:     { backgroundColor: '#E85D04', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
-  markDoneBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  todayNoChores:   { alignItems: 'center', paddingTop: 40 },
-  todayNoChoresText: { fontSize: 17, fontWeight: '700', color: '#1C1C1E', marginBottom: 6 },
-  todayNoChoresSub:  { fontSize: 14, color: '#9B9B9B', textAlign: 'center' },
-
-  // Schedule tab
-  tabTopBar:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 8 },
-  tabTopBarTitle: { fontSize: 17, fontWeight: '700', color: '#1C1C1E' },
-  generateBtn:    { backgroundColor: '#FFF3E0', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E85D04' },
-  generateBtnText:{ color: '#E85D04', fontWeight: '700', fontSize: 13 },
-  entryCard:      { borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center' },
-  todayBorder:    { borderWidth: 2, borderColor: '#E85D04' },
-  entryDate:      { fontSize: 12, color: '#9B9B9B', fontWeight: '600', marginBottom: 8 },
-  entryDateToday: { color: '#E85D04' },
-  entryRow:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  entryAvatar:    { width: 32, height: 32, borderRadius: 16, backgroundColor: '#E85D04', justifyContent: 'center', alignItems: 'center' },
-  entryAvatarText:{ color: '#fff', fontWeight: '700', fontSize: 14 },
-  entryName:      { fontSize: 14, fontWeight: '600', color: '#1C1C1E' },
-  statusLabel:    { fontSize: 12, color: '#6B6B6B' },
-  doneBtn:        { backgroundColor: '#E85D04', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },
-  adminDoneBtn:   { backgroundColor: '#6B7280' },
-  doneBtnText:    { color: '#fff', fontWeight: '700', fontSize: 12 },
-  emptyState:     { alignItems: 'center', paddingTop: 60 },
-  emptyTitle:     { fontSize: 17, fontWeight: '700', color: '#1C1C1E', marginBottom: 6 },
-  emptySub:       { fontSize: 14, color: '#6B6B6B' },
-  disabled:       { opacity: 0.5 },
-
-  // Add Chore Modal
-  modalBackdrop:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet:     { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 44 },
-  handle:         { width: 40, height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle:     { fontSize: 20, fontWeight: '700', color: '#1C1C1E', marginBottom: 20 },
-  fieldLabel:     { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1, marginBottom: 8 },
-  textInput:      { borderBottomWidth: 1.5, borderColor: '#E85D04', fontSize: 16, paddingBottom: 8, marginBottom: 20, color: '#1C1C1E' },
-  emojiPick:      { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F3F3', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  emojiPickSelected: { backgroundColor: '#FFF3E0', borderWidth: 2, borderColor: '#E85D04' },
-  emojiPickText:  { fontSize: 22 },
-  freqRow:        { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  freqBtn:        { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', backgroundColor: '#F3F3F3', borderWidth: 1.5, borderColor: 'transparent' },
-  freqBtnActive:  { backgroundColor: '#FFF3E0', borderColor: '#E85D04' },
-  freqBtnText:    { fontSize: 14, fontWeight: '600', color: '#6B6B6B' },
-  freqBtnTextActive: { color: '#E85D04' },
-  createBtn:      { backgroundColor: '#E85D04', borderRadius: 14, padding: 16, alignItems: 'center' },
-  createBtnText:  { color: '#fff', fontWeight: '700', fontSize: 16 },
+  safe: { flex: 1 },
+  tabStrip: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  tabTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
 });

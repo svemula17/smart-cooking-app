@@ -1,47 +1,51 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
+  StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+
 import type { RootState } from '../store';
-import { addScheduleEntries, setSchedule, updateScheduleEntry } from '../store/slices/cookScheduleSlice';
+import {
+  addScheduleEntries,
+  setSchedule,
+  updateScheduleEntry,
+} from '../store/slices/cookScheduleSlice';
 import * as houseService from '../services/houseService';
 import type { CookScheduleEntry } from '../services/houseService';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#F3F3F3',
-  cooking: '#FFF3E0',
-  done: '#F0FDF4',
-  skipped: '#FEF2F2',
-};
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Header,
+  useToast,
+} from '../components/ui';
 
-const STATUS_TEXT: Record<string, string> = {
-  pending: '',
-  cooking: '🍳 Cooking',
-  done: '✅ Done',
-  skipped: '⏭ Skipped',
-};
-
-function formatDate(iso: string): string {
+const formatDate = (iso: string): string => {
   const d = new Date(iso + 'T00:00:00');
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(today.getDate() + 1);
-
   if (iso === today.toISOString().slice(0, 10)) return 'Today';
   if (iso === tomorrow.toISOString().slice(0, 10)) return 'Tomorrow';
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
+};
 
 export default function CookScheduleScreen({ navigation }: any) {
+  const c = useThemeColors();
   const dispatch = useDispatch();
+  const toast = useToast();
   const { house } = useSelector((s: RootState) => s.house);
   const { schedule, isLoading } = useSelector((s: RootState) => s.cookSchedule);
   const currentUser = useSelector((s: RootState) => s.auth.user);
@@ -55,182 +59,158 @@ export default function CookScheduleScreen({ navigation }: any) {
       const sched = await houseService.getSchedule(house.id, 14);
       dispatch(setSchedule(sched));
     } catch {
-      Alert.alert('Error', 'Could not load schedule');
+      toast.show('Could not load schedule', 'error');
     }
-  }, [house, dispatch]);
+  }, [house, dispatch, toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function handleGenerate() {
+  const handleGenerate = async () => {
     if (!house) return;
     setGenerating(true);
     try {
       const newEntries = await houseService.generateSchedule(house.id, 14);
       dispatch(addScheduleEntries(newEntries));
       if (newEntries.length === 0) {
-        Alert.alert('All set', 'All days for the next 2 weeks already have cooks assigned.');
+        toast.show('All days already assigned', 'info');
+      } else {
+        toast.show(`Added ${newEntries.length} days`, 'success');
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error?.message ?? 'Could not generate schedule');
+      toast.show(e?.response?.data?.error?.message ?? 'Could not generate schedule', 'error');
     } finally {
       setGenerating(false);
     }
-  }
+  };
 
-  async function handlePickRecipe(entry: CookScheduleEntry) {
-    if (entry.user_id !== currentUser?.id) return;
-    navigation.navigate('RecipeSelect', { onSelect: async (recipeId: string) => {
-      if (!house) return;
-      try {
-        const updated = await houseService.updateScheduleEntry(house.id, entry.id, { recipe_id: recipeId });
-        dispatch(updateScheduleEntry(updated));
-      } catch {
-        Alert.alert('Error', 'Could not pick recipe');
-      }
-    }});
-  }
-
-  async function handleMarkDone(entry: CookScheduleEntry) {
+  const handleMarkDone = async (entry: CookScheduleEntry) => {
     if (!house) return;
     try {
-      const updated = await houseService.updateScheduleEntry(house.id, entry.id, { status: 'done' });
+      const updated = await houseService.updateScheduleEntry(house.id, entry.id, {
+        status: 'done',
+      });
       dispatch(updateScheduleEntry(updated));
+      toast.show('Marked done', 'success');
     } catch {
-      Alert.alert('Error', 'Could not update status');
+      toast.show('Could not update', 'error');
     }
-  }
+  };
 
-  function renderEntry({ item }: { item: CookScheduleEntry }) {
+  const renderEntry = ({ item }: { item: CookScheduleEntry }) => {
     const isMe = item.user_id === currentUser?.id;
-    const isPast = item.scheduled_date < TODAY;
     const isToday = item.scheduled_date === TODAY;
 
+    const statusBadge = (() => {
+      switch (item.status) {
+        case 'cooking':
+          return <Badge label="🍳 Cooking" tone="warning" />;
+        case 'done':
+          return <Badge label="✅ Done" tone="success" />;
+        case 'skipped':
+          return <Badge label="⏭ Skipped" tone="neutral" />;
+        default:
+          return null;
+      }
+    })();
+
+    const tone = (() => {
+      switch (item.status) {
+        case 'cooking':
+          return c.warningMuted;
+        case 'done':
+          return c.successMuted;
+        case 'skipped':
+          return c.errorMuted;
+        default:
+          return c.surface;
+      }
+    })();
+
     return (
-      <View style={[styles.entryCard, { backgroundColor: STATUS_COLORS[item.status] }, isToday && styles.todayBorder]}>
-        <View style={styles.entryLeft}>
-          <Text style={[styles.entryDate, isToday && styles.todayText]}>{formatDate(item.scheduled_date)}</Text>
-          <View style={styles.cookRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{item.cook_name?.[0]?.toUpperCase() ?? '?'}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cookName}>{isMe ? 'You' : item.cook_name}</Text>
-              {item.recipe_name ? (
-                <Text style={styles.recipeName}>{item.recipe_name}</Text>
-              ) : isMe ? (
-                <TouchableOpacity onPress={() => handlePickRecipe(item)}>
-                  <Text style={styles.pickRecipe}>Tap to pick a recipe →</Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.noRecipe}>Recipe not picked</Text>
-              )}
-            </View>
+      <Card
+        surface="surface"
+        radius="lg"
+        padding="md"
+        elevation="card"
+        bordered
+        style={{
+          marginBottom: spacing.sm,
+          backgroundColor: tone,
+          borderColor: isToday ? c.primary : c.border,
+          borderWidth: isToday ? 2 : 1,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
+          <Avatar name={item.cook_name ?? '?'} size={40} />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[
+                typography.caption,
+                { color: isToday ? c.primary : c.textSecondary, fontWeight: '700' },
+              ]}
+            >
+              {formatDate(item.scheduled_date)}
+            </Text>
+            <Text style={[typography.h4, { color: c.text, marginTop: 2 }]}>
+              {isMe ? 'You' : item.cook_name}
+            </Text>
+            {item.recipe_name ? (
+              <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: 2 }]}>
+                {item.recipe_name}
+              </Text>
+            ) : (
+              <Text style={[typography.caption, { color: c.textLight, marginTop: 2 }]}>
+                Recipe not picked yet
+              </Text>
+            )}
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
+            {statusBadge}
+            {isMe && isToday && item.status === 'pending' ? (
+              <Button label="Mark done" size="sm" onPress={() => handleMarkDone(item)} />
+            ) : null}
           </View>
         </View>
-        <View style={styles.entryRight}>
-          {STATUS_TEXT[item.status] ? (
-            <Text style={styles.statusText}>{STATUS_TEXT[item.status]}</Text>
-          ) : isMe && isToday && item.status === 'pending' ? (
-            <TouchableOpacity style={styles.doneBtn} onPress={() => handleMarkDone(item)}>
-              <Text style={styles.doneBtnText}>Mark done</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      </View>
+      </Card>
     );
-  }
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Text style={styles.title}>Cook Schedule</Text>
-        <TouchableOpacity
-          style={[styles.generateBtn, generating && styles.disabled]}
-          onPress={handleGenerate}
-          disabled={generating}
-        >
-          {generating ? (
-            <ActivityIndicator size="small" color="#E85D04" />
-          ) : (
-            <Text style={styles.generateBtnText}>+ 2 weeks</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <Header
+        title="Cook schedule"
+        onBack={() => navigation.goBack()}
+        right={
+          <Button label="+ 2 weeks" size="sm" loading={generating} onPress={handleGenerate} />
+        }
+        border
+      />
       <FlatList
         data={schedule}
         keyExtractor={(item) => item.id}
         renderItem={renderEntry}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} />}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={load} tintColor={c.primary} />
+        }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No schedule yet</Text>
-            <Text style={styles.emptySubtitle}>Tap "+ 2 weeks" to auto-assign cooks.</Text>
-          </View>
+          <EmptyState
+            icon="📅"
+            title="No schedule yet"
+            body="Tap “+ 2 weeks” to auto-assign cooks."
+            ctaLabel="+ 2 weeks"
+            onCta={handleGenerate}
+          />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-  },
-  title: { fontSize: 24, fontWeight: '700', color: '#1C1C1E' },
-  generateBtn: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#E85D04',
-  },
-  generateBtnText: { color: '#E85D04', fontWeight: '700', fontSize: 14 },
-  list: { padding: 16 },
-  entryCard: {
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  todayBorder: { borderWidth: 2, borderColor: '#E85D04' },
-  entryLeft: { flex: 1 },
-  entryDate: { fontSize: 12, color: '#9B9B9B', marginBottom: 8, fontWeight: '600' },
-  todayText: { color: '#E85D04' },
-  cookRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E85D04',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  cookName: { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
-  recipeName: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
-  pickRecipe: { fontSize: 13, color: '#E85D04', marginTop: 2 },
-  noRecipe: { fontSize: 13, color: '#9B9B9B', marginTop: 2 },
-  entryRight: { alignItems: 'flex-end' },
-  statusText: { fontSize: 12, color: '#6B6B6B' },
-  doneBtn: {
-    backgroundColor: '#E85D04',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  doneBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  disabled: { opacity: 0.6 },
-  emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1C1C1E', marginBottom: 8 },
-  emptySubtitle: { fontSize: 15, color: '#6B6B6B', textAlign: 'center' },
+  safe: { flex: 1 },
+  list: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
 });

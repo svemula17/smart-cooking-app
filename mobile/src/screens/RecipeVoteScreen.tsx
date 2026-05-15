@@ -1,24 +1,25 @@
 import React, { useCallback, useEffect } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+
 import type { RootState } from '../store';
 import { setMyVote, setProposal, setProposalLoading } from '../store/slices/proposalSlice';
 import { houseApi } from '../services/api';
 
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { Badge, Button, Card, Header, Skeleton, useToast } from '../components/ui';
+
 export default function RecipeVoteScreen({ route, navigation }: any) {
   const { proposalId } = route.params as { proposalId: string };
+  const c = useThemeColors();
   const dispatch = useDispatch();
+  const toast = useToast();
   const { house } = useSelector((s: RootState) => s.house);
   const { activeProposal, recipes, votes, votingOpen, myVote, isLoading } = useSelector(
-    (s: RootState) => s.proposal,
+    (s: RootState) => s.proposal
   );
   const currentUser = useSelector((s: RootState) => s.auth.user);
 
@@ -28,131 +29,147 @@ export default function RecipeVoteScreen({ route, navigation }: any) {
     try {
       const { data } = await houseApi.get(`/houses/${house.id}/proposals/${proposalId}`);
       dispatch(setProposal(data.data));
-      const myVoteEntry = data.data.votes.find((v: any) =>
-        v.voters?.some((vt: any) => vt.user_id === currentUser?.id),
+      const myEntry = data.data.votes.find((v: any) =>
+        v.voters?.some((vt: any) => vt.user_id === currentUser?.id)
       );
-      if (myVoteEntry) dispatch(setMyVote(myVoteEntry.recipe_id));
+      if (myEntry) dispatch(setMyVote(myEntry.recipe_id));
     } catch {
-      Alert.alert('Error', 'Could not load proposals');
+      toast.show('Could not load proposals', 'error');
     }
-  }, [house, proposalId, dispatch, currentUser]);
+  }, [house, proposalId, dispatch, currentUser, toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function handleVote(recipeId: string) {
+  const handleVote = async (recipeId: string) => {
     if (!house || !votingOpen) return;
     try {
-      await houseApi.post(`/houses/${house.id}/proposals/${proposalId}/vote`, { recipe_id: recipeId });
+      await houseApi.post(
+        `/houses/${house.id}/proposals/${proposalId}/vote`,
+        { recipe_id: recipeId }
+      );
       dispatch(setMyVote(recipeId));
+      toast.show('Vote submitted', 'success');
       await load();
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error?.message ?? 'Could not submit vote');
+      toast.show(e?.response?.data?.error?.message ?? 'Could not vote', 'error');
     }
-  }
+  };
 
-  function getVoteCount(recipeId: string): number {
-    return parseInt(votes.find((v) => v.recipe_id === recipeId)?.vote_count ?? '0', 10);
-  }
-
-  const totalVotes = votes.reduce((sum, v) => sum + parseInt(v.vote_count, 10), 0);
-
-  if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#E85D04" /></View>;
-  }
+  const getCount = (recipeId: string) =>
+    parseInt(votes.find((v) => v.recipe_id === recipeId)?.vote_count ?? '0', 10);
+  const total = votes.reduce((sum, v) => sum + parseInt(v.vote_count, 10), 0);
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Vote on Tonight's Meal</Text>
-        {activeProposal && (
-          <Text style={styles.deadline}>
-            Voting {votingOpen ? `closes ${new Date(activeProposal.voting_ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'closed'}
-          </Text>
-        )}
-      </View>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <Header
+        title="Vote on tonight’s meal"
+        subtitle={
+          activeProposal
+            ? `Voting ${
+                votingOpen
+                  ? `closes ${new Date(activeProposal.voting_ends_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}`
+                  : 'closed'
+              }`
+            : undefined
+        }
+        onBack={() => navigation.goBack()}
+        border
+      />
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
+      >
+        {isLoading ? (
+          <View style={{ gap: spacing.md }}>
+            <Skeleton height={100} radius={16} />
+            <Skeleton height={100} radius={16} />
+          </View>
+        ) : (
+          recipes.map((recipe) => {
+            const count = getCount(recipe.id);
+            const pct = total > 0 ? (count / total) * 100 : 0;
+            const isMyPick = myVote === recipe.id;
+            const isWinner = activeProposal?.selected_recipe_id === recipe.id;
 
-      {recipes.map((recipe) => {
-        const count = getVoteCount(recipe.id);
-        const pct = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
-        const isMyPick = myVote === recipe.id;
-        const isWinner = activeProposal?.selected_recipe_id === recipe.id;
-
-        return (
-          <TouchableOpacity
-            key={recipe.id}
-            style={[styles.recipeCard, isMyPick && styles.recipeCardVoted, isWinner && styles.recipeCardWinner]}
-            onPress={() => votingOpen && handleVote(recipe.id)}
-            activeOpacity={votingOpen ? 0.7 : 1}
-          >
-            <View style={styles.recipeTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.recipeName}>{recipe.name}</Text>
-                <Text style={styles.recipeMeta}>
-                  {recipe.cuisine_type} · {(recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0)} min
+            return (
+              <Card
+                key={recipe.id}
+                surface="surface"
+                radius="xl"
+                padding="lg"
+                elevation="card"
+                bordered
+                onPress={votingOpen ? () => handleVote(recipe.id) : undefined}
+                style={{
+                  marginBottom: spacing.md,
+                  borderColor: isWinner ? c.success : isMyPick ? c.primary : c.border,
+                  backgroundColor: isWinner ? c.successMuted : isMyPick ? c.primaryMuted : c.surface,
+                  borderWidth: isWinner || isMyPick ? 2 : 1,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[typography.h4, { color: c.text }]}>{recipe.name}</Text>
+                    <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+                      {recipe.cuisine_type} ·{' '}
+                      {(recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0)} min
+                    </Text>
+                  </View>
+                  {isWinner ? (
+                    <Badge label="🏆 Winner" tone="success" />
+                  ) : isMyPick ? (
+                    <Badge label="✓ My vote" tone="primary" />
+                  ) : null}
+                </View>
+                <View
+                  style={{
+                    height: 6,
+                    backgroundColor: c.surfaceMuted,
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                    marginBottom: spacing.xs,
+                  }}
+                >
+                  <View
+                    style={{
+                      height: '100%',
+                      width: `${pct}%`,
+                      backgroundColor: c.primary,
+                      borderRadius: 3,
+                    }}
+                  />
+                </View>
+                <Text style={[typography.caption, { color: c.textSecondary }]}>
+                  {count} vote{count !== 1 ? 's' : ''}
                 </Text>
-              </View>
-              {isWinner && <Text style={styles.winnerBadge}>🏆 Winner</Text>}
-              {isMyPick && !isWinner && <Text style={styles.myPickBadge}>✓ My vote</Text>}
-            </View>
+              </Card>
+            );
+          })
+        )}
 
-            {/* Vote bar */}
-            <View style={styles.voteBar}>
-              <View style={[styles.voteBarFill, { width: `${pct}%` as any }]} />
-            </View>
-            <Text style={styles.voteCount}>{count} vote{count !== 1 ? 's' : ''}</Text>
-          </TouchableOpacity>
-        );
-      })}
-
-      {!votingOpen && activeProposal?.selected_recipe_id && (
-        <TouchableOpacity
-          style={styles.cookItBtn}
-          onPress={() => navigation.navigate('RecipeDetail', { recipeId: activeProposal.selected_recipe_id })}
-        >
-          <Text style={styles.cookItBtnText}>View winning recipe →</Text>
-        </TouchableOpacity>
-      )}
-
-      <View style={{ height: 60 }} />
-    </ScrollView>
+        {!votingOpen && activeProposal?.selected_recipe_id ? (
+          <Button
+            label="View winning recipe →"
+            size="lg"
+            fullWidth
+            onPress={() =>
+              navigation.navigate('RecipeDetail', {
+                recipeId: activeProposal.selected_recipe_id,
+              })
+            }
+            style={{ marginTop: spacing.md }}
+          />
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { padding: 20, paddingTop: 60, marginBottom: 8 },
-  back: { fontSize: 15, color: '#E85D04', marginBottom: 12 },
-  title: { fontSize: 24, fontWeight: '700', color: '#1C1C1E', marginBottom: 4 },
-  deadline: { fontSize: 13, color: '#9B9B9B' },
-  recipeCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  recipeCardVoted: { borderColor: '#E85D04', backgroundColor: '#FFF3E0' },
-  recipeCardWinner: { borderColor: '#16A34A', backgroundColor: '#F0FDF4' },
-  recipeTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
-  recipeName: { fontSize: 17, fontWeight: '700', color: '#1C1C1E', marginBottom: 4 },
-  recipeMeta: { fontSize: 13, color: '#9B9B9B' },
-  winnerBadge: { fontSize: 13, fontWeight: '700', color: '#16A34A' },
-  myPickBadge: { fontSize: 13, fontWeight: '700', color: '#E85D04' },
-  voteBar: { height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, marginBottom: 6, overflow: 'hidden' },
-  voteBarFill: { height: '100%', backgroundColor: '#E85D04', borderRadius: 3 },
-  voteCount: { fontSize: 12, color: '#9B9B9B' },
-  cookItBtn: {
-    backgroundColor: '#16A34A',
-    borderRadius: 14,
-    padding: 16,
-    margin: 16,
-    alignItems: 'center',
-  },
-  cookItBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  safe: { flex: 1 },
 });

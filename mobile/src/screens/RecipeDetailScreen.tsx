@@ -1,32 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  Dimensions,
   Alert,
-  ActivityIndicator,
-  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
   TextInput,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDispatch, useSelector } from 'react-redux';
+
 import { RootStackParamList, RecipeWithDetails, Review } from '../types';
 import { NutritionGrid } from '../components/NutritionGrid';
 import { recipeService } from '../services/recipeService';
 import { shoppingService } from '../services/shoppingService';
-import { colors } from '../theme/colors';
 import { toggleFavorite, type RootState } from '../store';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
+import { typography } from '../theme/typography';
+import {
+  Badge,
+  Button,
+  Card,
+  Chip,
+  ErrorState,
+  IconButton,
+  Sheet,
+  Skeleton,
+  useToast,
+} from '../components/ui';
 
-const { width } = Dimensions.get('window');
-void width;
+type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
+type TabKey = 'Need' | 'Flow' | 'Proof';
 
 const CUISINE_EMOJI: Record<string, string> = {
   Indian: '🍛',
@@ -41,44 +51,47 @@ const CUISINE_EMOJI: Record<string, string> = {
   French: '🥐',
 };
 
-const DIFFICULTY_STYLE: Record<string, { bg: string; text: string }> = {
-  Easy: { bg: colors.easy, text: colors.easyText },
-  Medium: { bg: colors.medium, text: colors.mediumText },
-  Hard: { bg: colors.hard, text: colors.hardText },
-};
+const stars = (rating: number) =>
+  '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
 
-const renderStars = (rating: number): string => {
-  const full = Math.round(rating);
-  return '★'.repeat(full) + '☆'.repeat(5 - full);
-};
-
-const formatDate = (iso: string): string => {
+const formatDate = (iso: string) => {
   try {
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(iso).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   } catch {
     return iso;
   }
 };
 
-type TabKey = 'Need' | 'Flow' | 'Proof';
-
 const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { recipeId } = route.params;
-  const [activeTab, setActiveTab] = useState<TabKey>('Need');
-  const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
-  const [ratingModalVisible, setRatingModalVisible] = useState(false);
-  const [selectedStars, setSelectedStars] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [servings, setServings] = useState<number | null>(null);
-  const [activeTimer, setActiveTimer] = useState<{ label: string; total: number; remaining: number; running: boolean } | null>(null);
-  const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const c = useThemeColors();
+  const toast = useToast();
   const dispatch = useDispatch();
+  const qc = useQueryClient();
+
   const user = useSelector((s: RootState) => s.auth.user);
   const isFav = useSelector((s: RootState) => s.favorites.ids.includes(recipeId));
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
-  const qc = useQueryClient();
 
-  const { data: recipe, isLoading, isError } = useQuery<RecipeWithDetails>({
+  const [activeTab, setActiveTab] = useState<TabKey>('Need');
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [ratingStars, setRatingStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+  const [servings, setServings] = useState<number | null>(null);
+
+  const [activeTimer, setActiveTimer] = useState<{
+    label: string;
+    total: number;
+    remaining: number;
+  } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { data: recipe, isLoading, isError, refetch } = useQuery<RecipeWithDetails>({
     queryKey: ['recipe', recipeId],
     queryFn: () => recipeService.getById(recipeId),
   });
@@ -89,7 +102,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     enabled: !!recipe,
   });
 
-  const addToListMutation = useMutation({
+  const addToList = useMutation({
     mutationFn: () =>
       shoppingService.generate({
         user_id: user!.id,
@@ -98,49 +111,54 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['shopping-lists'] });
-      Alert.alert('✅ Added to Shopping', `Shopping list for "${recipe?.name}" created!`, [{ text: 'OK' }]);
+      toast.show('Added to shopping list', 'success');
     },
-    onError: () => Alert.alert('Error', 'Failed to create shopping list. Please try again.'),
+    onError: () => toast.show('Could not create list', 'error'),
   });
 
-  // Step timer logic
-  function startTimer(label: string, minutes: number) {
+  const rate = useMutation({
+    mutationFn: () =>
+      recipeService.rate(recipeId, ratingStars, ratingComment.trim() || undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recipe', recipeId] });
+      qc.invalidateQueries({ queryKey: ['reviews', recipeId] });
+      setRatingOpen(false);
+      setRatingComment('');
+      toast.show('Thanks — your rating is in', 'success');
+    },
+    onError: () => toast.show('Failed to submit rating', 'error'),
+  });
+
+  const startTimer = (label: string, minutes: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const total = minutes * 60;
-    setActiveTimer({ label, total, remaining: total, running: true });
+    setActiveTimer({ label, total, remaining: total });
     timerRef.current = setInterval(() => {
       setActiveTimer((prev) => {
         if (!prev) return null;
         if (prev.remaining <= 1) {
-          clearInterval(timerRef.current!);
+          if (timerRef.current) clearInterval(timerRef.current);
           timerRef.current = null;
-          Alert.alert('⏱ Timer Done!', `${label} is complete!`);
+          toast.show(`${label} timer done`, 'info');
           return null;
         }
         return { ...prev, remaining: prev.remaining - 1 };
       });
     }, 1000);
-  }
+  };
 
-  function stopTimer() {
+  const stopTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     setActiveTimer(null);
-  }
+  };
 
-  React.useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
-
-  const rateMutation = useMutation({
-    mutationFn: () => recipeService.rate(recipeId, selectedStars, reviewComment.trim() || undefined),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['recipe', recipeId] });
-      qc.invalidateQueries({ queryKey: ['reviews', recipeId] });
-      setRatingModalVisible(false);
-      setReviewComment('');
-      Alert.alert('Thanks!', 'Your rating has been submitted.');
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearInterval(timerRef.current);
     },
-    onError: () => Alert.alert('Error', 'Failed to submit rating. Try again.'),
-  });
+    []
+  );
 
   const handleAddToList = () => {
     if (!user) {
@@ -148,33 +166,24 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
     Alert.alert(
-      'Add to Shopping List?',
-      `Create a shopping list with ingredients for "${recipe?.name}"?`,
+      'Create shopping list?',
+      `Generate a list with ingredients for "${recipe?.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Create List', onPress: () => addToListMutation.mutate() },
-      ],
+        { text: 'Create', onPress: () => addToList.mutate() },
+      ]
     );
-  };
-
-  const toggleIngredient = (id: string) => {
-    setCheckedIngredients((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.skeletonHero} />
-        <View style={styles.skeletonBody}>
-          <View style={styles.skeletonLine} />
-          <View style={[styles.skeletonLine, { width: '55%' }]} />
-          <View style={[styles.skeletonLine, { width: '70%', marginTop: 20 }]} />
-          <View style={[styles.skeletonLine, { width: '45%' }]} />
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+        <View style={{ padding: spacing.lg, gap: spacing.md }}>
+          <Skeleton height={220} radius={radii.xl} />
+          <Skeleton height={20} width="70%" />
+          <Skeleton height={14} width="50%" />
+          <Skeleton height={120} radius={radii.lg} />
+          <Skeleton height={14} width="80%" />
         </View>
       </SafeAreaView>
     );
@@ -182,888 +191,604 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   if (isError || !recipe) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>😕</Text>
-          <Text style={styles.errorTitle}>Recipe not found</Text>
-          <TouchableOpacity style={styles.errorBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.errorBtnText}>← Go Back</Text>
-          </TouchableOpacity>
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
+        <ErrorState
+          title="Recipe not found"
+          body="We couldn’t load this recipe."
+          onRetry={() => refetch()}
+        />
+        <View style={{ padding: spacing.lg }}>
+          <Button label="Go back" variant="secondary" onPress={() => navigation.goBack()} />
         </View>
       </SafeAreaView>
     );
   }
 
   const cuisineEmoji = CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️';
-  const diffStyle = DIFFICULTY_STYLE[recipe.difficulty] ?? DIFFICULTY_STYLE.Easy;
   const totalTime = recipe.prep_time_minutes + recipe.cook_time_minutes;
   const currentServings = servings ?? recipe.servings;
   const servingScale = currentServings / (recipe.servings || 1);
-  const pantryNames = pantryItems.map((item) => item.name.toLowerCase());
-  const matchedIngredients = recipe.ingredients.filter((ing) => {
-    const ingredient = ing.ingredient_name.toLowerCase();
-    return pantryNames.some((name) => ingredient.includes(name) || name.includes(ingredient));
+
+  const pantryNames = pantryItems.map((i) => i.name.toLowerCase());
+  const matched = recipe.ingredients.filter((ing) => {
+    const n = ing.ingredient_name.toLowerCase();
+    return pantryNames.some((name) => n.includes(name) || name.includes(n));
   });
-  const pantryCoverage = recipe.ingredients.length > 0
-    ? Math.round((matchedIngredients.length / recipe.ingredients.length) * 100)
-    : 0;
+  const pantryCoverage =
+    recipe.ingredients.length > 0
+      ? Math.round((matched.length / recipe.ingredients.length) * 100)
+      : 0;
   const useSoonNames = pantryItems
-    .filter((item) => item.expiry_date)
-    .filter((item) => {
-      const diff = new Date(item.expiry_date!).getTime() - Date.now();
-      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    .filter((i) => i.expiry_date)
+    .filter((i) => {
+      const days = Math.ceil(
+        (new Date(i.expiry_date!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      );
       return days >= 0 && days <= 3;
     })
-    .map((item) => item.name.toLowerCase());
+    .map((i) => i.name.toLowerCase());
   const useSoonMatches = recipe.ingredients.filter((ing) =>
-    useSoonNames.some((name) => ing.ingredient_name.toLowerCase().includes(name) || name.includes(ing.ingredient_name.toLowerCase())),
+    useSoonNames.some(
+      (n) =>
+        ing.ingredient_name.toLowerCase().includes(n) ||
+        n.includes(ing.ingredient_name.toLowerCase())
+    )
   );
-  const effortNote =
+  const effort =
     totalTime <= 25 && recipe.difficulty === 'Easy'
       ? 'Fast and forgiving'
       : totalTime <= 40
-        ? 'Reasonable weeknight lift'
-        : 'Better when you actually want to cook';
+      ? 'Reasonable weeknight lift'
+      : 'Better when you want to cook';
   const fitTone =
     pantryCoverage >= 60
       ? 'High pantry fit'
       : pantryCoverage >= 35
-        ? 'Partial pantry fit'
-        : 'You will need a few unlock items';
+      ? 'Partial pantry fit'
+      : 'You’ll need a few unlock items';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hero */}
-        <View style={styles.hero}>
-          <View style={styles.heroGradient}>
-            <Text style={styles.heroBgEmoji}>{cuisineEmoji}</Text>
+        <View style={[styles.hero, { backgroundColor: c.primaryMuted }]}>
+          <Text style={styles.heroBg}>{cuisineEmoji}</Text>
+          <View style={styles.heroOverlayBtns}>
+            <IconButton
+              icon="‹"
+              size={40}
+              variant="tinted"
+              accessibilityLabel="Go back"
+              onPress={() => navigation.goBack()}
+            />
+            <IconButton
+              icon={isFav ? '❤️' : '🤍'}
+              size={40}
+              variant="tinted"
+              accessibilityLabel={isFav ? 'Remove from favorites' : 'Add to favorites'}
+              onPress={() => dispatch(toggleFavorite(recipeId))}
+            />
           </View>
-
-          {/* Back button overlaid */}
-          <TouchableOpacity style={styles.heroBackBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.heroBackText}>←</Text>
-          </TouchableOpacity>
-
-          {/* Favorite button */}
-          <TouchableOpacity style={styles.heroFavBtn} onPress={() => dispatch(toggleFavorite(recipeId))}>
-            <Text style={styles.heroFavIcon}>{isFav ? '❤️' : '🤍'}</Text>
-          </TouchableOpacity>
-
-          {/* Overlay info */}
-          <View style={styles.heroOverlay}>
-            <View style={styles.heroBadgeRow}>
-              <View style={[styles.badge, { backgroundColor: diffStyle.bg }]}>
-                <Text style={[styles.badgeText, { color: diffStyle.text }]}>{recipe.difficulty}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: 'rgba(255,255,255,0.85)' }]}>
-                <Text style={[styles.badgeText, { color: colors.accent }]}>{recipe.cuisine_type}</Text>
-              </View>
+          <View
+            style={[
+              styles.heroBottom,
+              { backgroundColor: 'rgba(255,255,255,0.94)' },
+            ]}
+          >
+            <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
+              <Badge
+                label={recipe.difficulty}
+                tone={
+                  recipe.difficulty === 'Easy'
+                    ? 'success'
+                    : recipe.difficulty === 'Medium'
+                    ? 'warning'
+                    : 'error'
+                }
+              />
+              <Badge label={recipe.cuisine_type} tone="info" />
             </View>
-            <Text style={styles.heroTitle} numberOfLines={2}>{recipe.name}</Text>
-            <View style={styles.heroRatingRow}>
-              <Text style={styles.heroStars}>{renderStars(recipe.average_rating)}</Text>
-              <Text style={styles.heroRatingText}>
+            <Text style={[typography.h2, { color: c.text }]} numberOfLines={2}>
+              {recipe.name}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs, gap: 6 }}>
+              <Text style={{ fontSize: 14, color: c.warning, letterSpacing: 1 }}>
+                {stars(recipe.average_rating)}
+              </Text>
+              <Text style={[typography.bodySmall, { color: c.textSecondary }]}>
                 {recipe.average_rating.toFixed(1)} ({recipe.total_ratings})
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statIcon}>⏱</Text>
-            <Text style={styles.statValue}>{recipe.prep_time_minutes}m</Text>
-            <Text style={styles.statLabel}>Prep</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statIcon}>🔥</Text>
-            <Text style={styles.statValue}>{recipe.cook_time_minutes}m</Text>
-            <Text style={styles.statLabel}>Cook</Text>
-          </View>
-          {/* Serving adjuster */}
-          <View style={styles.statItem}>
-            <View style={styles.servingRow}>
-              <TouchableOpacity
-                style={styles.servingBtn}
-                onPress={() => setServings(Math.max(1, currentServings - 1))}
-              >
-                <Text style={styles.servingBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.statValue}>{currentServings}</Text>
-              <TouchableOpacity
-                style={styles.servingBtn}
-                onPress={() => setServings(Math.min(20, currentServings + 1))}
-              >
-                <Text style={styles.servingBtnText}>+</Text>
-              </TouchableOpacity>
+        {/* Stats */}
+        <Card
+          surface="surface"
+          radius="xl"
+          padding="lg"
+          elevation="card"
+          style={styles.block}
+        >
+          <View style={{ flexDirection: 'row' }}>
+            <Stat icon="⏱" value={`${recipe.prep_time_minutes}m`} label="Prep" />
+            <Stat icon="🔥" value={`${recipe.cook_time_minutes}m`} label="Cook" />
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <IconButton
+                  icon="−"
+                  size={28}
+                  variant="tinted"
+                  accessibilityLabel="Decrease servings"
+                  onPress={() => setServings(Math.max(1, currentServings - 1))}
+                />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: c.text }}>
+                  {currentServings}
+                </Text>
+                <IconButton
+                  icon="+"
+                  size={28}
+                  variant="tinted"
+                  accessibilityLabel="Increase servings"
+                  onPress={() => setServings(Math.min(20, currentServings + 1))}
+                />
+              </View>
+              <Text style={[typography.caption, { color: c.textSecondary, fontWeight: '600' }]}>
+                Serves
+              </Text>
             </View>
-            <Text style={styles.statLabel}>Serves</Text>
           </View>
-        </View>
+        </Card>
 
-        <View style={styles.fitCard}>
+        {/* Fit card */}
+        <Card
+          surface="surfaceMuted"
+          radius="2xl"
+          padding="lg"
+          elevation="flat"
+          style={styles.block}
+        >
           <View style={styles.fitHeader}>
-            <View>
-              <Text style={styles.fitEyebrow}>Tonight Fit</Text>
-              <Text style={styles.fitTitle}>Should this be tonight’s plan?</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.overline, { color: c.textSecondary }]}>Tonight Fit</Text>
+              <Text style={[typography.h3, { color: c.text, marginTop: 2 }]}>
+                Should this be tonight’s plan?
+              </Text>
             </View>
-            <View style={styles.fitPill}>
-              <Text style={styles.fitPillText}>{fitTone}</Text>
-            </View>
+            <Badge label={fitTone} tone={pantryCoverage >= 60 ? 'success' : 'neutral'} size="md" />
           </View>
-          <Text style={styles.fitSubtitle}>
-            {effortNote}. {matchedIngredients.length} of {recipe.ingredients.length} ingredients already overlap with your pantry.
+          <Text
+            style={[
+              typography.bodySmall,
+              { color: c.textSecondary, marginTop: spacing.sm },
+            ]}
+          >
+            {effort}. {matched.length} of {recipe.ingredients.length} ingredients overlap with your
+            pantry.
           </Text>
           <View style={styles.fitMetrics}>
-            <View style={styles.fitMetric}>
-              <Text style={styles.fitMetricValue}>{pantryCoverage}%</Text>
-              <Text style={styles.fitMetricLabel}>Pantry match</Text>
-            </View>
-            <View style={styles.fitMetric}>
-              <Text style={styles.fitMetricValue}>{useSoonMatches.length}</Text>
-              <Text style={styles.fitMetricLabel}>Use-soon saves</Text>
-            </View>
-            <View style={styles.fitMetric}>
-              <Text style={styles.fitMetricValue}>{totalTime}m</Text>
-              <Text style={styles.fitMetricLabel}>Dinner time</Text>
-            </View>
+            <FitMetric value={`${pantryCoverage}%`} label="Pantry match" />
+            <FitMetric value={String(useSoonMatches.length)} label="Use-soon saves" />
+            <FitMetric value={`${totalTime}m`} label="Dinner time" />
           </View>
-          {matchedIngredients.length > 0 && (
-            <Text style={styles.fitFootnote}>
-              Pantry overlap: {matchedIngredients.slice(0, 4).map((ing) => ing.ingredient_name).join(', ')}
-              {matchedIngredients.length > 4 ? '…' : ''}
-            </Text>
-          )}
-        </View>
+        </Card>
 
         {/* Nutrition */}
-        {recipe.nutrition && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Nutrition per serving</Text>
+        {recipe.nutrition ? (
+          <View style={styles.block}>
+            <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
+              Nutrition per serving
+            </Text>
             <NutritionGrid nutrition={recipe.nutrition} />
           </View>
-        )}
+        ) : null}
 
-        {/* Tab Bar */}
-        <View style={styles.tabBar}>
+        {/* Tabs */}
+        <View style={[styles.block, { flexDirection: 'row', gap: spacing.sm }]}>
           {(['Need', 'Flow', 'Proof'] as TabKey[]).map((tab) => (
-            <TouchableOpacity
+            <Chip
               key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              label={tab}
+              selected={activeTab === tab}
               onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
+            />
           ))}
         </View>
 
-        {/* Tab Content */}
-        <View style={styles.tabContent}>
-          {activeTab === 'Need' && (
-            <View style={styles.ingredientList}>
-              <Text style={styles.tabIntro}>
-                Start by checking what this dinner needs from you and what your pantry already covers.
+        <View style={[styles.block, { gap: spacing.md }]}>
+          {activeTab === 'Need' ? (
+            <>
+              <Text style={[typography.bodySmall, { color: c.textSecondary }]}>
+                Check what this dinner needs from you and what your pantry already covers.
               </Text>
               {recipe.ingredients.map((ing) => {
-                const checked = checkedIngredients.has(ing.id);
-                const pantryMatched = matchedIngredients.some((match) => match.id === ing.id);
+                const isChecked = checked.has(ing.id);
+                const inPantry = matched.some((m) => m.id === ing.id);
                 return (
-                  <TouchableOpacity
+                  <Card
                     key={ing.id}
-                    style={[styles.ingredientRow, pantryMatched && styles.ingredientRowMatched]}
-                    onPress={() => toggleIngredient(ing.id)}
+                    onPress={() => {
+                      setChecked((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ing.id)) next.delete(ing.id);
+                        else next.add(ing.id);
+                        return next;
+                      });
+                    }}
+                    surface={inPantry ? 'surfaceMuted' : 'surface'}
+                    radius="lg"
+                    padding="md"
+                    elevation="flat"
+                    bordered
+                    accessibilityLabel={`${ing.ingredient_name}, ${
+                      isChecked ? 'checked' : 'unchecked'
+                    }`}
                   >
-                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                      {checked && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                    <View style={styles.ingredientInfo}>
-                      <Text style={[styles.ingredientName, checked && styles.ingredientNameDone]}>
-                        {ing.ingredient_name}
+                    <View style={styles.ingRow}>
+                      <View
+                        style={[
+                          styles.checkbox,
+                          {
+                            backgroundColor: isChecked ? c.primary : 'transparent',
+                            borderColor: isChecked ? c.primary : c.borderStrong,
+                          },
+                        ]}
+                      >
+                        {isChecked ? (
+                          <Text style={{ color: c.onPrimary, fontWeight: '800' }}>✓</Text>
+                        ) : null}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            typography.body,
+                            {
+                              color: c.text,
+                              textDecorationLine: isChecked ? 'line-through' : 'none',
+                              opacity: isChecked ? 0.55 : 1,
+                              fontWeight: '600',
+                            },
+                          ]}
+                        >
+                          {ing.ingredient_name}
+                        </Text>
+                        {ing.notes ? (
+                          <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+                            {ing.notes}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {inPantry ? <Badge label="IN" tone="success" /> : null}
+                      <Text style={[typography.bodySmall, { color: c.textSecondary, fontWeight: '600' }]}>
+                        {ing.quantity != null
+                          ? `${+(ing.quantity * servingScale).toFixed(1)} ${ing.unit}`
+                          : ing.unit}
                       </Text>
-                      {ing.notes ? (
-                        <Text style={styles.ingredientNotes}>{ing.notes}</Text>
-                      ) : null}
                     </View>
-                    {pantryMatched ? <Text style={styles.matchedPill}>IN</Text> : null}
-                    <Text style={styles.ingredientQty}>
-                      {ing.quantity != null
-                        ? `${+(ing.quantity * servingScale).toFixed(1)} ${ing.unit}`
-                        : ing.unit}
-                    </Text>
-                  </TouchableOpacity>
+                  </Card>
                 );
               })}
-            </View>
-          )}
+            </>
+          ) : null}
 
-          {activeTab === 'Flow' && (
-            <View style={styles.stepList}>
-              <Text style={styles.tabIntro}>
-                Treat this like an execution flow. Move step by step and time anything that can drift.
+          {activeTab === 'Flow' ? (
+            <>
+              <Text style={[typography.bodySmall, { color: c.textSecondary }]}>
+                Move step by step. Time anything that can drift.
               </Text>
               {recipe.instructions.map((step) => (
-                <View key={step.step_number} style={styles.stepRow}>
-                  <View style={styles.stepNumberCircle}>
-                    <Text style={styles.stepNumber}>{step.step_number}</Text>
+                <Card
+                  key={step.step_number}
+                  surface="surface"
+                  radius="lg"
+                  padding="lg"
+                  elevation="flat"
+                  bordered
+                >
+                  <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                    <View
+                      style={[
+                        styles.stepNum,
+                        { backgroundColor: c.primary },
+                      ]}
+                    >
+                      <Text style={{ color: c.onPrimary, fontWeight: '800' }}>
+                        {step.step_number}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, gap: spacing.sm }}>
+                      <Text style={[typography.body, { color: c.text, fontSize: 15 }]}>
+                        {step.instruction}
+                      </Text>
+                      {step.time_minutes ? (
+                        <Chip
+                          label={`⏱ ${step.time_minutes} min — tap to time`}
+                          onPress={() => startTimer(`Step ${step.step_number}`, step.time_minutes!)}
+                        />
+                      ) : null}
+                    </View>
                   </View>
-                  <View style={styles.stepBody}>
-                    <Text style={styles.stepInstruction}>{step.instruction}</Text>
-                    {step.time_minutes ? (
-                      <TouchableOpacity
-                        style={styles.stepTimeBadge}
-                        onPress={() => startTimer(`Step ${step.step_number}`, step.time_minutes!)}
-                      >
-                        <Text style={styles.stepTimeText}>⏱ {step.time_minutes} min — tap to time</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
+                </Card>
               ))}
-            </View>
-          )}
+            </>
+          ) : null}
 
-          {activeTab === 'Proof' && (
-            <View style={styles.reviewList}>
-              <TouchableOpacity style={styles.rateBtn} onPress={() => setRatingModalVisible(true)}>
-                <Text style={styles.rateBtnText}>⭐ Leave a signal for future-you</Text>
-              </TouchableOpacity>
+          {activeTab === 'Proof' ? (
+            <>
+              <Button
+                label="⭐  Leave a rating"
+                variant="secondary"
+                onPress={() => setRatingOpen(true)}
+                fullWidth
+              />
               {reviews && reviews.length > 0 ? (
                 reviews.map((rev) => (
-                  <View key={rev.id} style={styles.reviewCard}>
-                    <View style={styles.reviewHeader}>
-                      <Text style={styles.reviewUser}>{rev.user_name}</Text>
-                      <Text style={styles.reviewDate}>{formatDate(rev.created_at)}</Text>
+                  <Card
+                    key={rev.id}
+                    surface="surface"
+                    radius="lg"
+                    padding="lg"
+                    elevation="flat"
+                    bordered
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        marginBottom: spacing.xs,
+                      }}
+                    >
+                      <Text style={[typography.h4, { color: c.text }]}>{rev.user_name}</Text>
+                      <Text style={[typography.caption, { color: c.textLight }]}>
+                        {formatDate(rev.created_at)}
+                      </Text>
                     </View>
-                    <Text style={styles.reviewStars}>{renderStars(rev.rating)}</Text>
+                    <Text style={{ color: c.warning, letterSpacing: 1, marginBottom: spacing.xs }}>
+                      {stars(rev.rating)}
+                    </Text>
                     {rev.comment ? (
-                      <Text style={styles.reviewComment}>{rev.comment}</Text>
+                      <Text style={[typography.body, { color: c.text }]}>{rev.comment}</Text>
                     ) : null}
-                  </View>
+                  </Card>
                 ))
               ) : (
-                <View style={styles.noReviews}>
-                  <Text style={styles.noReviewsEmoji}>💬</Text>
-                  <Text style={styles.noReviewsText}>No reviews yet</Text>
-                  <Text style={styles.noReviewsSub}>Be the first to review this recipe!</Text>
-                </View>
+                <Card
+                  surface="surfaceMuted"
+                  radius="lg"
+                  padding="2xl"
+                  elevation="flat"
+                  style={{ alignItems: 'center', gap: spacing.sm }}
+                >
+                  <Text style={{ fontSize: 32 }}>💬</Text>
+                  <Text style={[typography.h4, { color: c.text }]}>No reviews yet</Text>
+                  <Text style={[typography.bodySmall, { color: c.textSecondary }]}>
+                    Be the first to review this recipe.
+                  </Text>
+                </Card>
               )}
-            </View>
-          )}
+            </>
+          ) : null}
         </View>
-
-        {/* Bottom padding for sticky bar */}
-        <View style={{ height: 96 }} />
       </ScrollView>
 
-      {/* Floating Step Timer */}
-      {activeTimer && (
-        <View style={styles.timerBanner}>
-          <View style={styles.timerInfo}>
-            <Text style={styles.timerLabel}>{activeTimer.label}</Text>
-            <Text style={styles.timerValue}>
+      {/* Floating timer */}
+      {activeTimer ? (
+        <View
+          style={[
+            styles.timer,
+            {
+              backgroundColor: c.surfaceInverse,
+              shadowColor: '#000',
+            },
+          ]}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: c.background, fontSize: 12, fontWeight: '700' }}>
+              {activeTimer.label}
+            </Text>
+            <Text style={{ color: c.background, fontSize: 22, fontWeight: '800', marginTop: 2 }}>
               {String(Math.floor(activeTimer.remaining / 60)).padStart(2, '0')}:
               {String(activeTimer.remaining % 60).padStart(2, '0')}
             </Text>
           </View>
-          <TouchableOpacity style={styles.timerStopBtn} onPress={stopTimer}>
-            <Text style={styles.timerStopText}>✕</Text>
-          </TouchableOpacity>
+          <IconButton
+            icon="✕"
+            size={32}
+            accessibilityLabel="Stop timer"
+            onPress={stopTimer}
+          />
         </View>
-      )}
+      ) : null}
 
-      {/* Rating Modal */}
-      <Modal visible={ratingModalVisible} animationType="slide" transparent presentationStyle="overFullScreen">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Was this worth tonight?</Text>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <TouchableOpacity key={s} onPress={() => setSelectedStars(s)}>
-                  <Text style={styles.starBtn}>{s <= selectedStars ? '★' : '☆'}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TextInput
-              style={styles.commentInput}
-              placeholder="Add a comment (optional)"
-              placeholderTextColor={colors.textLight}
-              value={reviewComment}
-              onChangeText={setReviewComment}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-            <TouchableOpacity
-              style={[styles.submitBtn, rateMutation.isPending && { opacity: 0.6 }]}
-              onPress={() => rateMutation.mutate()}
-              disabled={rateMutation.isPending}
-            >
-              {rateMutation.isPending
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.submitBtnText}>Save Signal</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setRatingModalVisible(false)}>
-              <Text style={styles.cancelModalText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Sticky Bottom Bar */}
-      <View style={styles.stickyBar}>
-        <TouchableOpacity
-          style={styles.cookBtn}
+      {/* Sticky bottom bar */}
+      <View
+        style={[
+          styles.stickyBar,
+          { backgroundColor: c.background, borderTopColor: c.border },
+        ]}
+      >
+        <Button
+          label="Run Dinner Flow 👨‍🍳"
           onPress={() => navigation.navigate('CookingMode', { recipeId })}
-        >
-          <Text style={styles.cookBtnText}>Run Dinner Flow 👨‍🍳</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.listBtn, addToListMutation.isPending && styles.listBtnLoading]}
+          fullWidth
+          size="lg"
+          style={{ flex: 1 }}
+        />
+        <Button
+          label="🛒 Unlock"
           onPress={handleAddToList}
-          disabled={addToListMutation.isPending}
-        >
-          {addToListMutation.isPending ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Text style={styles.listBtnText}>🛒 Unlock Missing Items</Text>
-          )}
-        </TouchableOpacity>
+          loading={addToList.isPending}
+          variant="secondary"
+          size="lg"
+        />
       </View>
+
+      {/* Rating sheet */}
+      <Sheet visible={ratingOpen} onClose={() => setRatingOpen(false)} title="Was this worth tonight?">
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.sm }}>
+          {[1, 2, 3, 4, 5].map((s) => (
+            <Text
+              key={s}
+              accessibilityRole="button"
+              accessibilityLabel={`${s} stars`}
+              onPress={() => setRatingStars(s)}
+              style={{ fontSize: 36, color: s <= ratingStars ? c.warning : c.borderStrong }}
+            >
+              {s <= ratingStars ? '★' : '☆'}
+            </Text>
+          ))}
+        </View>
+        <TextInput
+          value={ratingComment}
+          onChangeText={setRatingComment}
+          placeholder="Add a comment (optional)"
+          placeholderTextColor={c.textLight}
+          multiline
+          textAlignVertical="top"
+          style={[
+            styles.commentInput,
+            {
+              borderColor: c.border,
+              color: c.text,
+              backgroundColor: c.surface,
+            },
+          ]}
+        />
+        <Button
+          label="Save rating"
+          onPress={() => rate.mutate()}
+          loading={rate.isPending}
+          fullWidth
+          size="lg"
+          style={{ marginTop: spacing.md }}
+        />
+        <Button
+          label="Cancel"
+          variant="ghost"
+          onPress={() => setRatingOpen(false)}
+          fullWidth
+          style={{ marginTop: spacing.xs }}
+        />
+      </Sheet>
     </SafeAreaView>
   );
 };
 
+function Stat({ icon, value, label }: { icon: string; value: string; label: string }) {
+  const c = useThemeColors();
+  return (
+    <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
+      <Text style={{ fontSize: 20 }}>{icon}</Text>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: c.text }}>{value}</Text>
+      <Text style={{ fontSize: 12, color: c.textSecondary, fontWeight: '500' }}>{label}</Text>
+    </View>
+  );
+}
+
+function FitMetric({ value, label }: { value: string; label: string }) {
+  const c = useThemeColors();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: c.surface,
+        borderRadius: 14,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.md,
+      }}
+    >
+      <Text style={{ fontSize: 18, fontWeight: '800', color: c.text }}>{value}</Text>
+      <Text
+        style={[typography.caption, { color: c.textSecondary, marginTop: 2, fontWeight: '600' }]}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 8,
-  },
-  // Hero
-  hero: {
-    height: 240,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  heroGradient: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBgEmoji: {
-    fontSize: 120,
-    opacity: 0.25,
-  },
-  heroBackBtn: {
+  safe: { flex: 1 },
+  hero: { height: 240, position: 'relative', overflow: 'hidden' },
+  heroBg: {
     position: 'absolute',
-    top: 14,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
+    fontSize: 140,
+    opacity: 0.22,
+    alignSelf: 'center',
+    top: 30,
   },
-  heroBackText: {
-    fontSize: 22,
-    color: colors.text,
-    fontWeight: '700',
-    lineHeight: 26,
+  heroOverlayBtns: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
   },
-  heroOverlay: {
+  heroBottom: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    bottom: 0,
+    padding: spacing.lg,
   },
-  heroBadgeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  badge: {
-    borderRadius: 8,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: 6,
-    lineHeight: 28,
-  },
-  heroRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  heroStars: {
-    fontSize: 14,
-    color: '#F9A825',
-    letterSpacing: 1,
-  },
-  heroRatingText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: colors.divider,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  statIcon: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  // Section
-  section: {
-    marginHorizontal: 16,
-    marginTop: 20,
-  },
-  fitCard: {
-    marginHorizontal: 16,
-    marginTop: 18,
-    backgroundColor: '#FBF6ED',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E7D7C4',
-  },
-  fitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 10 },
-  fitEyebrow: { fontSize: 11, fontWeight: '800', color: '#8A6846', letterSpacing: 0.8, textTransform: 'uppercase' },
-  fitTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 4 },
-  fitPill: { backgroundColor: '#FFFFFF', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
-  fitPillText: { fontSize: 11, fontWeight: '800', color: colors.accent },
-  fitSubtitle: { fontSize: 13, lineHeight: 19, color: colors.textSecondary },
-  fitMetrics: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  fitMetric: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12 },
-  fitMetricValue: { fontSize: 22, fontWeight: '900', color: colors.text, marginBottom: 2 },
-  fitMetricLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
-  fitFootnote: { fontSize: 12, lineHeight: 18, color: colors.textSecondary, marginTop: 12 },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  // Tabs
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: colors.divider,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 11,
-  },
-  tabActive: {
-    backgroundColor: colors.primary,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
-  tabContent: {
-    marginHorizontal: 16,
-    marginTop: 16,
-  },
-  tabIntro: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.textSecondary,
-    marginBottom: 10,
-  },
-  // Ingredients
-  ingredientList: {
-    gap: 2,
-  },
-  ingredientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-    gap: 12,
-  },
-  ingredientRowMatched: {
-    backgroundColor: '#F7FBF5',
-  },
+  block: { marginHorizontal: spacing.lg, marginTop: spacing.lg },
+  fitHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  fitMetrics: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  ingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  checkmark: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  ingredientInfo: {
-    flex: 1,
-  },
-  ingredientName: {
-    fontSize: 15,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  ingredientNameDone: {
-    textDecorationLine: 'line-through',
-    color: colors.textLight,
-  },
-  ingredientNotes: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  ingredientQty: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  matchedPill: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#2E7D32',
-    backgroundColor: '#E7F6EA',
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  // Steps
-  stepList: {
-    gap: 16,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  stepNumberCircle: {
+  stepNum: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-    marginTop: 1,
   },
-  stepNumber: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  stepBody: {
-    flex: 1,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  stepInstruction: {
-    fontSize: 15,
-    color: colors.text,
-    lineHeight: 22,
-  },
-  stepTimeBadge: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.secondary + 'AA',
-    borderRadius: 8,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-  },
-  stepTimeText: {
-    fontSize: 12,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  // Reviews
-  reviewList: {
-    gap: 12,
-  },
-  reviewCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.divider,
-  },
-  reviewHeader: {
+  timer: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: 100,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radii.lg,
+    gap: spacing.md,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  reviewUser: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  reviewStars: {
-    fontSize: 14,
-    color: '#F9A825',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  reviewComment: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  noReviews: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  noReviewsEmoji: {
-    fontSize: 44,
-    marginBottom: 12,
-  },
-  noReviewsText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 6,
-  },
-  noReviewsSub: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  // Sticky Bar
   stickyBar: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    backgroundColor: colors.background,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 8,
+    gap: spacing.sm,
   },
-  cookBtn: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  cookBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  listBtn: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  listBtnLoading: { opacity: 0.6 },
-  listBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  servingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  servingBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.primaryLight,
+  commentInput: {
+    minHeight: 80,
     borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  servingBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.primary,
-    lineHeight: 20,
-  },
-  timerBanner: {
-    position: 'absolute',
-    bottom: 90,
-    left: 16,
-    right: 16,
-    backgroundColor: colors.accent,
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  timerInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  timerLabel: { fontSize: 14, fontWeight: '600', color: '#fff' },
-  timerValue: { fontSize: 22, fontWeight: '800', color: '#fff', fontVariant: ['tabular-nums'] },
-  timerStopBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  timerStopText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  heroFavBtn: {
-    position: 'absolute',
-    top: 14,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  heroFavIcon: { fontSize: 20 },
-  rateBtn: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  rateBtnText: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 48 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 20, textAlign: 'center' },
-  starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 },
-  starBtn: { fontSize: 36, color: '#F9A825' },
-  commentInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.text, marginBottom: 16, minHeight: 80 },
-  submitBtn: { backgroundColor: colors.primary, borderRadius: 24, paddingVertical: 16, alignItems: 'center', marginBottom: 10 },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  cancelModalBtn: { alignItems: 'center', paddingVertical: 12 },
-  cancelModalText: { color: colors.textSecondary, fontSize: 15 },
-  // Skeleton
-  skeletonHero: {
-    height: 240,
-    backgroundColor: colors.surface,
-  },
-  skeletonBody: {
-    padding: 20,
-    gap: 12,
-  },
-  skeletonLine: {
-    height: 16,
-    backgroundColor: colors.border,
-    borderRadius: 8,
-    width: '90%',
-  },
-  // Error
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  errorEmoji: {
-    fontSize: 54,
-    marginBottom: 16,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 24,
-  },
-  errorBtn: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-  },
-  errorBtnText: {
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.lg,
     fontSize: 15,
-    fontWeight: '700',
-    color: colors.primary,
   },
 });
 

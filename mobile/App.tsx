@@ -8,8 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { store, type RootState } from './src/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { ToastProvider } from './src/components/ui';
 
-// Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -33,10 +33,12 @@ function ThemedApp() {
   }, []);
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <RootNavigator />
-      </NavigationContainer>
+      <ToastProvider>
+        <NavigationContainer>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
+          <RootNavigator />
+        </NavigationContainer>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

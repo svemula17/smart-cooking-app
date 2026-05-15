@@ -1,17 +1,36 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  Share,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+
 import type { RootState } from '../store';
 import { houseApi } from '../services/api';
 
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { Button, Card, EmptyState, Header, Skeleton } from '../components/ui';
+
 interface Report {
-  week_start: string; meals_cooked: number; total_spent: number;
-  money_saved_vs_delivery: number; member_count: number;
+  week_start: string;
+  meals_cooked: number;
+  total_spent: number;
+  money_saved_vs_delivery: number;
+  member_count: number;
   best_meal: { recipe_name: string; cook_name: string; avg_rating: string } | null;
   total_waste: number;
 }
 
 export default function HouseReportScreen({ navigation }: any) {
+  const c = useThemeColors();
   const { house } = useSelector((s: RootState) => s.house);
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,97 +41,169 @@ export default function HouseReportScreen({ navigation }: any) {
     try {
       const { data } = await houseApi.get(`/houses/${house.id}/report/weekly`);
       setReport(data.data);
-    } catch { /* ignore */ } finally { setLoading(false); }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, [house]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function handleShare() {
+  const handleShare = async () => {
     if (!report || !house) return;
     await Share.share({
-      message: `📊 ${house.name} — Weekly Report\n\n` +
+      message:
+        `📊 ${house.name} — Weekly Report\n\n` +
         `🍳 Meals cooked: ${report.meals_cooked}\n` +
         `💰 Spent: ₹${report.total_spent.toFixed(0)}\n` +
         `💸 Saved vs delivery: ₹${report.money_saved_vs_delivery}\n` +
-        (report.best_meal ? `⭐ Best meal: ${report.best_meal.recipe_name} by ${report.best_meal.cook_name}\n` : '') +
+        (report.best_meal
+          ? `⭐ Best meal: ${report.best_meal.recipe_name} by ${report.best_meal.cook_name}\n`
+          : '') +
         `\nCooked with Smart Cooking App 🚀`,
     });
-  }
+  };
 
   return (
-    <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>← Back</Text></TouchableOpacity>
-        <Text style={styles.title}>Weekly Report</Text>
-        <TouchableOpacity style={styles.shareBtn} onPress={handleShare}><Text style={styles.shareBtnText}>Share</Text></TouchableOpacity>
-      </View>
-
-      {loading ? <ActivityIndicator size="large" color="#E85D04" style={{ marginTop: 60 }} /> : report ? (
-        <>
-          <View style={styles.heroCard}>
-            <Text style={styles.heroSaved}>₹{report.money_saved_vs_delivery}</Text>
-            <Text style={styles.heroLabel}>saved vs ordering out</Text>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <Header
+        title="Weekly Report"
+        onBack={() => navigation.goBack()}
+        right={<Button label="Share" size="sm" onPress={handleShare} />}
+        border
+      />
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={c.primary} />}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
+        showsVerticalScrollIndicator={false}
+      >
+        {loading ? (
+          <View style={{ gap: spacing.md }}>
+            <Skeleton height={140} radius={20} />
+            <Skeleton height={100} radius={16} />
+            <Skeleton height={100} radius={16} />
           </View>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNum}>{report.meals_cooked}</Text>
-              <Text style={styles.statLabel}>meals cooked</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNum}>₹{report.total_spent.toFixed(0)}</Text>
-              <Text style={styles.statLabel}>spent on groceries</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={[styles.statNum, { color: '#DC2626' }]}>₹{report.total_waste.toFixed(0)}</Text>
-              <Text style={styles.statLabel}>wasted</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNum}>{report.member_count}</Text>
-              <Text style={styles.statLabel}>members fed</Text>
-            </View>
-          </View>
-
-          {report.best_meal && (
-            <View style={styles.bestMealCard}>
-              <Text style={styles.cardLabel}>BEST MEAL OF THE WEEK</Text>
-              <Text style={styles.bestMealName}>{report.best_meal.recipe_name}</Text>
-              <Text style={styles.bestMealMeta}>
-                By {report.best_meal.cook_name} · ⭐ {report.best_meal.avg_rating}
+        ) : report ? (
+          <>
+            <Card
+              surface="surface"
+              radius="2xl"
+              padding="2xl"
+              elevation="card"
+              style={{
+                backgroundColor: c.success,
+                alignItems: 'center',
+                marginBottom: spacing.lg,
+              }}
+            >
+              <Text style={{ fontSize: 48, fontWeight: '800', color: c.onPrimary }}>
+                ₹{report.money_saved_vs_delivery}
               </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: 'rgba(255,255,255,0.85)',
+                  marginTop: spacing.xs,
+                }}
+              >
+                saved vs ordering out
+              </Text>
+            </Card>
+
+            <View style={styles.grid}>
+              <StatCard num={String(report.meals_cooked)} label="meals cooked" />
+              <StatCard num={`₹${report.total_spent.toFixed(0)}`} label="spent on groceries" />
+              <StatCard
+                num={`₹${report.total_waste.toFixed(0)}`}
+                label="wasted"
+                tone="error"
+              />
+              <StatCard num={String(report.member_count)} label="members fed" />
             </View>
-          )}
-        </>
-      ) : (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No data yet</Text>
-          <Text style={styles.emptySub}>Start cooking to see your weekly report.</Text>
-        </View>
-      )}
-      <View style={{ height: 60 }} />
-    </ScrollView>
+
+            {report.best_meal ? (
+              <Card
+                surface="surfaceMuted"
+                radius="xl"
+                padding="lg"
+                elevation="flat"
+                style={{
+                  marginTop: spacing.lg,
+                  borderWidth: 1,
+                  borderColor: c.primary,
+                }}
+              >
+                <Text style={[typography.overline, { color: c.primary }]}>
+                  Best meal of the week
+                </Text>
+                <Text style={[typography.h2, { color: c.text, marginTop: spacing.xs }]}>
+                  {report.best_meal.recipe_name}
+                </Text>
+                <Text
+                  style={[typography.body, { color: c.textSecondary, marginTop: spacing.xs }]}
+                >
+                  By {report.best_meal.cook_name} · ⭐ {report.best_meal.avg_rating}
+                </Text>
+              </Card>
+            ) : null}
+          </>
+        ) : (
+          <EmptyState
+            icon="📊"
+            title="No data yet"
+            body="Start cooking to see your weekly report."
+          />
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function StatCard({
+  num,
+  label,
+  tone = 'neutral',
+}: {
+  num: string;
+  label: string;
+  tone?: 'neutral' | 'error';
+}) {
+  const c = useThemeColors();
+  return (
+    <Card
+      surface="surface"
+      radius="lg"
+      padding="lg"
+      elevation="card"
+      bordered
+      style={styles.statCard}
+    >
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: '800',
+          color: tone === 'error' ? c.error : c.text,
+        }}
+      >
+        {num}
+      </Text>
+      <Text style={[typography.caption, { color: c.textSecondary, marginTop: 4 }]}>
+        {label}
+      </Text>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 60 },
-  back: { fontSize: 15, color: '#E85D04' },
-  title: { fontSize: 20, fontWeight: '700', color: '#1C1C1E' },
-  shareBtn: { backgroundColor: '#E85D04', borderRadius: 10, paddingVertical: 6, paddingHorizontal: 14 },
-  shareBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  heroCard: { backgroundColor: '#16A34A', borderRadius: 20, margin: 16, padding: 28, alignItems: 'center' },
-  heroSaved: { fontSize: 48, fontWeight: '800', color: '#fff' },
-  heroLabel: { fontSize: 16, color: '#BBF7D0', marginTop: 4 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 10, marginBottom: 16 },
-  statCard: { width: '46%', backgroundColor: '#fff', borderRadius: 14, padding: 16, alignItems: 'center' },
-  statNum: { fontSize: 24, fontWeight: '800', color: '#1C1C1E' },
-  statLabel: { fontSize: 12, color: '#9B9B9B', marginTop: 4 },
-  bestMealCard: { backgroundColor: '#FFF3E0', borderRadius: 16, margin: 16, padding: 18, borderWidth: 1, borderColor: '#E85D04' },
-  cardLabel: { fontSize: 11, fontWeight: '700', color: '#E85D04', letterSpacing: 1, marginBottom: 8 },
-  bestMealName: { fontSize: 20, fontWeight: '700', color: '#1C1C1E' },
-  bestMealMeta: { fontSize: 14, color: '#6B6B6B', marginTop: 4 },
-  emptyState: { alignItems: 'center', paddingTop: 80 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1C1C1E', marginBottom: 8 },
-  emptySub: { fontSize: 15, color: '#6B6B6B' },
+  safe: { flex: 1 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  statCard: { width: '48%', alignItems: 'center' },
 });

@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+
 import type { RootState } from '../store';
 import { setHouse, setHouseError, setHouseLoading } from '../store/slices/houseSlice';
 import { setSchedule } from '../store/slices/cookScheduleSlice';
@@ -18,106 +18,125 @@ import * as houseService from '../services/houseService';
 import type { ChoreEntry } from '../services/houseService';
 import HouseOnboardingScreen from './HouseOnboardingScreen';
 
-// ── Today's Duties Card (inline component) ─────────────────────────────────
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Skeleton,
+  useToast,
+} from '../components/ui';
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+const formatDate = (iso: string) =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 
 function TodaysDutiesCard({
-  houseId, currentUserId, navigation,
-}: { houseId: string; currentUserId: string; navigation: any }) {
-  const TODAY = new Date().toISOString().slice(0, 10);
+  houseId,
+  currentUserId,
+  navigation,
+}: {
+  houseId: string;
+  currentUserId: string;
+  navigation: any;
+}) {
+  const c = useThemeColors();
+  const toast = useToast();
   const [chores, setChores] = useState<ChoreEntry[]>([]);
 
   useEffect(() => {
-    houseService.getChoreSchedule(houseId, { date: TODAY })
+    houseService
+      .getChoreSchedule(houseId, { date: TODAY })
       .then(setChores)
       .catch(() => {});
   }, [houseId]);
 
-  async function markDone(chore: ChoreEntry) {
+  const markDone = async (chore: ChoreEntry) => {
     if (chore.user_id !== currentUserId) return;
     try {
       const updated = await houseService.updateChoreEntry(houseId, chore.id, { status: 'done' });
       setChores((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-    } catch { /* ignore */ }
-  }
+      toast.show('Marked done', 'success');
+    } catch {
+      toast.show('Could not update', 'error');
+    }
+  };
 
   return (
-    <TouchableOpacity
-      style={dutiesStyles.card}
+    <Card
+      surface="surface"
+      radius="xl"
+      padding="lg"
+      elevation="card"
       onPress={() => navigation.navigate('Chores')}
-      activeOpacity={0.9}
+      style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
+      accessibilityLabel="Open today’s duties"
     >
-      <View style={dutiesStyles.cardHeader}>
-        <Text style={dutiesStyles.cardLabel}>TODAY'S DUTIES</Text>
-        <Text style={dutiesStyles.seeAll}>View all →</Text>
+      <View style={styles.cardHeader}>
+        <Text style={[typography.overline, { color: c.textSecondary }]}>Today's duties</Text>
+        <Text style={{ fontSize: 13, color: c.primary, fontWeight: '700' }}>View all →</Text>
       </View>
-
       {chores.length === 0 ? (
-        <Text style={dutiesStyles.empty}>No chores scheduled — tap to set up</Text>
+        <Text style={[typography.bodySmall, { color: c.textLight, fontStyle: 'italic' }]}>
+          No chores scheduled — tap to set up
+        </Text>
       ) : (
-        chores.map((chore) => {
+        chores.map((chore, i) => {
           const isMe = chore.user_id === currentUserId;
           return (
-            <View key={chore.id} style={[dutiesStyles.row, isMe && dutiesStyles.rowMe]}>
-              <Text style={dutiesStyles.emoji}>{chore.emoji}</Text>
+            <View
+              key={chore.id}
+              style={[
+                styles.choreRow,
+                {
+                  borderTopColor: c.border,
+                  borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                  backgroundColor: isMe ? c.primaryMuted : 'transparent',
+                  borderRadius: isMe ? 8 : 0,
+                  marginHorizontal: isMe ? -spacing.sm : 0,
+                  paddingHorizontal: isMe ? spacing.sm : 0,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{chore.emoji}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={dutiesStyles.choreName}>{chore.chore_name}</Text>
-                <Text style={dutiesStyles.assignee}>{isMe ? 'Your turn' : chore.assignee_name}</Text>
+                <Text style={[typography.body, { color: c.text, fontWeight: '700' }]}>
+                  {chore.chore_name}
+                </Text>
+                <Text style={[typography.caption, { color: c.textSecondary, marginTop: 1 }]}>
+                  {isMe ? 'Your turn' : chore.assignee_name}
+                </Text>
               </View>
               {chore.status === 'done' ? (
-                <Text style={dutiesStyles.done}>✅</Text>
+                <Text style={{ fontSize: 18 }}>✅</Text>
               ) : isMe ? (
-                <TouchableOpacity
-                  style={dutiesStyles.doneBtn}
-                  onPress={(e) => { e.stopPropagation?.(); markDone(chore); }}
-                >
-                  <Text style={dutiesStyles.doneBtnText}>Done</Text>
-                </TouchableOpacity>
+                <Button
+                  label="Done"
+                  size="sm"
+                  onPress={() => markDone(chore)}
+                  hapticStyle="medium"
+                />
               ) : (
-                <Text style={dutiesStyles.pending}>⏳</Text>
+                <Text style={{ fontSize: 18, opacity: 0.4 }}>⏳</Text>
               )}
             </View>
           );
         })
       )}
-    </TouchableOpacity>
+    </Card>
   );
 }
 
-const dutiesStyles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cardLabel:  { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1 },
-  seeAll:     { fontSize: 13, color: '#E85D04' },
-  row:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 10, borderTopWidth: 1, borderColor: '#F5F5F5' },
-  rowMe:      { backgroundColor: '#FFFBF0', borderRadius: 8, paddingHorizontal: 8, marginHorizontal: -8 },
-  emoji:      { fontSize: 20, width: 28, textAlign: 'center' },
-  choreName:  { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
-  assignee:   { fontSize: 12, color: '#9B9B9B', marginTop: 1 },
-  done:       { fontSize: 18 },
-  pending:    { fontSize: 18, opacity: 0.4 },
-  doneBtn:    { backgroundColor: '#E85D04', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
-  doneBtnText:{ color: '#fff', fontWeight: '700', fontSize: 12 },
-  empty:      { fontSize: 13, color: '#9B9B9B', fontStyle: 'italic' },
-});
-
-const TODAY = new Date().toISOString().slice(0, 10);
-
-function formatDate(iso: string): string {
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
 export default function HouseScreen({ navigation }: any) {
+  const c = useThemeColors();
   const dispatch = useDispatch();
   const { house, members, isLoading } = useSelector((s: RootState) => s.house);
   const schedule = useSelector((s: RootState) => s.cookSchedule.schedule);
@@ -127,13 +146,12 @@ export default function HouseScreen({ navigation }: any) {
   const load = useCallback(async () => {
     dispatch(setHouseLoading(true));
     try {
-      const houseData = await houseService.getMyHouse();
-      dispatch(setHouse({ house: houseData.house, members: houseData.members }));
-
-      if (houseData.house) {
+      const data = await houseService.getMyHouse();
+      dispatch(setHouse({ house: data.house, members: data.members }));
+      if (data.house) {
         const [sched, bal] = await Promise.all([
-          houseService.getSchedule(houseData.house.id, 7),
-          houseService.getBalances(houseData.house.id),
+          houseService.getSchedule(data.house.id, 7),
+          houseService.getBalances(data.house.id),
         ]);
         dispatch(setSchedule(sched));
         dispatch(setBalances(bal));
@@ -145,248 +163,270 @@ export default function HouseScreen({ navigation }: any) {
     }
   }, [dispatch]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (isLoading && !house) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#E85D04" /></View>;
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+        <View style={{ padding: spacing.lg, gap: spacing.lg }}>
+          <Skeleton height={28} width="60%" />
+          <Skeleton height={120} radius={20} />
+          <Skeleton height={120} radius={20} />
+        </View>
+      </SafeAreaView>
+    );
   }
-
-  if (!house) {
-    return <HouseOnboardingScreen />;
-  }
+  if (!house) return <HouseOnboardingScreen />;
 
   const todayEntry = schedule.find((e) => e.scheduled_date === TODAY);
-  const upcomingEntries = schedule.filter((e) => e.scheduled_date > TODAY).slice(0, 5);
+  const upcoming = schedule.filter((e) => e.scheduled_date > TODAY).slice(0, 5);
   const myBalance = balances.find((b) => b.user_id === currentUser?.id);
   const isMyTurn = todayEntry?.user_id === currentUser?.id;
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} />}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.houseName}>{house.name}</Text>
-          <Text style={styles.memberCount}>{members.length} members</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('HouseMembers')}>
-          <Text style={styles.settingsBtn}>⚙ Manage</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Today's Cook */}
-      <View style={[styles.card, isMyTurn ? styles.myTurnCard : styles.othersCard]}>
-        <Text style={styles.cardLabel}>TODAY'S COOK</Text>
-        {todayEntry ? (
-          <>
-            <Text style={styles.cookName}>
-              {isMyTurn ? '👨‍🍳 Your turn to cook!' : `👨‍🍳 ${todayEntry.cook_name} is cooking`}
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} tintColor={c.primary} />}
+        contentContainerStyle={{ paddingBottom: spacing['4xl'] }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.h1, { color: c.text }]} numberOfLines={1}>
+              {house.name}
             </Text>
-            {todayEntry.recipe_name ? (
-              <Text style={styles.recipeName}>{todayEntry.recipe_name}</Text>
-            ) : isMyTurn ? (
-              <TouchableOpacity
-                style={styles.pickRecipeBtn}
-                onPress={() => navigation.navigate('CookSchedule')}
-              >
-                <Text style={styles.pickRecipeBtnText}>Pick a recipe →</Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={styles.recipeName}>Recipe not picked yet</Text>
-            )}
-            {isMyTurn && (
-              <TouchableOpacity
-                style={styles.cookingBtn}
-                onPress={() => todayEntry.recipe_id && navigation.navigate('CookingMode', { recipeId: todayEntry.recipe_id })}
-              >
-                <Text style={styles.cookingBtnText}>Start cooking</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        ) : (
-          <Text style={styles.emptyText}>No cook scheduled today</Text>
-        )}
-      </View>
-
-      {/* Today's Duties — Chores */}
-      <TodaysDutiesCard houseId={house.id} currentUserId={currentUser?.id ?? ''} navigation={navigation} />
-
-      {/* Upcoming Schedule */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>UPCOMING</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('CookSchedule')}>
-            <Text style={styles.seeAll}>View full schedule →</Text>
-          </TouchableOpacity>
+            <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+              {members.length} members
+            </Text>
+          </View>
+          <Button
+            label="⚙ Manage"
+            variant="ghost"
+            size="sm"
+            onPress={() => navigation.navigate('HouseMembers')}
+          />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {upcomingEntries.length === 0 ? (
-            <TouchableOpacity style={styles.generateBtn} onPress={() => navigation.navigate('CookSchedule')}>
-              <Text style={styles.generateBtnText}>+ Generate schedule</Text>
-            </TouchableOpacity>
+
+        {/* Today's cook */}
+        <Card
+          surface="surface"
+          radius="xl"
+          padding="lg"
+          elevation="card"
+          bordered
+          style={[
+            styles.block,
+            {
+              borderColor: isMyTurn ? c.primary : c.success,
+              backgroundColor: isMyTurn ? c.primaryMuted : c.successMuted,
+            },
+          ]}
+        >
+          <Text style={[typography.overline, { color: c.textSecondary }]}>Today's cook</Text>
+          {todayEntry ? (
+            <>
+              <Text style={[typography.h3, { color: c.text, marginTop: spacing.xs }]}>
+                {isMyTurn
+                  ? '👨‍🍳 Your turn to cook!'
+                  : `👨‍🍳 ${todayEntry.cook_name} is cooking`}
+              </Text>
+              {todayEntry.recipe_name ? (
+                <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.xs }]}>
+                  {todayEntry.recipe_name}
+                </Text>
+              ) : isMyTurn ? (
+                <Button
+                  label="Pick a recipe →"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => navigation.navigate('CookSchedule')}
+                  style={{ marginTop: spacing.xs, paddingHorizontal: 0 }}
+                />
+              ) : (
+                <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.xs }]}>
+                  Recipe not picked yet
+                </Text>
+              )}
+              {isMyTurn && todayEntry.recipe_id ? (
+                <Button
+                  label="Start cooking"
+                  size="md"
+                  onPress={() =>
+                    navigation.navigate('CookingMode', { recipeId: todayEntry.recipe_id })
+                  }
+                  hapticStyle="medium"
+                  style={{ marginTop: spacing.sm }}
+                />
+              ) : null}
+            </>
           ) : (
-            upcomingEntries.map((entry) => (
-              <View key={entry.id} style={styles.upcomingChip}>
-                <Text style={styles.upcomingDate}>{formatDate(entry.scheduled_date)}</Text>
-                <Text style={styles.upcomingCook}>{entry.cook_name?.split(' ')[0]}</Text>
-              </View>
-            ))
+            <Text style={[typography.body, { color: c.textSecondary, marginTop: spacing.xs }]}>
+              No cook scheduled today
+            </Text>
           )}
-        </ScrollView>
-      </View>
+        </Card>
 
-      {/* Members */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>MEMBERS</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('HouseMembers')}>
-            <Text style={styles.seeAll}>Invite code: {house.invite_code}</Text>
-          </TouchableOpacity>
+        <TodaysDutiesCard
+          houseId={house.id}
+          currentUserId={currentUser?.id ?? ''}
+          navigation={navigation}
+        />
+
+        {/* Upcoming */}
+        <View style={styles.block}>
+          <View style={styles.sectionHeader}>
+            <Text style={[typography.overline, { color: c.textSecondary }]}>Upcoming</Text>
+            <Text
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('CookSchedule')}
+              style={{ fontSize: 13, color: c.primary, fontWeight: '700' }}
+            >
+              View schedule →
+            </Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+            {upcoming.length === 0 ? (
+              <Card
+                surface="surfaceMuted"
+                radius="md"
+                padding="md"
+                elevation="flat"
+                onPress={() => navigation.navigate('CookSchedule')}
+                style={{ borderStyle: 'dashed', borderWidth: 1.5, borderColor: c.borderStrong }}
+              >
+                <Text style={{ fontSize: 13, color: c.textSecondary }}>+ Generate schedule</Text>
+              </Card>
+            ) : (
+              upcoming.map((entry) => (
+                <Card key={entry.id} surface="surface" radius="md" padding="md" elevation="card">
+                  <Text style={[typography.caption, { color: c.textSecondary }]}>
+                    {formatDate(entry.scheduled_date)}
+                  </Text>
+                  <Text
+                    style={[typography.h4, { color: c.text, marginTop: 2 }]}
+                    numberOfLines={1}
+                  >
+                    {entry.cook_name?.split(' ')[0]}
+                  </Text>
+                </Card>
+              ))
+            )}
+          </ScrollView>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {members.map((m) => (
-            <View key={m.user_id} style={styles.memberChip}>
-              <View style={styles.memberAvatar}>
-                <Text style={styles.memberInitial}>{m.name?.[0]?.toUpperCase() ?? '?'}</Text>
+
+        {/* Members */}
+        <View style={styles.block}>
+          <View style={styles.sectionHeader}>
+            <Text style={[typography.overline, { color: c.textSecondary }]}>Members</Text>
+            <Text style={{ fontSize: 13, color: c.primary, fontWeight: '700' }}>
+              Code: {house.invite_code}
+            </Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
+            {members.map((m) => (
+              <View key={m.user_id} style={{ alignItems: 'center', gap: spacing.xs }}>
+                <Avatar name={m.name} size={48} tone="primary" />
+                <Text style={[typography.caption, { color: c.textSecondary }]}>
+                  {m.name?.split(' ')[0]}
+                </Text>
               </View>
-              <Text style={styles.memberChipName}>{m.name?.split(' ')[0]}</Text>
-            </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Quick links */}
+        <View style={[styles.block, { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }]}>
+          {[
+            { label: '🧹 Chores', screen: 'Chores' },
+            { label: '🏆 Leaderboard', screen: 'Leaderboard' },
+            { label: '🌍 Passport', screen: 'CuisinePassport' },
+            { label: '📊 Report', screen: 'HouseReport' },
+            { label: '🍱 Prep', screen: 'PrepMeals' },
+          ].map((link) => (
+            <Card
+              key={link.screen}
+              surface="surfaceMuted"
+              radius="md"
+              padding="sm"
+              elevation="flat"
+              onPress={() => navigation.navigate(link.screen)}
+              accessibilityLabel={link.label}
+            >
+              <Text style={{ fontSize: 13, color: c.text, fontWeight: '600' }}>
+                {link.label}
+              </Text>
+            </Card>
           ))}
-        </ScrollView>
-      </View>
+        </View>
 
-      {/* Quick Links row */}
-      <View style={styles.quickLinks}>
-        {[
-          { label: '🧹 Chores', screen: 'Chores' },
-          { label: '🏆 Leaderboard', screen: 'Leaderboard' },
-          { label: '🌍 Passport', screen: 'CuisinePassport' },
-          { label: '📊 Report', screen: 'HouseReport' },
-          { label: '🍱 Prep', screen: 'PrepMeals' },
-        ].map((link) => (
-          <TouchableOpacity
-            key={link.screen}
-            style={styles.quickLink}
-            onPress={() => navigation.navigate(link.screen)}
-          >
-            <Text style={styles.quickLinkText}>{link.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Expenses / Balances */}
-      <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Expenses')}>
-        <Text style={styles.cardLabel}>EXPENSES</Text>
-        {myBalance !== undefined ? (
-          <Text style={[styles.balanceAmount, { color: myBalance.net >= 0 ? '#16A34A' : '#DC2626' }]}>
-            {myBalance.net >= 0
-              ? `You are owed ₹${myBalance.net.toFixed(2)}`
-              : `You owe ₹${Math.abs(myBalance.net).toFixed(2)}`}
+        {/* Expenses */}
+        <Card
+          surface="surface"
+          radius="xl"
+          padding="lg"
+          elevation="card"
+          bordered
+          style={styles.block}
+          onPress={() => navigation.navigate('Expenses')}
+        >
+          <Text style={[typography.overline, { color: c.textSecondary }]}>Expenses</Text>
+          {myBalance !== undefined ? (
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: '800',
+                color: myBalance.net >= 0 ? c.success : c.error,
+                marginTop: spacing.xs,
+              }}
+            >
+              {myBalance.net >= 0
+                ? `You are owed ₹${myBalance.net.toFixed(2)}`
+                : `You owe ₹${Math.abs(myBalance.net).toFixed(2)}`}
+            </Text>
+          ) : (
+            <Text style={[typography.body, { color: c.textSecondary, marginTop: spacing.xs }]}>
+              No expenses yet
+            </Text>
+          )}
+          <Text style={{ fontSize: 13, color: c.primary, fontWeight: '700', marginTop: spacing.sm }}>
+            View all →
           </Text>
-        ) : (
-          <Text style={styles.emptyText}>No expenses yet</Text>
-        )}
-        <Text style={styles.viewAll}>View all expenses →</Text>
-      </TouchableOpacity>
-
-      <View style={{ height: 100 }} />
-    </ScrollView>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  safe: { flex: 1 },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  block: { marginHorizontal: spacing.lg, marginBottom: spacing.lg },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
-  houseName: { fontSize: 24, fontWeight: '700', color: '#1C1C1E' },
-  memberCount: { fontSize: 14, color: '#6B6B6B', marginTop: 2 },
-  settingsBtn: { fontSize: 15, color: '#E85D04', fontWeight: '600' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    marginHorizontal: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  myTurnCard: { backgroundColor: '#FFF3E0', borderWidth: 1.5, borderColor: '#E85D04' },
-  othersCard: { backgroundColor: '#F0FDF4' },
-  cardLabel: { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1, marginBottom: 8 },
-  cookName: { fontSize: 18, fontWeight: '700', color: '#1C1C1E', marginBottom: 4 },
-  recipeName: { fontSize: 15, color: '#6B6B6B', marginBottom: 12 },
-  pickRecipeBtn: { alignSelf: 'flex-start' },
-  pickRecipeBtnText: { fontSize: 15, color: '#E85D04', fontWeight: '600' },
-  cookingBtn: {
-    backgroundColor: '#E85D04',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  cookingBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  emptyText: { fontSize: 15, color: '#9B9B9B' },
-  section: { marginHorizontal: 16, marginBottom: 14 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1 },
-  seeAll: { fontSize: 13, color: '#E85D04' },
-  upcomingChip: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 10,
+  choreRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 72,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
   },
-  upcomingDate: { fontSize: 11, color: '#6B6B6B', marginBottom: 4 },
-  upcomingCook: { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
-  generateBtn: {
-    backgroundColor: '#F3F3F3',
-    borderRadius: 12,
-    padding: 14,
-    paddingHorizontal: 20,
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderStyle: 'dashed',
-  },
-  generateBtnText: { fontSize: 14, color: '#6B6B6B' },
-  memberChip: { alignItems: 'center', marginRight: 16 },
-  memberAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E85D04',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  memberInitial: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  memberChipName: { fontSize: 12, color: '#6B6B6B' },
-  balanceAmount: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  viewAll: { fontSize: 13, color: '#E85D04', marginTop: 8 },
-  quickLinks: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 16, gap: 8, marginBottom: 14 },
-  quickLink: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  quickLinkText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 });

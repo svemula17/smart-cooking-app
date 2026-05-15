@@ -1,20 +1,39 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+
 import type { RootState } from '../store';
 import { houseApi } from '../services/api';
 
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { Card, EmptyState, Header, Skeleton } from '../components/ui';
+
 const CUISINE_FLAGS: Record<string, string> = {
-  Indian: '🇮🇳', Chinese: '🇨🇳', 'Indo-Chinese': '🥢', Italian: '🇮🇹',
-  Mexican: '🇲🇽', Thai: '🇹🇭', Japanese: '🇯🇵', Korean: '🇰🇷',
-  French: '🇫🇷', American: '🇺🇸', Mediterranean: '🫒',
+  Indian: '🇮🇳',
+  Chinese: '🇨🇳',
+  'Indo-Chinese': '🥢',
+  Italian: '🇮🇹',
+  Mexican: '🇲🇽',
+  Thai: '🇹🇭',
+  Japanese: '🇯🇵',
+  Korean: '🇰🇷',
+  French: '🇫🇷',
+  American: '🇺🇸',
+  Mediterranean: '🫒',
 };
 
 interface CuisineData {
-  cuisine_type: string; times_cooked: string; first_cooked: string; last_cooked: string;
+  cuisine_type: string;
+  times_cooked: string;
+  first_cooked: string;
+  last_cooked: string;
 }
 
 export default function CuisinePassportScreen({ navigation }: any) {
+  const c = useThemeColors();
   const { house } = useSelector((s: RootState) => s.house);
   const [unlocked, setUnlocked] = useState<string[]>([]);
   const [locked, setLocked] = useState<string[]>([]);
@@ -29,74 +48,144 @@ export default function CuisinePassportScreen({ navigation }: any) {
       setUnlocked(data.data.unlocked);
       setLocked(data.data.locked);
       setCuisines(data.data.cuisines_cooked);
-    } catch { /* ignore */ } finally { setLoading(false); }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, [house]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const total = unlocked.length + locked.length;
+  const pct = total > 0 ? (unlocked.length / total) * 100 : 0;
 
   return (
-    <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>← Back</Text></TouchableOpacity>
-        <Text style={styles.title}>Cuisine Passport</Text>
-        <Text style={styles.subtitle}>{unlocked.length} of {unlocked.length + locked.length} cuisines explored</Text>
-      </View>
-
-      {loading ? <ActivityIndicator size="large" color="#E85D04" style={{ marginTop: 60 }} /> : (
-        <>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${(unlocked.length / (unlocked.length + locked.length)) * 100}%` as any }]} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <Header title="Cuisine Passport" onBack={() => navigation.goBack()} border />
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing['3xl'] }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={c.primary} />}
+      >
+        <View style={{ paddingVertical: spacing.lg }}>
+          <Text style={[typography.body, { color: c.textSecondary }]}>
+            {unlocked.length} of {total} cuisines explored
+          </Text>
+          <View style={[styles.progressTrack, { backgroundColor: c.surfaceMuted }]}>
+            <View
+              style={{
+                height: '100%',
+                width: `${pct}%`,
+                backgroundColor: c.primary,
+                borderRadius: 4,
+              }}
+            />
           </View>
+        </View>
 
-          <Text style={styles.sectionTitle}>UNLOCKED</Text>
+        {loading ? (
           <View style={styles.grid}>
-            {unlocked.map((c) => {
-              const data = cuisines.find((x) => x.cuisine_type === c);
-              return (
-                <View key={c} style={styles.cuisineCard}>
-                  <Text style={styles.cuisineFlag}>{CUISINE_FLAGS[c] ?? '🍽️'}</Text>
-                  <Text style={styles.cuisineName}>{c}</Text>
-                  {data && <Text style={styles.cuisineCount}>{data.times_cooked}×</Text>}
-                </View>
-              );
-            })}
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} width="30%" height={100} radius={14} />
+            ))}
           </View>
+        ) : total === 0 ? (
+          <EmptyState
+            icon="🌍"
+            title="No cuisines yet"
+            body="Cook your first dish to start unlocking flags."
+          />
+        ) : (
+          <>
+            <Text style={[typography.overline, { color: c.textSecondary, marginBottom: spacing.sm }]}>
+              Unlocked
+            </Text>
+            <View style={styles.grid}>
+              {unlocked.map((u) => {
+                const data = cuisines.find((x) => x.cuisine_type === u);
+                return (
+                  <Card
+                    key={u}
+                    surface="surface"
+                    radius="lg"
+                    padding="md"
+                    elevation="card"
+                    style={styles.cuisineCard}
+                  >
+                    <Text style={{ fontSize: 28 }}>{CUISINE_FLAGS[u] ?? '🍽️'}</Text>
+                    <Text style={[typography.caption, { color: c.text, fontWeight: '700', textAlign: 'center' }]}>
+                      {u}
+                    </Text>
+                    {data ? (
+                      <Text style={{ fontSize: 11, color: c.primary, fontWeight: '700' }}>
+                        {data.times_cooked}×
+                      </Text>
+                    ) : null}
+                  </Card>
+                );
+              })}
+            </View>
 
-          {locked.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>LOCKED</Text>
-              <View style={styles.grid}>
-                {locked.map((c) => (
-                  <View key={c} style={[styles.cuisineCard, styles.cuisineCardLocked]}>
-                    <Text style={[styles.cuisineFlag, { opacity: 0.3 }]}>{CUISINE_FLAGS[c] ?? '🍽️'}</Text>
-                    <Text style={[styles.cuisineName, { color: '#9B9B9B' }]}>{c}</Text>
-                    <Text style={styles.lockIcon}>🔒</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-        </>
-      )}
-      <View style={{ height: 60 }} />
-    </ScrollView>
+            {locked.length > 0 ? (
+              <>
+                <Text
+                  style={[
+                    typography.overline,
+                    { color: c.textSecondary, marginTop: spacing.lg, marginBottom: spacing.sm },
+                  ]}
+                >
+                  Locked
+                </Text>
+                <View style={styles.grid}>
+                  {locked.map((l) => (
+                    <Card
+                      key={l}
+                      surface="surfaceMuted"
+                      radius="lg"
+                      padding="md"
+                      elevation="flat"
+                      style={styles.cuisineCard}
+                    >
+                      <Text style={{ fontSize: 28, opacity: 0.35 }}>
+                        {CUISINE_FLAGS[l] ?? '🍽️'}
+                      </Text>
+                      <Text
+                        style={[typography.caption, { color: c.textLight, textAlign: 'center' }]}
+                      >
+                        {l}
+                      </Text>
+                      <Text style={{ fontSize: 14 }}>🔒</Text>
+                    </Card>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-  header: { padding: 20, paddingTop: 60, marginBottom: 8 },
-  back: { fontSize: 15, color: '#E85D04', marginBottom: 12 },
-  title: { fontSize: 24, fontWeight: '700', color: '#1C1C1E', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#6B6B6B' },
-  progressBar: { height: 8, backgroundColor: '#F0F0F0', marginHorizontal: 16, borderRadius: 4, marginBottom: 24, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#E85D04', borderRadius: 4 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#9B9B9B', letterSpacing: 1, marginHorizontal: 16, marginBottom: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 10, marginBottom: 24 },
-  cuisineCard: { width: '30%', backgroundColor: '#fff', borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
-  cuisineCardLocked: { backgroundColor: '#F3F3F3' },
-  cuisineFlag: { fontSize: 28 },
-  cuisineName: { fontSize: 12, fontWeight: '600', color: '#1C1C1E', textAlign: 'center' },
-  cuisineCount: { fontSize: 11, color: '#E85D04', fontWeight: '700' },
-  lockIcon: { fontSize: 14 },
+  safe: { flex: 1 },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  cuisineCard: {
+    width: '31%',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
 });

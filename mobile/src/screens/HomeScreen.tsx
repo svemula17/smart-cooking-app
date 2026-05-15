@@ -1,58 +1,81 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
+  RefreshControl,
   ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
   StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
-import { useState } from 'react';
+
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
 import type { CookScheduleEntry } from '../services/houseService';
 import AttendanceSheet from './AttendanceSheet';
-import { colors } from '../theme/colors';
+
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
+import { typography } from '../theme/typography';
+import { Avatar, Badge, Card, IconButton } from '../components/ui';
 import { CuisineCard } from '../components/CuisineCard';
 
 type HomeNav = NativeStackNavigationProp<RootStackParamList>;
 
 const CUISINES = [
-  { cuisine: 'Indian',        emoji: '🍛', color: colors.indian },
-  { cuisine: 'Chinese',       emoji: '🥢', color: colors.chinese },
-  { cuisine: 'Indo-Chinese',  emoji: '🍜', color: colors.indoChinese },
-  { cuisine: 'Italian',       emoji: '🍝', color: colors.italian },
-  { cuisine: 'Mexican',       emoji: '🌮', color: colors.mexican },
-  { cuisine: 'Thai',          emoji: '🍜', color: colors.thai },
-  { cuisine: 'Japanese',      emoji: '🍱', color: colors.japanese },
-  { cuisine: 'Mediterranean', emoji: '🫒', color: colors.mediterranean },
+  { cuisine: 'Indian', emoji: '🍛' },
+  { cuisine: 'Chinese', emoji: '🥢' },
+  { cuisine: 'Indo-Chinese', emoji: '🍜' },
+  { cuisine: 'Italian', emoji: '🍝' },
+  { cuisine: 'Mexican', emoji: '🌮' },
+  { cuisine: 'Thai', emoji: '🍜' },
 ];
 
-function GoalRing({
-  label, emoji, current, goal, color, size = 70,
-}: { label: string; emoji: string; current: number; goal: number; color: string; size?: number }) {
-  const r = (size - 10) / 2;
+const greeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+interface RingProps {
+  label: string;
+  emoji: string;
+  current: number;
+  goal: number;
+  color: string;
+  trackColor: string;
+  size?: number;
+}
+
+function GoalRing({ label, emoji, current, goal, color, trackColor, size = 76 }: RingProps) {
+  const c = useThemeColors();
+  const stroke = 8;
+  const r = (size - stroke) / 2;
   const circumference = 2 * Math.PI * r;
   const pct = goal > 0 ? Math.min(current / goal, 1) : 0;
   const dash = circumference * pct;
   const cx = size / 2;
 
   return (
-    <View style={styles.goalRingWrap}>
+    <View
+      style={{ alignItems: 'center', flex: 1 }}
+      accessibilityLabel={`${label}: ${Math.round(pct * 100)} percent of goal`}
+    >
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size}>
-          <Circle cx={cx} cy={cx} r={r} stroke="#E8EDF3" strokeWidth={7} fill="none" />
+          <Circle cx={cx} cy={cx} r={r} stroke={trackColor} strokeWidth={stroke} fill="none" />
           <Circle
             cx={cx}
             cy={cx}
             r={r}
             stroke={color}
-            strokeWidth={7}
+            strokeWidth={stroke}
             fill="none"
             strokeDasharray={`${dash} ${circumference}`}
             strokeLinecap="round"
@@ -60,26 +83,36 @@ function GoalRing({
             origin={`${cx},${cx}`}
           />
         </Svg>
-        <View style={styles.goalRingCenter}>
-          <Text style={styles.goalRingEmoji}>{emoji}</Text>
-          <Text style={[styles.goalRingPct, { color }]}>{Math.round(pct * 100)}%</Text>
+        <View style={StyleSheet.absoluteFill as any}>
+          <View style={ringCenter}>
+            <Text style={{ fontSize: 18 }}>{emoji}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '800', color, marginTop: 1 }}>
+              {Math.round(pct * 100)}%
+            </Text>
+          </View>
         </View>
       </View>
-      <Text style={styles.goalRingLabel}>{label}</Text>
+      <Text
+        style={[typography.caption, { color: c.textSecondary, marginTop: spacing.xs, fontWeight: '600' }]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
-const getGreeting = (): string => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+const ringCenter = {
+  flex: 1,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
 };
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNav>();
-  const user        = useSelector((s: RootState) => s.auth.user);
+  const c = useThemeColors();
+  const isDark = useSelector((s: RootState) => s.settings.isDark);
+
+  const user = useSelector((s: RootState) => s.auth.user);
   const preferences = useSelector((s: RootState) => s.user.preferences);
   const macroProgress = useSelector((s: RootState) => s.user.macroProgress);
   const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
@@ -87,10 +120,19 @@ const HomeScreen: React.FC = () => {
   const house = useSelector((s: RootState) => s.house.house);
   const schedule = useSelector((s: RootState) => s.cookSchedule.schedule);
   const attendance = useSelector((s: RootState) => s.attendance);
+
   const [showAttendance, setShowAttendance] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 600);
+  }, []);
 
   const todayISO = new Date().toISOString().slice(0, 10);
-  const todayEntry: CookScheduleEntry | undefined = schedule.find((e) => e.scheduled_date === todayISO);
+  const todayEntry: CookScheduleEntry | undefined = schedule.find(
+    (e) => e.scheduled_date === todayISO
+  );
   const isMyTurn = todayEntry?.user_id === user?.id;
   const hasRespondedToday = attendance.myResponse !== null;
 
@@ -103,337 +145,422 @@ const HomeScreen: React.FC = () => {
     return days >= 0 && days <= 3;
   });
   const urgentCount = expiringSoon.length;
-  const stableCount = pantryItems.filter((item) => !item.expiry_date).length;
-  const readinessScore = pantryCount === 0
-    ? 0
-    : Math.min(100, Math.round(((stableCount * 0.8) + (pantryCount - urgentCount)) / pantryCount * 100));
+  const stableCount = pantryItems.filter((i) => !i.expiry_date).length;
+  const readinessScore =
+    pantryCount === 0
+      ? 0
+      : Math.min(
+          100,
+          Math.round(((stableCount * 0.8 + (pantryCount - urgentCount)) / pantryCount) * 100)
+        );
+
   const goals = {
     calories: preferences?.calories_goal ?? 2000,
     protein: preferences?.protein_goal ?? 150,
     carbs: preferences?.carbs_goal ?? 250,
     fat: preferences?.fat_goal ?? 65,
   };
-  const topCuisines = CUISINES.slice(0, 6);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
-        style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
+        }
       >
-        {/* Header */}
+        {/* Greeting header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.userName}>{userName} 👋</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.label, { color: c.textSecondary }]}>{greeting()}</Text>
+            <Text style={[typography.h1, { color: c.text, marginTop: 2 }]} numberOfLines={1}>
+              {userName} 👋
+            </Text>
           </View>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarEmoji}>👤</Text>
-          </View>
+          <Avatar name={user?.name} size={44} tone="primary" />
         </View>
 
-        {/* Attendance Card — shown in the morning if not yet responded */}
-        {house && todayEntry && !hasRespondedToday && (
-          <TouchableOpacity
-            style={styles.attendanceCard}
+        {/* Attendance prompt — sticky-ish, persists until answered */}
+        {house && todayEntry && !hasRespondedToday ? (
+          <Card
             onPress={() => setShowAttendance(true)}
-            activeOpacity={0.85}
+            surface="surface"
+            radius="xl"
+            elevation="card"
+            bordered
+            accessibilityLabel="Respond to dinner attendance"
+            style={[styles.block, { borderColor: c.info, backgroundColor: c.infoMuted }]}
           >
-            <Text style={styles.attendanceEmoji}>🍽️</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.attendanceTitle}>Are you eating tonight?</Text>
-              <Text style={styles.attendanceSubtitle}>
-                {attendance.summary.attending} eating · {attendance.summary.pending} haven't responded
-              </Text>
+            <View style={styles.row}>
+              <Text style={styles.bigEmoji}>🍽️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.h4, { color: c.text }]}>Are you eating tonight?</Text>
+                <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: 2 }]}>
+                  {attendance.summary.attending} eating · {attendance.summary.pending} pending
+                </Text>
+              </View>
+              <IconButton
+                icon="›"
+                accessibilityLabel="Open attendance sheet"
+                onPress={() => setShowAttendance(true)}
+                size={32}
+              />
             </View>
-            <Text style={styles.attendanceArrow}>→</Text>
-          </TouchableOpacity>
-        )}
+          </Card>
+        ) : null}
 
-        {/* Today's Cook Banner */}
-        {house && todayEntry && (
-          <TouchableOpacity
-            style={[styles.cookBanner, isMyTurn ? styles.cookBannerMyTurn : styles.cookBannerOther]}
-            onPress={() => navigation.navigate('Tabs' as any)}
-            activeOpacity={0.85}
+        {/* Today's cook */}
+        {house && todayEntry ? (
+          <Card
+            surface="surface"
+            radius="xl"
+            elevation="card"
+            bordered
+            style={[
+              styles.block,
+              {
+                borderColor: isMyTurn ? c.primary : c.success,
+                backgroundColor: isMyTurn ? c.primaryMuted : c.successMuted,
+              },
+            ]}
+            onPress={isMyTurn ? () => navigation.navigate('Tabs' as any) : undefined}
+            accessibilityLabel={isMyTurn ? "It's your turn to cook" : 'View today’s cook'}
           >
-            <Text style={styles.cookBannerEmoji}>👨‍🍳</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cookBannerText}>
-                {isMyTurn
-                  ? "It's your turn to cook today!"
-                  : `${todayEntry.cook_name?.split(' ')[0]} is cooking tonight`}
-              </Text>
-              {todayEntry.recipe_name && (
-                <Text style={styles.cookBannerRecipe}>{todayEntry.recipe_name}</Text>
-              )}
+            <View style={styles.row}>
+              <Text style={styles.bigEmoji}>👨‍🍳</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.h4, { color: c.text }]}>
+                  {isMyTurn
+                    ? "It's your turn tonight"
+                    : `${todayEntry.cook_name?.split(' ')[0] ?? 'Someone'} is cooking`}
+                </Text>
+                {todayEntry.recipe_name ? (
+                  <Text
+                    style={[typography.bodySmall, { color: c.textSecondary, marginTop: 2 }]}
+                    numberOfLines={1}
+                  >
+                    {todayEntry.recipe_name}
+                  </Text>
+                ) : null}
+              </View>
+              {isMyTurn ? <Badge label="Your turn" tone="primary" /> : null}
             </View>
-            {isMyTurn && <Text style={styles.cookBannerArrow}>→</Text>}
-          </TouchableOpacity>
-        )}
+          </Card>
+        ) : null}
 
-        <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Cook smarter with what you already have.</Text>
-          <Text style={styles.heroSubtitle}>
+        {/* Hero — readiness */}
+        <Card
+          surface="surfaceMuted"
+          radius="2xl"
+          elevation="flat"
+          padding="2xl"
+          style={styles.block}
+        >
+          <Text style={[typography.h2, { color: c.text }]}>
+            Cook smarter with what you already have.
+          </Text>
+          <Text
+            style={[
+              typography.body,
+              { color: c.textSecondary, marginTop: spacing.sm },
+            ]}
+          >
             {urgentCount > 0
               ? `${urgentCount} ingredient${urgentCount > 1 ? 's' : ''} need attention soon.`
-              : 'No expiry pressure right now.'} Browse recipes or check what needs using first.
+              : 'No expiry pressure right now.'}
           </Text>
 
-          <View style={styles.heroStatsRow}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{readinessScore}</Text>
-              <Text style={styles.heroStatLabel}>Kitchen readiness</Text>
-            </View>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{pantryCount}</Text>
-              <Text style={styles.heroStatLabel}>Tracked ingredients</Text>
-            </View>
-            <View style={styles.heroStat}>
-              <Text style={[styles.heroStatValue, urgentCount > 0 && { color: colors.warning }]}>{urgentCount}</Text>
-              <Text style={styles.heroStatLabel}>Use soon</Text>
-            </View>
+          <View style={styles.heroStats}>
+            <HeroStat label="Readiness" value={String(readinessScore)} suffix="%" />
+            <HeroStat label="In pantry" value={String(pantryCount)} />
+            <HeroStat
+              label="Use soon"
+              value={String(urgentCount)}
+              tone={urgentCount > 0 ? 'warning' : 'neutral'}
+            />
           </View>
-          {cookFromPantry && (
-            <View style={styles.liveInline}>
-              <Text style={styles.liveInlineText}>Pantry matching is shaping recipe priority right now.</Text>
-            </View>
-          )}
-        </View>
 
-        <View style={styles.goalsCard}>
-          <View style={styles.sectionHeaderCompact}>
+          {cookFromPantry ? (
+            <View style={[styles.pillNote, { backgroundColor: c.successMuted }]}>
+              <Badge label="LIVE" tone="success" />
+              <Text style={[typography.bodySmall, { color: c.success, fontWeight: '700' }]}>
+                Pantry matching is shaping recipe priority
+              </Text>
+            </View>
+          ) : null}
+        </Card>
+
+        {/* Daily goals */}
+        <Card surface="surface" radius="2xl" elevation="card" padding="xl" style={styles.block}>
+          <View style={styles.sectionTop}>
             <View>
-              <Text style={styles.sectionTitle}>Daily goals</Text>
-              <Text style={styles.sectionSubtitle}>{macroProgress.calories} / {goals.calories} kcal today</Text>
+              <Text style={[typography.h3, { color: c.text }]}>Daily goals</Text>
+              <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+                {macroProgress.calories} / {goals.calories} kcal today
+              </Text>
             </View>
           </View>
-          <View style={styles.goalsRow}>
-            <GoalRing label="Calories" emoji="🔥" current={macroProgress.calories} goal={goals.calories} color={colors.calories} />
-            <GoalRing label="Protein" emoji="💪" current={macroProgress.protein} goal={goals.protein} color={colors.protein} />
-            <GoalRing label="Carbs" emoji="🌾" current={macroProgress.carbs} goal={goals.carbs} color={colors.carbs} />
-            <GoalRing label="Fat" emoji="🫒" current={macroProgress.fat} goal={goals.fat} color={colors.fat} />
+          <View style={styles.ringRow}>
+            <GoalRing
+              label="Calories"
+              emoji="🔥"
+              current={macroProgress.calories}
+              goal={goals.calories}
+              color={c.calories}
+              trackColor={c.surfaceMuted}
+            />
+            <GoalRing
+              label="Protein"
+              emoji="💪"
+              current={macroProgress.protein}
+              goal={goals.protein}
+              color={c.protein}
+              trackColor={c.surfaceMuted}
+            />
+            <GoalRing
+              label="Carbs"
+              emoji="🌾"
+              current={macroProgress.carbs}
+              goal={goals.carbs}
+              color={c.carbs}
+              trackColor={c.surfaceMuted}
+            />
+            <GoalRing
+              label="Fat"
+              emoji="🫒"
+              current={macroProgress.fat}
+              goal={goals.fat}
+              color={c.fat}
+              trackColor={c.surfaceMuted}
+            />
           </View>
-        </View>
+        </Card>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Use first tonight</Text>
-          <Text style={styles.sectionSubtitle}>Keep waste low and momentum high.</Text>
-        </View>
-
-        <View style={styles.useSoonCard}>
+        {/* Use first */}
+        <SectionHeader title="Use first tonight" subtitle="Keep waste low and momentum high." />
+        <Card surface="surface" radius="xl" elevation="card" padding="xl" style={styles.block}>
           {expiringSoon.length > 0 ? (
-            expiringSoon.slice(0, 4).map((item) => (
-              <View key={item.id} style={styles.useSoonRow}>
-                <View style={styles.useSoonDot} />
-                <View style={styles.useSoonTextWrap}>
-                  <Text style={styles.useSoonName}>{item.name}</Text>
-                  <Text style={styles.useSoonMeta}>
-                    {item.quantity} {item.unit} · {item.location} · expires {item.expiry_date}
-                  </Text>
+            <View style={{ gap: spacing.md }}>
+              {expiringSoon.slice(0, 4).map((item) => (
+                <View key={item.id} style={styles.useRow}>
+                  <View style={[styles.dot, { backgroundColor: c.warning }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[typography.h4, { color: c.text }]}>{item.name}</Text>
+                    <Text
+                      style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}
+                      numberOfLines={1}
+                    >
+                      {item.quantity} {item.unit} · {item.location} · expires {item.expiry_date}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            ))
+              ))}
+            </View>
           ) : (
-            <Text style={styles.useSoonEmpty}>Nothing urgent. Your pantry is in a calm zone.</Text>
+            <Text style={[typography.body, { color: c.textSecondary }]}>
+              Nothing urgent. Your pantry is in a calm zone.
+            </Text>
           )}
-          <TouchableOpacity
-            style={styles.inlineAction}
-            onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all', intent: 'use-soon' })}
-          >
-            <Text style={styles.inlineActionText}>Find a use-it-now dinner →</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={{ marginTop: spacing.md }}>
+            <Text
+              accessibilityRole="button"
+              onPress={() =>
+                navigation.navigate('RecipeBrowser', { cuisine: 'all', intent: 'use-soon' })
+              }
+              style={{ color: c.primary, fontWeight: '700', fontSize: 14 }}
+            >
+              Find a use-it-now dinner →
+            </Text>
+          </View>
+        </Card>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Cook by cuisine</Text>
-          <Text style={styles.sectionSubtitle}>Keep the familiar browse flow when you know what you’re craving.</Text>
-        </View>
-
+        {/* Cuisines */}
+        <SectionHeader
+          title="Cook by cuisine"
+          subtitle="Browse what you’re craving tonight."
+        />
         <View style={styles.cuisineGrid}>
-          {topCuisines.map((item) => (
+          {CUISINES.map((item) => (
             <CuisineCard
               key={item.cuisine}
               cuisine={item.cuisine}
               emoji={item.emoji}
-              color={item.color}
+              color={(c as any)[item.cuisine.toLowerCase().replace('-', '')] ?? c.surfaceMuted}
               onPress={() => navigation.navigate('RecipeBrowser', { cuisine: item.cuisine })}
             />
           ))}
         </View>
-
-        <TouchableOpacity
-          style={styles.moreCuisineBtn}
+        <Text
+          accessibilityRole="button"
           onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
+          style={[
+            typography.button,
+            { color: c.primary, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
+          ]}
         >
-          <Text style={styles.moreCuisineText}>Browse all cuisines and dishes →</Text>
-        </TouchableOpacity>
+          Browse all cuisines and dishes →
+        </Text>
 
-        <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Pantry')}>
-            <Text style={styles.quickBtnEmoji}>🥫</Text>
-            <Text style={styles.quickBtnText}>Open Pantry Pulse</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickBtn, styles.quickBtnWarm]}
-            onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all', intent: 'high-protein' })}
+        {/* Quick actions */}
+        <View style={[styles.quickRow, { paddingHorizontal: spacing.xl }]}>
+          <Card
+            onPress={() => navigation.navigate('Pantry')}
+            surface="surfaceMuted"
+            radius="xl"
+            padding="xl"
+            elevation="flat"
+            style={{ flex: 1 }}
+            accessibilityLabel="Open pantry"
           >
-            <Text style={styles.quickBtnEmoji}>💪</Text>
-            <Text style={styles.quickBtnText}>Protein-first picks</Text>
-          </TouchableOpacity>
+            <Text style={{ fontSize: 24 }}>🥫</Text>
+            <Text style={[typography.h4, { color: c.text, marginTop: spacing.sm }]}>Pantry</Text>
+            <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+              Track and use up
+            </Text>
+          </Card>
+          <Card
+            onPress={() =>
+              navigation.navigate('RecipeBrowser', { cuisine: 'all', intent: 'high-protein' })
+            }
+            surface="surfaceMuted"
+            radius="xl"
+            padding="xl"
+            elevation="flat"
+            style={{ flex: 1 }}
+            accessibilityLabel="High-protein picks"
+          >
+            <Text style={{ fontSize: 24 }}>💪</Text>
+            <Text style={[typography.h4, { color: c.text, marginTop: spacing.sm }]}>
+              Protein picks
+            </Text>
+            <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+              Hit your goal faster
+            </Text>
+          </Card>
         </View>
       </ScrollView>
-      <AttendanceSheet
-        visible={showAttendance}
-        onClose={() => setShowAttendance(false)}
-      />
+
+      <AttendanceSheet visible={showAttendance} onClose={() => setShowAttendance(false)} />
     </SafeAreaView>
   );
 };
 
+function HeroStat({
+  label,
+  value,
+  suffix,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  tone?: 'neutral' | 'warning';
+}) {
+  const c = useThemeColors();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: c.surface,
+        borderRadius: radii.lg,
+        padding: spacing.md,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: '800',
+            color: tone === 'warning' ? c.warning : c.text,
+          }}
+        >
+          {value}
+        </Text>
+        {suffix ? (
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '700',
+              color: tone === 'warning' ? c.warning : c.textSecondary,
+              marginLeft: 2,
+            }}
+          >
+            {suffix}
+          </Text>
+        ) : null}
+      </View>
+      <Text
+        style={[typography.caption, { color: c.textSecondary, fontWeight: '600', marginTop: 2 }]}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const c = useThemeColors();
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={[typography.h3, { color: c.text }]}>{title}</Text>
+      {subtitle ? (
+        <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+          {subtitle}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea:    { flex: 1, backgroundColor: colors.background },
-  container:   { flex: 1, backgroundColor: colors.background },
-  content:     { paddingBottom: 32 },
+  safe: { flex: 1 },
+  content: { paddingBottom: spacing['4xl'] },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20,
-  },
-  greeting:    { fontSize: 15, color: colors.textSecondary, fontWeight: '500' },
-  userName:    { fontSize: 26, fontWeight: '800', color: colors.text, marginTop: 2 },
-  avatarCircle: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  avatarEmoji: { fontSize: 22 },
-  cookBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    padding: 14,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    gap: 10,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
   },
-  attendanceCard: {
+  block: { marginHorizontal: spacing.xl, marginBottom: spacing.lg },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  bigEmoji: { fontSize: 26 },
+  heroStats: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  pillNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 14,
-    padding: 14,
-    marginHorizontal: 16,
-    marginBottom: 10,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
   },
-  attendanceEmoji: { fontSize: 22 },
-  attendanceTitle: { fontSize: 14, fontWeight: '700', color: '#1E40AF' },
-  attendanceSubtitle: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
-  attendanceArrow: { fontSize: 16, color: '#1E40AF' },
-  cookBannerMyTurn: { backgroundColor: '#FFF3E0', borderWidth: 1.5, borderColor: '#E85D04' },
-  cookBannerOther: { backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0' },
-  cookBannerEmoji: { fontSize: 24 },
-  cookBannerText: { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
-  cookBannerRecipe: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
-  cookBannerArrow: { fontSize: 18, color: '#E85D04', fontWeight: '700' },
-  heroCard: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 24,
-    padding: 20,
-    backgroundColor: '#F7F4EE',
-    borderWidth: 1,
-    borderColor: '#E8DED1',
+  sectionTop: { marginBottom: spacing.lg },
+  ringRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  sectionHeader: {
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
   },
-  heroTitle: { fontSize: 28, lineHeight: 33, fontWeight: '900', color: colors.text, marginBottom: 10 },
-  heroSubtitle: { fontSize: 14, lineHeight: 21, color: colors.textSecondary },
-  heroStatsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  heroStat: { flex: 1, borderRadius: 16, padding: 14, backgroundColor: '#FFFFFF' },
-  heroStatValue: { fontSize: 24, fontWeight: '900', color: colors.accent, marginBottom: 4 },
-  heroStatLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
-  liveInline: {
-    marginTop: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: '#EEF7EF',
+  useRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
   },
-  liveInlineText: { fontSize: 12, fontWeight: '700', color: '#2E7D32' },
-  goalsCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.divider,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  sectionHeaderCompact: { marginBottom: 14 },
-  sectionHeader: { paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle: { fontSize: 19, fontWeight: '800', color: colors.text, marginBottom: 4 },
-  sectionSubtitle: { fontSize: 13, lineHeight: 18, color: colors.textSecondary },
-  goalsRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  goalRingWrap: { alignItems: 'center', flex: 1 },
-  goalRingCenter: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goalRingEmoji: { fontSize: 16 },
-  goalRingPct: { fontSize: 11, fontWeight: '800', marginTop: 2 },
-  goalRingLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginTop: 6 },
-  useSoonCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    backgroundColor: '#FFF7EB',
-    borderRadius: 22,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#F6D69A',
-  },
-  useSoonRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
-  useSoonDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.warning, marginTop: 6, marginRight: 10 },
-  useSoonTextWrap: { flex: 1 },
-  useSoonName: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 },
-  useSoonMeta: { fontSize: 12, lineHeight: 18, color: colors.textSecondary },
-  useSoonEmpty: { fontSize: 14, lineHeight: 20, color: colors.textSecondary, marginBottom: 10 },
-  inlineAction: { marginTop: 6, alignSelf: 'flex-start' },
-  inlineActionText: { fontSize: 13, fontWeight: '800', color: colors.primary },
+  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
   cuisineGrid: {
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  moreCuisineBtn: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  moreCuisineText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  quickRow: { flexDirection: 'row', marginHorizontal: 20, marginTop: 20, gap: 12 },
-  quickBtn: {
-    flex: 1, backgroundColor: '#EDF6FF', borderRadius: 18,
-    paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#C3E0FF',
-  },
-  quickBtnWarm: { backgroundColor: '#FFF0EE', borderColor: '#FFC8BE' },
-  quickBtnEmoji: { fontSize: 22, marginBottom: 4 },
-  quickBtnText: { fontSize: 13, fontWeight: '800', color: colors.accent, textAlign: 'center', paddingHorizontal: 8 },
+  quickRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
 });
 
 export default HomeScreen;

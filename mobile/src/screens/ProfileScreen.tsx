@@ -1,207 +1,145 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
-  Modal,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
+  Switch,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 import { clearAuth, setPreferences, toggleDarkMode, type RootState } from '../store';
-import { Switch } from 'react-native';
 import { userService } from '../services/userService';
-import { colors } from '../theme/colors';
 import type { UserPreferences, RootStackParamList } from '../types';
+
+import { useThemeColors } from '../theme/useThemeColors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  Divider,
+  IconButton,
+  Sheet,
+  TextField,
+  useToast,
+} from '../components/ui';
 
 type ProfileNav = NativeStackNavigationProp<RootStackParamList>;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
-}
-
-function MacroBar({ label, value, goal, color }: { label: string; value: number; goal: number; color: string }) {
-  const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0;
-  return (
-    <View style={macroStyles.row}>
-      <View style={macroStyles.labelRow}>
-        <Text style={macroStyles.label}>{label}</Text>
-        <Text style={macroStyles.values}>{value} / {goal}</Text>
-      </View>
-      <View style={macroStyles.track}>
-        <View style={[macroStyles.fill, { width: `${pct}%`, backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-}
-
-const macroStyles = StyleSheet.create({
-  row: { marginBottom: 14 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-  values: { fontSize: 13, color: colors.textSecondary },
-  track: { height: 8, backgroundColor: colors.border, borderRadius: 4, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 4 },
-});
-
-// ─── Dietary restriction chips ────────────────────────────────────────────────
-
 const ALL_RESTRICTIONS = [
-  'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free',
-  'Nut-Free', 'Halal', 'Kosher', 'Low-Carb', 'Keto', 'Paleo',
+  'Vegetarian',
+  'Vegan',
+  'Gluten-Free',
+  'Dairy-Free',
+  'Nut-Free',
+  'Halal',
+  'Kosher',
+  'Low-Carb',
+  'Keto',
+  'Paleo',
 ];
 
-function RestrictionChips({
-  selected,
-  onToggle,
+function MacroBar({
+  label,
+  value,
+  goal,
+  color,
 }: {
-  selected: string[];
-  onToggle: (r: string) => void;
+  label: string;
+  value: number;
+  goal: number;
+  color: string;
 }) {
+  const c = useThemeColors();
+  const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0;
   return (
-    <View style={chipStyles.container}>
-      {ALL_RESTRICTIONS.map((r) => {
-        const active = selected.includes(r);
-        return (
-          <TouchableOpacity
-            key={r}
-            style={[chipStyles.chip, active && chipStyles.chipActive]}
-            onPress={() => onToggle(r)}
-          >
-            <Text style={[chipStyles.chipText, active && chipStyles.chipTextActive]}>{r}</Text>
-          </TouchableOpacity>
-        );
-      })}
+    <View style={{ marginBottom: spacing.md }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Text style={[typography.label, { color: c.textSecondary }]}>{label}</Text>
+        <Text style={[typography.label, { color: c.textSecondary }]}>
+          {value} / {goal}
+        </Text>
+      </View>
+      <View
+        style={{
+          height: 8,
+          backgroundColor: c.surfaceMuted,
+          borderRadius: 4,
+          overflow: 'hidden',
+        }}
+      >
+        <View style={{ height: '100%', borderRadius: 4, width: `${pct}%`, backgroundColor: color }} />
+      </View>
     </View>
   );
 }
-
-const chipStyles = StyleSheet.create({
-  container: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  chipText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  chipTextActive: { color: colors.primary, fontWeight: '600' },
-});
-
-// ─── Edit Name Modal ──────────────────────────────────────────────────────────
-
-function EditNameModal({
-  visible,
-  currentName,
-  onSave,
-  onClose,
-}: {
-  visible: boolean;
-  currentName: string;
-  onSave: (name: string) => void;
-  onClose: () => void;
-}) {
-  const [name, setName] = useState(currentName);
-  return (
-    <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
-      <View style={modalStyles.overlay}>
-        <View style={modalStyles.sheet}>
-          <Text style={modalStyles.title}>Edit Name</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            style={modalStyles.input}
-            placeholder="Your name"
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={() => { if (name.trim()) onSave(name.trim()); }}
-          />
-          <TouchableOpacity
-            style={[modalStyles.saveBtn, !name.trim() && modalStyles.saveBtnDisabled]}
-            onPress={() => { if (name.trim()) onSave(name.trim()); }}
-            disabled={!name.trim()}
-          >
-            <Text style={modalStyles.saveBtnText}>Save</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose}>
-            <Text style={modalStyles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const modalStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 48 },
-  title: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 20 },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, marginBottom: 16 },
-  saveBtn: { backgroundColor: colors.primary, borderRadius: 24, paddingVertical: 16, alignItems: 'center', marginBottom: 10 },
-  saveBtnDisabled: { backgroundColor: colors.border },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  cancelBtn: { alignItems: 'center', paddingVertical: 12 },
-  cancelText: { color: colors.textSecondary, fontSize: 15 },
-});
-
-// ─── ProfileScreen ────────────────────────────────────────────────────────────
 
 export function ProfileScreen(): React.JSX.Element {
   const navigation = useNavigation<ProfileNav>();
+  const c = useThemeColors();
   const dispatch = useDispatch();
   const qc = useQueryClient();
+  const toast = useToast();
+
   const user = useSelector((s: RootState) => s.auth.user);
   const macroProgress = useSelector((s: RootState) => s.user.macroProgress);
   const storePrefs = useSelector((s: RootState) => s.user.preferences);
   const favoriteIds = useSelector((s: RootState) => s.favorites.ids);
   const isDark = useSelector((s: RootState) => s.settings.isDark);
-  const [editNameVisible, setEditNameVisible] = useState(false);
-  const [editGoalsVisible, setEditGoalsVisible] = useState(false);
-  const [draftGoals, setDraftGoals] = useState({ calories: '', protein: '', carbs: '', fat: '' });
 
-  // Fetch live preferences
-  const { data: prefs, isLoading: prefsLoading } = useQuery({
+  const [editSheet, setEditSheet] = useState<null | 'name' | 'goals'>(null);
+  const [draftName, setDraftName] = useState('');
+  const [draftGoals, setDraftGoals] = useState({
+    calories: '',
+    protein: '',
+    carbs: '',
+    fat: '',
+  });
+
+  const { data: prefs } = useQuery({
     queryKey: ['user-prefs'],
-    queryFn: async () => {
-      // preferences are embedded in user profile endpoint response
-      const u = await userService.getProfile();
-      return u as unknown as UserPreferences; // server merges prefs into profile
-    },
+    queryFn: async () => (await userService.getProfile()) as unknown as UserPreferences,
     initialData: storePrefs ?? undefined,
   });
 
-  const updateNameMutation = useMutation({
+  const updateName = useMutation({
     mutationFn: (name: string) => userService.updateProfile({ name }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user-prefs'] });
-      setEditNameVisible(false);
+      setEditSheet(null);
+      toast.show('Name updated', 'success');
     },
-    onError: () => Alert.alert('Error', 'Failed to update name. Try again.'),
+    onError: () => toast.show('Failed to update name', 'error'),
   });
 
-  const updateGoalsMutation = useMutation({
-    mutationFn: (goals: { calories_goal: number; protein_goal: number; carbs_goal: number; fat_goal: number }) =>
-      userService.updateGoals(goals),
+  const updateGoals = useMutation({
+    mutationFn: (g: {
+      calories_goal: number;
+      protein_goal: number;
+      carbs_goal: number;
+      fat_goal: number;
+    }) => userService.updateGoals(g),
     onSuccess: (updated) => {
       dispatch(setPreferences(updated));
       qc.invalidateQueries({ queryKey: ['user-prefs'] });
-      setEditGoalsVisible(false);
+      setEditSheet(null);
+      toast.show('Goals updated', 'success');
     },
-    onError: () => Alert.alert('Error', 'Failed to update goals. Try again.'),
+    onError: () => toast.show('Failed to update goals', 'error'),
   });
 
-  const updateRestrictionsMutation = useMutation({
-    mutationFn: (restrictions: string[]) => userService.updateRestrictions(restrictions),
+  const updateRestrictions = useMutation({
+    mutationFn: (rs: string[]) => userService.updateRestrictions(rs),
     onSuccess: (updated) => {
       dispatch(setPreferences(updated));
       qc.invalidateQueries({ queryKey: ['user-prefs'] });
@@ -209,24 +147,6 @@ export function ProfileScreen(): React.JSX.Element {
   });
 
   const restrictions: string[] = prefs?.dietary_restrictions ?? [];
-
-  function handleToggleRestriction(r: string) {
-    const next = restrictions.includes(r)
-      ? restrictions.filter((x) => x !== r)
-      : [...restrictions, r];
-    updateRestrictionsMutation.mutate(next);
-  }
-
-  function handleSignOut() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => dispatch(clearAuth()) },
-    ]);
-  }
-
-  const name = user?.name ?? 'Guest';
-  const email = user?.email ?? '';
-
   const goals = {
     calories: prefs?.calories_goal ?? 2000,
     protein: prefs?.protein_goal ?? 150,
@@ -234,180 +154,230 @@ export function ProfileScreen(): React.JSX.Element {
     fat: prefs?.fat_goal ?? 65,
   };
 
+  const handleSignOut = () => {
+    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: () => dispatch(clearAuth()) },
+    ]);
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
-
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Avatar + identity */}
-        <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitials}>{initials(name)}</Text>
+        {/* Identity */}
+        <View style={styles.identity}>
+          <Avatar name={user?.name ?? 'Guest'} size={88} tone="primary" />
+          <Text style={[typography.h1, { color: c.text, marginTop: spacing.md }]}>
+            {user?.name ?? 'Guest'}
+          </Text>
+          {user?.email ? (
+            <Text style={[typography.body, { color: c.textSecondary }]}>{user.email}</Text>
+          ) : null}
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+            <Button
+              label="Edit profile"
+              variant="secondary"
+              size="sm"
+              onPress={() => {
+                setDraftName(user?.name ?? '');
+                setDraftGoals({
+                  calories: String(goals.calories),
+                  protein: String(goals.protein),
+                  carbs: String(goals.carbs),
+                  fat: String(goals.fat),
+                });
+                setEditSheet('name');
+              }}
+            />
+            {user?.is_admin ? <Badge label="ADMIN" tone="warning" size="md" /> : null}
           </View>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.email}>{email}</Text>
-          <TouchableOpacity style={styles.editNameBtn} onPress={() => setEditNameVisible(true)}>
-            <Text style={styles.editNameText}>Edit Name</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Pantry Manager shortcut */}
-        <TouchableOpacity style={styles.pantryCard} onPress={() => navigation.navigate('Pantry')} activeOpacity={0.8}>
-          <View style={styles.pantryLeft}>
-            <Text style={styles.pantryEmoji}>🏠</Text>
-            <View>
-              <Text style={styles.pantryTitle}>Pantry Manager</Text>
-              <Text style={styles.pantryDesc}>Track your ingredients & expiry dates</Text>
-            </View>
+        {/* Saved recipes */}
+        <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[typography.h3, { color: c.text }]}>Saved recipes</Text>
+            <Badge label={`${favoriteIds.length} saved`} tone="primary" />
           </View>
-          <Text style={styles.pantryArrow}>›</Text>
-        </TouchableOpacity>
-
-        {/* Favorites summary */}
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>Saved Recipes</Text>
-            <Text style={styles.favCount}>{favoriteIds.length} saved</Text>
-          </View>
-          {favoriteIds.length === 0 ? (
-            <Text style={styles.restrictionHint}>Tap ❤️ on any recipe card to save it here.</Text>
-          ) : (
-            <Text style={styles.restrictionHint}>Browse your saved recipes from the Home screen.</Text>
-          )}
-        </View>
+          <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.sm }]}>
+            {favoriteIds.length === 0
+              ? 'Tap ❤️ on any recipe card to save it here.'
+              : 'Browse your saved recipes from the Home screen.'}
+          </Text>
+        </Card>
 
         {/* Macro goals */}
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>Daily Macro Goals</Text>
-            <TouchableOpacity onPress={() => {
-              setDraftGoals({
-                calories: String(goals.calories),
-                protein: String(goals.protein),
-                carbs: String(goals.carbs),
-                fat: String(goals.fat),
-              });
-              setEditGoalsVisible(true);
-            }}>
-              <Text style={styles.editGoalsBtn}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-          {prefsLoading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
-          ) : (
-            <>
-              <MacroBar label="Calories" value={macroProgress.calories} goal={goals.calories} color={colors.calories} />
-              <MacroBar label="Protein (g)" value={macroProgress.protein} goal={goals.protein} color={colors.protein} />
-              <MacroBar label="Carbs (g)" value={macroProgress.carbs} goal={goals.carbs} color={colors.carbs} />
-              <MacroBar label="Fat (g)" value={macroProgress.fat} goal={goals.fat} color={colors.fat} />
-            </>
-          )}
-          <Text style={styles.macroHint}>Track your daily intake via logged meals.</Text>
-        </View>
-
-        {/* Edit Goals Modal */}
-        <Modal visible={editGoalsVisible} animationType="slide" transparent presentationStyle="overFullScreen">
-          <View style={goalModalStyles.overlay}>
-            <View style={goalModalStyles.sheet}>
-              <Text style={goalModalStyles.title}>Edit Daily Goals</Text>
-              {([
-                { key: 'calories', label: 'Calories (kcal)' },
-                { key: 'protein',  label: 'Protein (g)' },
-                { key: 'carbs',    label: 'Carbs (g)' },
-                { key: 'fat',      label: 'Fat (g)' },
-              ] as const).map(({ key, label }) => (
-                <View key={key} style={goalModalStyles.row}>
-                  <Text style={goalModalStyles.label}>{label}</Text>
-                  <TextInput
-                    style={goalModalStyles.input}
-                    value={draftGoals[key]}
-                    onChangeText={(v) => setDraftGoals((d) => ({ ...d, [key]: v }))}
-                    keyboardType="numeric"
-                    returnKeyType="done"
-                  />
-                </View>
-              ))}
-              <TouchableOpacity
-                style={[goalModalStyles.saveBtn, updateGoalsMutation.isPending && { opacity: 0.6 }]}
-                onPress={() => {
-                  updateGoalsMutation.mutate({
-                    calories_goal: parseInt(draftGoals.calories, 10) || goals.calories,
-                    protein_goal:  parseInt(draftGoals.protein,  10) || goals.protein,
-                    carbs_goal:    parseInt(draftGoals.carbs,    10) || goals.carbs,
-                    fat_goal:      parseInt(draftGoals.fat,      10) || goals.fat,
-                  });
-                }}
-                disabled={updateGoalsMutation.isPending}
-              >
-                {updateGoalsMutation.isPending
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={goalModalStyles.saveBtnText}>Save Goals</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={goalModalStyles.cancelBtn} onPress={() => setEditGoalsVisible(false)}>
-                <Text style={goalModalStyles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-
-        {/* Dietary restrictions */}
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>Dietary Restrictions</Text>
-            {updateRestrictionsMutation.isPending && (
-              <ActivityIndicator size="small" color={colors.primary} />
-            )}
-          </View>
-          <RestrictionChips selected={restrictions} onToggle={handleToggleRestriction} />
-          {restrictions.length === 0 && (
-            <Text style={styles.restrictionHint}>Tap to add your dietary restrictions.</Text>
-          )}
-        </View>
-
-        {/* Account section */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Account</Text>
-          <View style={[styles.infoRow, { borderBottomWidth: 1, borderBottomColor: colors.divider }]}>
-            <Text style={styles.infoLabel}>🌙 Dark Mode</Text>
-            <Switch
-              value={isDark}
-              onValueChange={(_v) => { dispatch(toggleDarkMode()); }}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#fff"
+        <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: spacing.md,
+            }}
+          >
+            <Text style={[typography.h3, { color: c.text }]}>Daily goals</Text>
+            <Button
+              label="Edit"
+              variant="ghost"
+              size="sm"
+              onPress={() => {
+                setDraftGoals({
+                  calories: String(goals.calories),
+                  protein: String(goals.protein),
+                  carbs: String(goals.carbs),
+                  fat: String(goals.fat),
+                });
+                setEditSheet('goals');
+              }}
             />
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Member since</Text>
-            <Text style={styles.infoValue}>
+          <MacroBar label="Calories" value={macroProgress.calories} goal={goals.calories} color={c.calories} />
+          <MacroBar label="Protein (g)" value={macroProgress.protein} goal={goals.protein} color={c.protein} />
+          <MacroBar label="Carbs (g)" value={macroProgress.carbs} goal={goals.carbs} color={c.carbs} />
+          <MacroBar label="Fat (g)" value={macroProgress.fat} goal={goals.fat} color={c.fat} />
+        </Card>
+
+        {/* Restrictions */}
+        <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
+          <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
+            Dietary restrictions
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            {ALL_RESTRICTIONS.map((r) => (
+              <Chip
+                key={r}
+                label={r}
+                selected={restrictions.includes(r)}
+                onPress={() =>
+                  updateRestrictions.mutate(
+                    restrictions.includes(r)
+                      ? restrictions.filter((x) => x !== r)
+                      : [...restrictions, r]
+                  )
+                }
+              />
+            ))}
+          </View>
+        </Card>
+
+        {/* Account */}
+        <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
+          <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>Account</Text>
+          <View style={styles.row}>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>🌙 Dark mode</Text>
+            <Switch
+              value={isDark}
+              onValueChange={() => {
+                dispatch(toggleDarkMode());
+              }}
+              trackColor={{ false: c.borderStrong, true: c.primary }}
+              accessibilityLabel="Toggle dark mode"
+            />
+          </View>
+          <Divider inset={spacing.sm} />
+          <View style={styles.row}>
+            <Text style={[typography.body, { color: c.textSecondary }]}>Member since</Text>
+            <Text style={[typography.body, { color: c.text, fontWeight: '600' }]}>
               {user?.created_at
-                ? new Date(user.created_at).toLocaleDateString([], { month: 'long', year: 'numeric' })
+                ? new Date(user.created_at).toLocaleDateString([], {
+                    month: 'long',
+                    year: 'numeric',
+                  })
                 : '—'}
             </Text>
           </View>
-          {user?.is_admin && (
-            <View style={styles.adminBadge}>
-              <Text style={styles.adminText}>⚡ Admin</Text>
-            </View>
-          )}
-        </View>
+        </Card>
 
-        {/* Sign out */}
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        <Button
+          label="Sign out"
+          variant="destructive"
+          onPress={handleSignOut}
+          fullWidth
+          size="lg"
+          style={{ marginHorizontal: spacing.xl, marginTop: spacing.lg }}
+        />
 
-        <Text style={styles.version}>Smart Cooking v1.0.0</Text>
+        <Text
+          style={[
+            typography.caption,
+            { color: c.textLight, textAlign: 'center', marginTop: spacing.xl },
+          ]}
+        >
+          Smart Cooking v1.0.0
+        </Text>
       </ScrollView>
 
-      {/* Edit name modal */}
-      <EditNameModal
-        visible={editNameVisible}
-        currentName={name}
-        onSave={(n) => updateNameMutation.mutate(n)}
-        onClose={() => setEditNameVisible(false)}
-      />
+      {/* Combined edit sheet */}
+      <Sheet
+        visible={editSheet !== null}
+        onClose={() => setEditSheet(null)}
+        title={editSheet === 'name' ? 'Edit profile' : 'Edit daily goals'}
+        height={editSheet === 'goals' ? 540 : 320}
+      >
+        {editSheet === 'name' ? (
+          <View style={{ gap: spacing.md }}>
+            <TextField
+              label="Name"
+              value={draftName}
+              onChangeText={setDraftName}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => draftName.trim() && updateName.mutate(draftName.trim())}
+            />
+            <Button
+              label="Save"
+              fullWidth
+              size="lg"
+              onPress={() => draftName.trim() && updateName.mutate(draftName.trim())}
+              loading={updateName.isPending}
+              disabled={!draftName.trim()}
+            />
+          </View>
+        ) : (
+          <View style={{ gap: spacing.md }}>
+            <TextField
+              label="Calories (kcal)"
+              value={draftGoals.calories}
+              onChangeText={(v) => setDraftGoals((d) => ({ ...d, calories: v }))}
+              keyboardType="numeric"
+            />
+            <TextField
+              label="Protein (g)"
+              value={draftGoals.protein}
+              onChangeText={(v) => setDraftGoals((d) => ({ ...d, protein: v }))}
+              keyboardType="numeric"
+            />
+            <TextField
+              label="Carbs (g)"
+              value={draftGoals.carbs}
+              onChangeText={(v) => setDraftGoals((d) => ({ ...d, carbs: v }))}
+              keyboardType="numeric"
+            />
+            <TextField
+              label="Fat (g)"
+              value={draftGoals.fat}
+              onChangeText={(v) => setDraftGoals((d) => ({ ...d, fat: v }))}
+              keyboardType="numeric"
+            />
+            <Button
+              label="Save goals"
+              fullWidth
+              size="lg"
+              loading={updateGoals.isPending}
+              onPress={() =>
+                updateGoals.mutate({
+                  calories_goal: parseInt(draftGoals.calories, 10) || goals.calories,
+                  protein_goal: parseInt(draftGoals.protein, 10) || goals.protein,
+                  carbs_goal: parseInt(draftGoals.carbs, 10) || goals.carbs,
+                  fat_goal: parseInt(draftGoals.fat, 10) || goals.fat,
+                })
+              }
+            />
+          </View>
+        )}
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -415,53 +385,13 @@ export function ProfileScreen(): React.JSX.Element {
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: 48 },
-
-  avatarSection: { alignItems: 'center', paddingTop: 32, paddingBottom: 24 },
-  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 14, shadowColor: colors.primary, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  avatarInitials: { fontSize: 32, fontWeight: '800', color: '#fff' },
-  name: { fontSize: 24, fontWeight: '800', color: colors.text, marginBottom: 4 },
-  email: { fontSize: 14, color: colors.textSecondary, marginBottom: 12 },
-  editNameBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
-  editNameText: { fontSize: 13, fontWeight: '600', color: colors.primary },
-
-  card: { marginHorizontal: 20, marginBottom: 16, backgroundColor: colors.surfaceElevated, borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1, borderWidth: 1, borderColor: colors.divider },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 16 },
-  cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  macroHint: { fontSize: 12, color: colors.textLight, marginTop: 8, textAlign: 'center' },
-  restrictionHint: { fontSize: 13, color: colors.textLight, marginTop: 10 },
-
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  infoLabel: { fontSize: 14, color: colors.textSecondary },
-  infoValue: { fontSize: 14, color: colors.text, fontWeight: '500' },
-
-  adminBadge: { marginTop: 12, backgroundColor: colors.secondary, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
-  adminText: { fontSize: 13, fontWeight: '700', color: colors.accent },
-
-  pantryCard: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#F0FFF4', borderRadius: 20, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#C6F6D5' },
-  pantryLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  pantryEmoji: { fontSize: 32 },
-  pantryTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  pantryDesc: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  pantryArrow: { fontSize: 22, color: colors.textLight },
-  signOutBtn: { marginHorizontal: 20, marginTop: 8, backgroundColor: '#FFF0F0', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FFCDD2' },
-  signOutText: { fontSize: 16, fontWeight: '700', color: colors.error },
-
-  version: { textAlign: 'center', marginTop: 24, fontSize: 12, color: colors.textLight },
-  editGoalsBtn: { fontSize: 14, fontWeight: '600', color: colors.primary },
-  favCount: { fontSize: 14, fontWeight: '600', color: colors.primary },
-});
-
-const goalModalStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 48 },
-  title: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 20 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, flex: 1 },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: colors.text, width: 110, textAlign: 'right' },
-  saveBtn: { backgroundColor: colors.primary, borderRadius: 24, paddingVertical: 16, alignItems: 'center', marginTop: 8, marginBottom: 10 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  cancelBtn: { alignItems: 'center', paddingVertical: 12 },
-  cancelText: { color: colors.textSecondary, fontSize: 15 },
+  safe: { flex: 1 },
+  content: { paddingBottom: spacing['4xl'] },
+  identity: { alignItems: 'center', paddingTop: spacing['2xl'], paddingBottom: spacing.lg },
+  block: { marginHorizontal: spacing.xl, marginBottom: spacing.lg },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
 });
