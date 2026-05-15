@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listRecipes, searchRecipes, Recipe } from '../api/recipes';
+import { getRecipeImage } from '../data/recipeImages';
 
 const CUISINE_TYPES = ['', 'Indian', 'Chinese', 'Italian', 'Mexican', 'Thai', 'Japanese', 'Mediterranean', 'American', 'French'];
 const DIFFICULTIES = ['', 'Easy', 'Medium', 'Hard'];
@@ -30,16 +31,28 @@ function StarRating({ rating, total }: { rating: number; total: number }) {
 }
 
 function RecipeCard({ recipe, onClick }: { recipe: Recipe; onClick: () => void }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const imgUrl = getRecipeImage(recipe);
   return (
     <div
       onClick={onClick}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all group"
     >
       {/* Hero */}
-      <div className="h-36 bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
-        <span className="text-6xl group-hover:scale-110 transition-transform">
-          {CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}
-        </span>
+      <div className="h-36 bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center overflow-hidden relative">
+        {imgUrl && !imgFailed ? (
+          <img
+            src={imgUrl}
+            alt={recipe.name}
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <span className="text-6xl group-hover:scale-110 transition-transform">
+            {CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}
+          </span>
+        )}
       </div>
 
       <div className="p-4">

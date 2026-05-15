@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { checkItem, completeList, getList, ShoppingItem, ShoppingList } from '../api/shopping';
+import { DEMO_SHOPPING_LISTS, DEMO_SHOPPING_ITEMS } from '../data/demo';
 
 type ListWithItems = ShoppingList & { items: ShoppingItem[] };
+
+function buildDemoList(id: string): ListWithItems | null {
+  const meta = DEMO_SHOPPING_LISTS.find((l) => l.id === id);
+  const items = DEMO_SHOPPING_ITEMS[id];
+  if (!meta || !items) return null;
+  return { ...meta, items };
+}
 
 function groupByAisle(items: ShoppingItem[]): Map<string, ShoppingItem[]> {
   const map = new Map<string, ShoppingItem[]>();
@@ -20,18 +28,40 @@ export default function ShoppingDetailPage() {
   const [list, setList] = useState<ListWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+
+    if (id.startsWith('sl-demo-')) {
+      const demo = buildDemoList(id);
+      if (demo) {
+        setList(demo);
+        setIsDemo(true);
+      } else {
+        navigate('/shopping');
+      }
+      setLoading(false);
+      return;
+    }
+
     getList(id)
       .then(setList)
-      .catch(() => navigate('/shopping'))
+      .catch(() => {
+        const demo = buildDemoList(id);
+        if (demo) { setList(demo); setIsDemo(true); }
+        else navigate('/shopping');
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
   const handleCheck = async (item: ShoppingItem) => {
     if (!list) return;
+    if (isDemo) {
+      setList((prev) => prev ? { ...prev, items: prev.items.map((i) => i.id === item.id ? { ...i, is_checked: !i.is_checked } : i) } : prev);
+      return;
+    }
     const updated = await checkItem(list.id, item.id, !item.is_checked);
     setList((prev) =>
       prev
@@ -42,6 +72,10 @@ export default function ShoppingDetailPage() {
 
   const handleComplete = async () => {
     if (!list) return;
+    if (isDemo) {
+      setList((prev) => prev ? { ...prev, status: 'completed', completed_at: new Date().toISOString() } : prev);
+      return;
+    }
     setCompleting(true);
     try {
       const updated = await completeList(list.id);
@@ -86,7 +120,10 @@ export default function ShoppingDetailPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{list.name}</h1>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              {list.name}
+              {isDemo && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">DEMO</span>}
+            </h1>
             <p className="text-sm text-gray-400 mt-0.5">{list.recipe_ids.length} recipe{list.recipe_ids.length !== 1 ? 's' : ''} · {total} items</p>
           </div>
           <span className={`text-xs px-3 py-1 rounded-full font-medium shrink-0 ${

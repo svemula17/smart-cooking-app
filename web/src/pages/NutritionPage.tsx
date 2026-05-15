@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getDailyNutrition, getLogs, DailyNutrition, NutritionLog } from '../api/nutrition';
+import { DEMO_DAILY_NUTRITION, DEMO_NUTRITION_LOGS } from '../data/demo';
 
 function ProgressBar({ value, goal, color }: { value: number; goal: number; color: string }) {
   const pct = goal > 0 ? Math.min(100, (value / goal) * 100) : 0;
@@ -23,21 +24,25 @@ export default function NutritionPage() {
   const [logs, setLogs] = useState<NutritionLog[]>([]);
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
-    setError(null);
     Promise.all([
-      getDailyNutrition(user.id, day).catch((e) => {
-        setError(e.response?.data?.error?.message ?? e.message);
-        return null;
-      }),
+      getDailyNutrition(user.id, day).catch(() => null),
       getLogs(user.id, 20).catch(() => []),
     ]).then(([d, l]) => {
-      setDaily(d);
-      setLogs(l);
+      const hasData = (d && (d.total_calories ?? 0) > 0) || (l && l.length > 0);
+      if (hasData) {
+        setDaily(d);
+        setLogs(l);
+        setIsDemo(false);
+      } else {
+        setDaily(DEMO_DAILY_NUTRITION);
+        setLogs(DEMO_NUTRITION_LOGS);
+        setIsDemo(true);
+      }
     }).finally(() => setLoading(false));
   }, [user?.id, day]);
 
@@ -59,7 +64,10 @@ export default function NutritionPage() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Nutrition</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            Nutrition
+            {isDemo && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">DEMO</span>}
+          </h1>
           <p className="text-gray-500 text-sm mt-1">Daily macros and meal logs</p>
         </div>
         <input
@@ -69,12 +77,6 @@ export default function NutritionPage() {
           className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
         />
       </div>
-
-      {error && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl px-4 py-3 mb-4">
-          Could not load daily data: {error}
-        </div>
-      )}
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

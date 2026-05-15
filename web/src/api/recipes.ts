@@ -10,6 +10,7 @@ export interface Recipe {
   servings: number;
   average_rating: number;
   total_ratings: number;
+  image_url?: string | null;
   created_at: string;
 }
 

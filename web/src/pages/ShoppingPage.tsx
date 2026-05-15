@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getLists, deleteList, ShoppingList } from '../api/shopping';
 import { listRecipes, Recipe } from '../api/recipes';
 import { generateList } from '../api/shopping';
+import { DEMO_SHOPPING_LISTS } from '../data/demo';
 
 function NewListModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [step, setStep] = useState<'name' | 'recipes'>('name');
@@ -160,14 +161,24 @@ export default function ShoppingPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'' | 'active' | 'completed'>('');
   const [showModal, setShowModal] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   const fetchLists = async () => {
     setLoading(true);
     try {
       const data = await getLists({ status: filter || undefined, limit: 50 });
-      setLists(data.lists);
+      if (data.lists && data.lists.length > 0) {
+        setLists(data.lists);
+        setIsDemo(false);
+      } else {
+        const demo = filter ? DEMO_SHOPPING_LISTS.filter((l) => l.status === filter) : DEMO_SHOPPING_LISTS;
+        setLists(demo);
+        setIsDemo(true);
+      }
     } catch {
-      setLists([]);
+      const demo = filter ? DEMO_SHOPPING_LISTS.filter((l) => l.status === filter) : DEMO_SHOPPING_LISTS;
+      setLists(demo);
+      setIsDemo(true);
     } finally {
       setLoading(false);
     }
@@ -190,7 +201,10 @@ export default function ShoppingPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Shopping Lists</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            Shopping Lists
+            {isDemo && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">DEMO</span>}
+          </h1>
           <p className="text-gray-500 text-sm mt-1">{lists.length} list{lists.length !== 1 ? 's' : ''}</p>
         </div>
         <button

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getRecipe, rateRecipe, RecipeDetail } from '../api/recipes';
 import { generateList } from '../api/shopping';
 import { listRecipes, Recipe } from '../api/recipes';
+import { getRecipeImage } from '../data/recipeImages';
 
 const DIFFICULTY_COLOR: Record<string, string> = {
   Easy: 'bg-green-100 text-green-700',
@@ -189,20 +190,26 @@ export default function RecipeDetailPage() {
       </button>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-8 mb-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{recipe.name}</h1>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="bg-white text-gray-700 text-xs font-medium px-3 py-1 rounded-full shadow-sm">{recipe.cuisine_type}</span>
-              <span className={`text-xs font-medium px-3 py-1 rounded-full ${DIFFICULTY_COLOR[recipe.difficulty]}`}>{recipe.difficulty}</span>
-            </div>
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-              <span>⏱️ Prep: {recipe.prep_time_minutes}m</span>
-              <span>🔥 Cook: {recipe.cook_time_minutes}m</span>
-              <span>👥 Serves: {recipe.servings}</span>
-              <span>⭐ {recipe.average_rating > 0 ? recipe.average_rating.toFixed(1) : 'No'} ratings ({recipe.total_ratings})</span>
-            </div>
+      <div className="rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-100 bg-white">
+        <div className="h-56 sm:h-72 w-full overflow-hidden relative bg-gradient-to-br from-green-50 to-emerald-100">
+          <img
+            src={getRecipeImage(recipe)}
+            alt={recipe.name}
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
+        </div>
+        <div className="p-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{recipe.name}</h1>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span className="bg-gray-100 text-gray-700 text-xs font-medium px-3 py-1 rounded-full">{recipe.cuisine_type}</span>
+            <span className={`text-xs font-medium px-3 py-1 rounded-full ${DIFFICULTY_COLOR[recipe.difficulty]}`}>{recipe.difficulty}</span>
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+            <span>⏱️ Prep: {recipe.prep_time_minutes}m</span>
+            <span>🔥 Cook: {recipe.cook_time_minutes}m</span>
+            <span>👥 Serves: {recipe.servings}</span>
+            <span>⭐ {recipe.average_rating > 0 ? recipe.average_rating.toFixed(1) : 'No'} ratings ({recipe.total_ratings})</span>
           </div>
         </div>
       </div>
