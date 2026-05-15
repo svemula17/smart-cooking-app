@@ -7,6 +7,10 @@ import RecipesPage from './pages/RecipesPage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
 import ShoppingPage from './pages/ShoppingPage';
 import ShoppingDetailPage from './pages/ShoppingDetailPage';
+import HousePage from './pages/HousePage';
+import NutritionPage from './pages/NutritionPage';
+import AIChatPage from './pages/AIChatPage';
+import ProfilePage from './pages/ProfilePage';
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +21,14 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function Protected({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <Layout>{children}</Layout>
+    </ProtectedRoute>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -24,38 +36,16 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
 
-          <Route
-            path="/recipes"
-            element={
-              <ProtectedRoute>
-                <Layout><RecipesPage /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/recipes/:id"
-            element={
-              <ProtectedRoute>
-                <Layout><RecipeDetailPage /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/shopping"
-            element={
-              <ProtectedRoute>
-                <Layout><ShoppingPage /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/shopping/:id"
-            element={
-              <ProtectedRoute>
-                <Layout><ShoppingDetailPage /></Layout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/recipes"      element={<Protected><RecipesPage /></Protected>} />
+          <Route path="/recipes/:id"  element={<Protected><RecipeDetailPage /></Protected>} />
+
+          <Route path="/shopping"     element={<Protected><ShoppingPage /></Protected>} />
+          <Route path="/shopping/:id" element={<Protected><ShoppingDetailPage /></Protected>} />
+
+          <Route path="/nutrition"    element={<Protected><NutritionPage /></Protected>} />
+          <Route path="/house"        element={<Protected><HousePage /></Protected>} />
+          <Route path="/ai"           element={<Protected><AIChatPage /></Protected>} />
+          <Route path="/profile"      element={<Protected><ProfilePage /></Protected>} />
 
           <Route path="/" element={<Navigate to="/recipes" replace />} />
           <Route path="*" element={<Navigate to="/recipes" replace />} />

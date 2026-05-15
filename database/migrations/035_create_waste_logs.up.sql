@@ -10,4 +10,3 @@ CREATE TABLE IF NOT EXISTS waste_logs (
 );
 
 CREATE INDEX IF NOT EXISTS waste_logs_house_idx ON waste_logs (house_id, logged_at DESC);
-CREATE INDEX IF NOT EXISTS waste_logs_month_idx ON waste_logs (house_id, date_trunc('month', logged_at));

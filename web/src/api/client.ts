@@ -1,10 +1,14 @@
 import axios from 'axios';
 
-export const userApi = axios.create({ baseURL: 'http://localhost:3001' });
-export const recipeApi = axios.create({ baseURL: 'http://localhost:3002' });
-export const shoppingApi = axios.create({ baseURL: 'http://localhost:3003' });
+const HOST = (import.meta.env.VITE_API_HOST as string) || 'http://localhost';
 
-/** Attach the stored JWT to every request automatically */
+export const userApi     = axios.create({ baseURL: `${HOST}:4001` });
+export const recipeApi   = axios.create({ baseURL: `${HOST}:4002` });
+export const nutritionApi = axios.create({ baseURL: `${HOST}:4003` });
+export const aiApi       = axios.create({ baseURL: `${HOST}:4004` });
+export const shoppingApi = axios.create({ baseURL: `${HOST}:4005` });
+export const houseApi    = axios.create({ baseURL: `${HOST}:4006` });
+
 function addAuthInterceptor(instance: ReturnType<typeof axios.create>) {
   instance.interceptors.request.use((config) => {
     const token = localStorage.getItem('accessToken');
@@ -24,6 +28,4 @@ function addAuthInterceptor(instance: ReturnType<typeof axios.create>) {
   );
 }
 
-addAuthInterceptor(userApi);
-addAuthInterceptor(recipeApi);
-addAuthInterceptor(shoppingApi);
+[userApi, recipeApi, nutritionApi, aiApi, shoppingApi, houseApi].forEach(addAuthInterceptor);
