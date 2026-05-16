@@ -46,8 +46,11 @@ docker exec cooking-postgres pg_dump -U "$DB_USER" -d "$DB_NAME" \
   > 01_schema.sql
 
 docker exec cooking-postgres pg_dump -U "$DB_USER" -d "$DB_NAME" \
-  --data-only --no-owner \
+  --data-only --no-owner --inserts --rows-per-insert=50 \
   --table=recipes --table=recipe_ingredients --table=recipe_nutrition \
   | grep -v -E '^\\(restrict|unrestrict) ' \
   > 02_recipes_seed.sql
+
+# Note: --inserts is required for the Supabase web SQL editor.
+# Without it, pg_dump emits COPY FROM stdin which only works via psql CLI.
 ```

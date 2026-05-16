@@ -80,3 +80,4 @@ logs/
 
 # ----- Docker -----
 .docker/
+.supabase-url
