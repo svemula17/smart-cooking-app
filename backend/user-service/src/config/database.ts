@@ -8,11 +8,24 @@ import { env } from './env';
  * For multi-statement work, wrap callers in `withTransaction` so BEGIN/COMMIT/
  * ROLLBACK is handled correctly even on thrown errors.
  */
+/**
+ * Enable TLS for managed Postgres providers (Supabase/Neon/RDS/Railway).
+ * node-postgres does not auto-negotiate SSL — we have to opt in. We respect
+ * an explicit `sslmode=` in the URL when present; otherwise we enable TLS
+ * for known managed providers and leave it disabled for local dev hosts.
+ */
+function sslConfig(dsn: string) {
+  if (/sslmode=/.test(dsn)) return undefined; // pg parses it from the URL
+  const managed = /supabase|amazonaws|neon\.tech|render\.com|railway/i;
+  return managed.test(dsn) ? { rejectUnauthorized: false } : false;
+}
+
 export const pool = new Pool({
   connectionString: env.databaseUrl,
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
+  ssl: sslConfig(env.databaseUrl),
 });
 
 pool.on('error', (err) => {

@@ -5,11 +5,22 @@ import { env } from './env';
 // For this service all quantities fit safely in a JS float.
 pg.types.setTypeParser(1700, (val: string) => parseFloat(val));
 
+/**
+ * Enable TLS for managed Postgres providers (Supabase/Neon/RDS/Railway).
+ * node-postgres does not auto-negotiate SSL — we have to opt in.
+ */
+function sslConfig(dsn: string) {
+  if (/sslmode=/.test(dsn)) return undefined;
+  const managed = /supabase|amazonaws|neon\.tech|render\.com|railway/i;
+  return managed.test(dsn) ? { rejectUnauthorized: false } : false;
+}
+
 export const pool = new Pool({
   connectionString: env.databaseUrl,
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
+  ssl: sslConfig(env.databaseUrl),
 });
 
 pool.on('error', (err) => {

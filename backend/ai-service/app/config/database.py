@@ -2,11 +2,30 @@
 
 from __future__ import annotations
 
+import ssl
 from typing import Optional
 
 import asyncpg
 
 from app.config.settings import settings
+
+
+def _ssl_for(dsn: str):
+    """Enable TLS for managed Postgres providers (Supabase/Neon/RDS/Railway).
+
+    asyncpg does not auto-negotiate TLS unless explicitly configured. We
+    respect an explicit ``sslmode=`` in the URL when present; otherwise we
+    enable TLS for known managed providers and leave it disabled for local
+    dev hosts.
+    """
+    if "sslmode=" in dsn:
+        return None
+    if any(h in dsn for h in ("supabase", "amazonaws", "neon.tech", "render.com", "railway")):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    return None
 
 
 class Database:
@@ -20,6 +39,7 @@ class Database:
                 min_size=1,
                 max_size=10,
                 command_timeout=15,
+                ssl=_ssl_for(settings.database_url),
             )
         return cls._pool
 
