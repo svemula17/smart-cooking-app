@@ -25,6 +25,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_AFTER_RUNNING_EAS_INIT"
+      }
+    },
+    "owner": "REPLACE_WITH_YOUR_EXPO_USERNAME",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/REPLACE_AFTER_RUNNING_EAS_INIT"
     }
   }
 }

@@ -1,13 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Real device on same Wi-Fi → use Mac's LAN IP (10.0.0.34)
-// iOS Simulator / Web browser on Mac → use localhost
-// Android Emulator → use 10.0.2.2
-const HOST = 'localhost';
-const USER_SERVICE     = `http://${HOST}:4001`;
-const RECIPE_SERVICE   = `http://${HOST}:4002`;
-const SHOPPING_SERVICE = `http://${HOST}:4005`;
+import { API_URLS } from '../config/env';
 
 function makeClient(baseURL: string) {
   const instance = axios.create({
@@ -39,16 +32,12 @@ function makeClient(baseURL: string) {
   return instance;
 }
 
-const NUTRITION_SERVICE = `http://${HOST}:4003`;
-const AI_SERVICE        = `http://${HOST}:4004`;
-const HOUSE_SERVICE     = `http://${HOST}:4006`;
-
-export const userApi       = makeClient(USER_SERVICE);
-export const recipeApi     = makeClient(RECIPE_SERVICE);
-export const shoppingApi   = makeClient(SHOPPING_SERVICE);
-export const nutritionApi  = makeClient(NUTRITION_SERVICE);
-export const aiApi         = makeClient(AI_SERVICE);
-export const houseApi      = makeClient(HOUSE_SERVICE);
+export const userApi       = makeClient(API_URLS.user);
+export const recipeApi     = makeClient(API_URLS.recipe);
+export const shoppingApi   = makeClient(API_URLS.shopping);
+export const nutritionApi  = makeClient(API_URLS.nutrition);
+export const aiApi         = makeClient(API_URLS.ai);
+export const houseApi      = makeClient(API_URLS.house);
 
 // Keep a sync-accessible token for hot-path needs (set after login)
 let _token: string | null = null;
