@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import * as Sentry from '@sentry/node';
 import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { houseRouter } from './routes/house.routes';
@@ -36,6 +37,7 @@ export function createApp(): express.Application {
   app.use('/houses', houseRouter);
 
   app.use(notFoundHandler);
+  Sentry.setupExpressErrorHandler(app);
   app.use(errorHandler);
 
   return app;

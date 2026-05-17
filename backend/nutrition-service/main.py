@@ -6,6 +6,19 @@ Wires up the FastAPI app, configures the asyncpg pool lifecycle, and exposes
 
 from __future__ import annotations
 
+import sentry_sdk
+
+from app.config.settings import settings
+
+# Sentry init must run before FastAPI/asyncpg imports so the SDK can patch them.
+sentry_sdk.init(
+    dsn="https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
+    server_name="nutrition-service",
+    environment=settings.node_env,
+    enabled=not settings.is_test,
+    traces_sample_rate=0.1,
+)
+
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -14,11 +27,19 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from app.config.database import Database
-from app.config.settings import settings
 from app.routes.nutrition import router as nutrition_router
 from app.services.nutritionix_service import nutritionix_service
+
+# Initialize SlowAPI rate limiter (in-memory; per-IP).
+# Default cap of 100 requests / minute is plenty for a per-user nutrition log
+# but well below any abuse threshold.
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
 @asynccontextmanager
@@ -39,6 +60,13 @@ app = FastAPI(
     description="Nutrition tracking, daily/weekly/monthly summaries, and macro logging.",
     lifespan=lifespan,
 )
+
+# IP-based rate limiting (100 req/min default). SlowAPIMiddleware applies the
+# Limiter's default_limits to every incoming request automatically. Individual
+# routes can override with @limiter.limit("X/Y") if needed.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

@@ -6,6 +6,20 @@ Manages the lifecycle of the asyncpg pool and Redis client, mounts the
 
 from __future__ import annotations
 
+import sentry_sdk
+
+from app.config.settings import settings
+
+# ─── Sentry MUST initialize before importing FastAPI/asyncpg so the SDK
+# can patch them at import time.
+sentry_sdk.init(
+    dsn="https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
+    server_name="ai-service",
+    environment=settings.node_env,
+    enabled=not settings.is_test,
+    traces_sample_rate=0.1,
+)
+
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 

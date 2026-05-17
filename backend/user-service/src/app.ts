@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import * as Sentry from '@sentry/node';
 import { env } from './config/env';
 import { authRouter } from './routes/auth.routes';
 import { userRouter } from './routes/user.routes';
@@ -41,6 +42,12 @@ export function createApp(): express.Express {
   app.use('/users', userRouter);
 
   app.use(notFoundHandler);
+
+  // Sentry's Express error handler MUST be installed before any other
+  // error-handling middleware (it captures and forwards). The Sentry SDK
+  // forwards to next() so our errorHandler still runs.
+  Sentry.setupExpressErrorHandler(app);
+
   app.use(errorHandler);
 
   return app;

@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import * as Sentry from '@sentry/node';
 import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { shoppingRouter } from './routes/shopping.routes';
@@ -51,6 +52,7 @@ export function createApp(): express.Express {
   app.use('/shopping', shoppingRouter);
 
   app.use(notFoundHandler);
+  Sentry.setupExpressErrorHandler(app);
   app.use(errorHandler);
 
   return app;

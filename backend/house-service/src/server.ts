@@ -1,3 +1,5 @@
+// Sentry must be imported first so it can patch http/express/pg.
+import './config/sentry';
 import { createApp } from './app';
 import { closePool } from './config/database';
 import { env } from './config/env';

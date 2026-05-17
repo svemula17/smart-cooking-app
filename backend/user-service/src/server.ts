@@ -1,3 +1,6 @@
+// Sentry MUST be initialized before any other module so it can patch
+// http/express/pg before they're loaded.
+import './config/sentry';
 import { createApp } from './app';
 import { closePool } from './config/database';
 import { env } from './config/env';
