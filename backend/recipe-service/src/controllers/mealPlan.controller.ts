@@ -47,16 +47,21 @@ async function hydratePlan(row: any) {
 
 export async function scheduleMeal(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { user_id, recipe_id, scheduled_date, meal_type, cooking_time } = req.body as {
-      user_id: string;
+    // SECURITY: ignore any user_id in the body — it must come from the JWT
+    // to prevent privilege-escalation (a logged-in user can't create plans
+    // for another user just by passing their UUID in the body).
+    const user_id = (req as any).user?.userId;
+    if (!user_id) return next(Errors.unauthorized('Missing user identity'));
+
+    const { recipe_id, scheduled_date, meal_type, cooking_time } = req.body as {
       recipe_id: string;
       scheduled_date: string;
       meal_type: 'breakfast' | 'lunch' | 'dinner';
       cooking_time?: string;
     };
 
-    if (!user_id || !recipe_id || !scheduled_date || !meal_type) {
-      return next(Errors.validationError('user_id, recipe_id, scheduled_date and meal_type are required'));
+    if (!recipe_id || !scheduled_date || !meal_type) {
+      return next(Errors.validationError('recipe_id, scheduled_date and meal_type are required'));
     }
     if (!['breakfast', 'lunch', 'dinner'].includes(meal_type)) {
       return next(Errors.validationError('meal_type must be breakfast, lunch or dinner'));
@@ -90,7 +95,14 @@ export async function scheduleMeal(req: Request, res: Response, next: NextFuncti
 
 export async function getMealPlans(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    // SECURITY: only allow a user to read their own meal plans. If the URL
+    // userId doesn't match the JWT subject, refuse (don't silently swap to
+    // JWT — surfacing the 403 catches client bugs and probes equally).
+    const callerId = (req as any).user?.userId;
+    if (!callerId) return next(Errors.unauthorized('Missing user identity'));
     const { userId } = req.params as { userId: string };
+    if (userId !== callerId) return next(Errors.forbidden('Cannot read another user\'s meal plans'));
+
     const { start_date, days = '7' } = req.query as { start_date?: string; days?: string };
 
     const startDate = start_date ?? new Date().toISOString().split('T')[0];
