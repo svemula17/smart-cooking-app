@@ -28,15 +28,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "REPLACE_AFTER_RUNNING_EAS_INIT"
+        "projectId": "caf8e2dc-7381-4368-9d9a-896e082cefd9"
       }
     },
-    "owner": "REPLACE_WITH_YOUR_EXPO_USERNAME",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/REPLACE_AFTER_RUNNING_EAS_INIT"
-    }
+    "owner": "svemula17"
   }
 }
