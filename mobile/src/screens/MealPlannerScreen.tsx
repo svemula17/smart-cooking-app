@@ -415,7 +415,6 @@ export function MealPlannerScreen(): React.JSX.Element {
       recipeId: string;
     }) =>
       mealPlanService.schedule({
-        user_id: user!.id,
         recipe_id: recipeId,
         scheduled_date: date,
         meal_type: mealType,

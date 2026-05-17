@@ -2,7 +2,8 @@ import { recipeApi } from './api';
 import type { MealPlan, MealType } from '../types';
 
 export interface ScheduleMealRequest {
-  user_id: string;
+  // user_id is derived server-side from the JWT — do not pass it from the
+  // client. (Sent in the request body it would be ignored anyway.)
   recipe_id: string;
   scheduled_date: string;
   meal_type: MealType;
