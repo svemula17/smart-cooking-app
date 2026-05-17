@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { pool } from '../config/database';
+import { pool, withTransaction } from '../config/database';
 import type { PublicUser, User } from '../types';
 
 const FULL_COLUMNS = 'id, email, password_hash, name, created_at, updated_at';
@@ -67,5 +67,31 @@ export const UserModel = {
     const { password_hash, ...rest } = user;
     void password_hash;
     return rest;
+  },
+
+  /**
+   * Permanently delete a user and all of their data.
+   *
+   * The users table has CASCADE FKs from most child tables (recipes-saved,
+   * meal_plans, pantry, etc.) so those clean themselves up. A handful of
+   * RESTRICT FKs (expenses.paid_by, houses.created_by, house_pantry_items.added_by,
+   * prep_meals.cooked_by) would otherwise block the DELETE — we explicitly
+   * remove rows referencing them first, inside a single transaction.
+   *
+   * Returns true if a row was deleted, false if the user was already gone.
+   */
+  async deleteAccount(userId: string): Promise<boolean> {
+    return withTransaction(async (client) => {
+      // RESTRICT FK cleanups (order doesn't matter — none reference each other through the user)
+      await client.query('DELETE FROM expenses WHERE paid_by = $1', [userId]);
+      await client.query('DELETE FROM house_pantry_items WHERE added_by = $1', [userId]);
+      await client.query('DELETE FROM prep_meals WHERE cooked_by = $1', [userId]);
+      // Deleting houses created by this user CASCADEs to house_members, cook_schedule,
+      // chore_schedule, expenses, etc. for that house.
+      await client.query('DELETE FROM houses WHERE created_by = $1', [userId]);
+
+      const result = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+      return (result.rowCount ?? 0) > 0;
+    });
   },
 };

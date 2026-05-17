@@ -21,4 +21,9 @@ export const userService = {
     const res = await userApi.put('/users/me/restrictions', { dietary_restrictions: restrictions });
     return res.data.data;
   },
+
+  /** Permanently delete the signed-in user and all their data. */
+  async deleteAccount(): Promise<void> {
+    await userApi.delete('/users/me');
+  },
 };

@@ -166,6 +166,46 @@ export function ProfileScreen(): React.JSX.Element {
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account?',
+      'This permanently deletes your account and all associated data — saved recipes, meal plans, pantry, shopping lists, nutrition logs, and household memberships. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete forever',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation — Apple recommends extra friction for destructive actions.
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Type-style confirmation: this cannot be undone. Your data will be wiped within 30 days.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, delete my account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await userService.deleteAccount();
+                      dispatch(clearAuth());
+                    } catch (err: any) {
+                      const msg =
+                        err?.response?.data?.error?.message ??
+                        err?.message ??
+                        'Could not delete your account. Please try again or email us.';
+                      Alert.alert('Delete failed', msg);
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -328,6 +368,24 @@ export function ProfileScreen(): React.JSX.Element {
           size="lg"
           style={{ marginHorizontal: spacing.xl, marginTop: spacing.lg }}
         />
+
+        <TouchableOpacity
+          onPress={handleDeleteAccount}
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
+          style={{
+            marginHorizontal: spacing.xl,
+            marginTop: spacing.sm,
+            paddingVertical: spacing.md,
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={[typography.body, { color: c.error, fontWeight: '600' }]}
+          >
+            Delete account
+          </Text>
+        </TouchableOpacity>
 
         <Text
           style={[

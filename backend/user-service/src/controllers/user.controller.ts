@@ -82,6 +82,27 @@ export async function updateGoals(req: Request, res: Response, next: NextFunctio
 }
 
 /**
+ * @route   DELETE /users/me
+ * @access  protected
+ * @returns 204 No Content on success
+ *
+ * Permanently deletes the authenticated user and all their data. Required
+ * by Apple App Store guideline 5.1.1(v) for any app that supports account
+ * creation. Cascades through all child tables — see UserModel.deleteAccount
+ * for the exact behavior on RESTRICT FKs (houses, expenses, etc.).
+ */
+export async function deleteAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.auth!.userId;
+    const deleted = await UserModel.deleteAccount(userId);
+    if (!deleted) throw Errors.notFound('User not found');
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * @route   PUT /users/me/restrictions
  * @access  protected
  * @body    { dietary_restrictions: string[], favorite_cuisines?: string[] }

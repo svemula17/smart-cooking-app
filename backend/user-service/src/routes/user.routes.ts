@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  deleteAccount,
   getProfile,
   updateGoals,
   updateProfile,
@@ -18,5 +19,6 @@ export const userRouter = Router();
 userRouter.use(authenticate);
 userRouter.get('/me', getProfile);
 userRouter.put('/me', validate(updateProfileSchema), updateProfile);
+userRouter.delete('/me', deleteAccount);
 userRouter.put('/me/goals', validate(macroGoalsSchema), updateGoals);
 userRouter.put('/me/restrictions', validate(restrictionsSchema), updateRestrictions);
