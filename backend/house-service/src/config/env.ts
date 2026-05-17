@@ -25,4 +25,7 @@ export const env = {
   jwtSecret: required('JWT_SECRET'),
 
   corsOrigin: process.env.CORS_ORIGIN ?? '*',
+
+  rateLimitWindowMs: optionalNumber('RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000),
+  rateLimitMax: optionalNumber('RATE_LIMIT_MAX', 100),
 } as const;

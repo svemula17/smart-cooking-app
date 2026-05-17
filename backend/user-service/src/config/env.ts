@@ -40,7 +40,10 @@ export const env = {
   rateLimitWindowMs: optionalNumber('RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000),
   rateLimitMax: optionalNumber('RATE_LIMIT_MAX', 100),
 
-  bcryptRounds: optionalNumber('BCRYPT_ROUNDS', 10),
+  // 12 rounds ≈ 40ms per hash on Railway's standard CPU — slow enough to
+  // make offline brute-force impractical, fast enough not to hurt login UX.
+  // Matches the cost factor we promise in the Privacy Policy.
+  bcryptRounds: optionalNumber('BCRYPT_ROUNDS', 12),
 
   logLevel: process.env.LOG_LEVEL ?? 'info',
 } as const;
