@@ -6,23 +6,17 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Provider as ReduxProvider, useSelector } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
-import * as Sentry from '@sentry/react-native';
 import { store, type RootState } from './src/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/ui';
 
-// ─── Sentry crash & error reporting ─────────────────────────────────────────
-// Hardcoded DSN is intentional — Sentry DSNs are public-by-design and
-// included client-side. We disable reporting in dev so local crashes don't
-// pollute the production project.
-Sentry.init({
-  dsn: 'https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920',
-  enabled: !__DEV__,
-  // Trace 10% of transactions in production to keep within free tier.
-  tracesSampleRate: 0.1,
-  // Annotate every event with the environment for filtering in the UI.
-  environment: __DEV__ ? 'development' : 'production',
-});
+// NOTE: Mobile Sentry temporarily disabled — @sentry/react-native's Expo
+// config plugin doesn't resolve correctly under our npm workspaces hoisting
+// (it ends up at the repo-root node_modules and can't find `expo` from
+// there). Backend Sentry across all 6 services is still wired and captures
+// the bulk of production errors. To re-enable mobile Sentry later, either
+// move @sentry/react-native into a workspace nohoist list or eject from the
+// monorepo for the mobile/ directory.
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -57,7 +51,7 @@ function ThemedApp() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <ReduxProvider store={store}>
       <QueryClientProvider client={queryClient}>
@@ -66,7 +60,3 @@ function App() {
     </ReduxProvider>
   );
 }
-
-// Sentry.wrap() installs error boundaries and instruments the navigation tree
-// so unhandled JS errors and slow screens are reported automatically.
-export default Sentry.wrap(App);
