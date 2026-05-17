@@ -28,6 +28,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      "@sentry/react-native/expo"
+    ],
     "extra": {
       "eas": {
         "projectId": "caf8e2dc-7381-4368-9d9a-896e082cefd9"
