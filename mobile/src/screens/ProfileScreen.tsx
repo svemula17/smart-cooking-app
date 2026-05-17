@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
   Switch,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+
+const PRIVACY_URL = 'https://svemula17.github.io/smart-cooking-app/privacy';
+const TERMS_URL = 'https://svemula17.github.io/smart-cooking-app/terms';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -289,6 +294,30 @@ export function ProfileScreen(): React.JSX.Element {
                 : '—'}
             </Text>
           </View>
+        </Card>
+
+        {/* Legal */}
+        <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
+          <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>Legal</Text>
+          <TouchableOpacity
+            style={styles.row}
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(PRIVACY_URL)}
+          >
+            <Text style={{ fontSize: 18, marginRight: spacing.sm }}>🔒</Text>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>Privacy Policy</Text>
+            <Text style={[typography.body, { color: c.textSecondary }]}>›</Text>
+          </TouchableOpacity>
+          <Divider inset={spacing.sm} />
+          <TouchableOpacity
+            style={styles.row}
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(TERMS_URL)}
+          >
+            <Text style={{ fontSize: 18, marginRight: spacing.sm }}>📜</Text>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>Terms of Service</Text>
+            <Text style={[typography.body, { color: c.textSecondary }]}>›</Text>
+          </TouchableOpacity>
         </Card>
 
         <Button

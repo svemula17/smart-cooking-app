@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StatusBar,
@@ -9,6 +10,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+const PRIVACY_URL = 'https://svemula17.github.io/smart-cooking-app/privacy';
+const TERMS_URL = 'https://svemula17.github.io/smart-cooking-app/terms';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useDispatch } from 'react-redux';
@@ -291,6 +295,33 @@ export function LoginScreen({ route, navigation }: Props): React.JSX.Element {
               hapticStyle="medium"
               style={{ marginTop: spacing.sm }}
             />
+
+            {mode === 'register' ? (
+              <Text
+                style={[
+                  typography.caption,
+                  { color: c.textSecondary, textAlign: 'center', marginTop: spacing.sm },
+                ]}
+              >
+                By creating an account, you agree to our{' '}
+                <Text
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(TERMS_URL)}
+                  style={{ color: c.primary, fontWeight: '600' }}
+                >
+                  Terms of Service
+                </Text>
+                {' '}and{' '}
+                <Text
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(PRIVACY_URL)}
+                  style={{ color: c.primary, fontWeight: '600' }}
+                >
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
+            ) : null}
 
             <View style={styles.dividerRow}>
               <Divider style={{ flex: 1 }} />
