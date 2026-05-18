@@ -33,6 +33,9 @@
         "projectId": "caf8e2dc-7381-4368-9d9a-896e082cefd9"
       }
     },
-    "owner": "svemula17"
+    "owner": "svemula17",
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

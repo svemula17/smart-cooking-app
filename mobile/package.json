@@ -6,7 +6,14 @@
     "start": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start",
     "android": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --android",
     "ios": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --ios",
-    "web": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --web"
+    "web": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --web",
+    "test": "jest --passWithNoTests"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@reduxjs/.*|react-redux))"
+    ]
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -19,6 +26,7 @@
     "expo": "~54.0.33",
     "expo-device": "~8.0.10",
     "expo-notifications": "^0.32.17",
+    "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -34,8 +42,12 @@
     "react-redux": "^9.2.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^29.5.0",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.10",
+    "jest": "^29.7.0",
+    "jest-expo": "^55.0.17",
     "typescript": "~5.9.2"
   },
   "private": true

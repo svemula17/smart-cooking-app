@@ -9,6 +9,7 @@ import * as Notifications from 'expo-notifications';
 import { store, type RootState } from './src/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/ui';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 // NOTE: Mobile Sentry temporarily disabled — @sentry/react-native's Expo
 // config plugin doesn't resolve correctly under our npm workspaces hoisting
@@ -53,10 +54,12 @@ function ThemedApp() {
 
 export default function App() {
   return (
-    <ReduxProvider store={store}>
-      <QueryClientProvider client={queryClient}>
-        <ThemedApp />
-      </QueryClientProvider>
-    </ReduxProvider>
+    <ErrorBoundary>
+      <ReduxProvider store={store}>
+        <QueryClientProvider client={queryClient}>
+          <ThemedApp />
+        </QueryClientProvider>
+      </ReduxProvider>
+    </ErrorBoundary>
   );
 }

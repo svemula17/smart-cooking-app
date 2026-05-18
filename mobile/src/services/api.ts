@@ -1,6 +1,6 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URLS } from '../config/env';
+import { storage } from '../utils/storage';
 
 function makeClient(baseURL: string) {
   const instance = axios.create({
@@ -10,7 +10,8 @@ function makeClient(baseURL: string) {
   });
 
   instance.interceptors.request.use(async (config) => {
-    const token = await AsyncStorage.getItem('accessToken');
+    // Prefer the in-memory cache (hot path), fall back to secure storage.
+    const token = _token ?? (await storage.getAccessToken());
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -21,9 +22,8 @@ function makeClient(baseURL: string) {
     (r) => r,
     async (error) => {
       if (error.response?.status === 401) {
-        await AsyncStorage.removeItem('accessToken');
-        await AsyncStorage.removeItem('refreshToken');
-        await AsyncStorage.removeItem('user');
+        _token = null;
+        await storage.clearAuth();
       }
       return Promise.reject(error);
     },
