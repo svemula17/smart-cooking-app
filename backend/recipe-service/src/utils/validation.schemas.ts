@@ -57,7 +57,9 @@ export const cuisineParamSchema = Joi.object({
 
 export const listQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).optional(),
-  limit: Joi.number().integer().min(1).max(100).optional(),
+  // 500 cap accommodates the full ~273-recipe catalog in a single request
+  // while still preventing pathological queries.
+  limit: Joi.number().integer().min(1).max(500).optional(),
   cuisine_type: Joi.string().valid(...CUISINE_TYPES).optional(),
   difficulty: Joi.string().valid('Easy', 'Medium', 'Hard').optional(),
   max_cook_time: Joi.number().integer().min(1).max(600).optional(),
@@ -70,7 +72,7 @@ export const searchQuerySchema = Joi.object({
   max_cook_time: Joi.number().integer().min(1).max(600).optional(),
   min_protein: Joi.number().min(0).max(500).optional(),
   page: Joi.number().integer().min(1).optional(),
-  limit: Joi.number().integer().min(1).max(100).optional(),
+  limit: Joi.number().integer().min(1).max(500).optional(),
 });
 
 export const rateRecipeSchema = Joi.object({

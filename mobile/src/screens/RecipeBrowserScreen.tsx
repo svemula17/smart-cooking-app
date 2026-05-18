@@ -75,7 +75,7 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['recipes', cuisine, debouncedQuery, activeFilter],
     queryFn: async () => {
-      if (isDefaultView) return recipeService.getByCuisine(cuisine, { limit: 30 });
+      if (isDefaultView) return recipeService.getByCuisine(cuisine, { limit: 100 });
       return recipeService.search({
         q: debouncedQuery || undefined,
         cuisine_type: cuisine !== 'all' ? cuisine : undefined,
@@ -83,6 +83,7 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
         min_protein: activeFilter === 'High Protein' ? 25 : undefined,
         max_cook_time:
           activeFilter === 'Fastest' || activeFilter === 'Rescue' ? 25 : undefined,
+        limit: 100,
       });
     },
   });
