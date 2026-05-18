@@ -20,7 +20,7 @@
         "EXPO_PUBLIC_USER_API": "https://smart-cooking-app-production.up.railway.app",
         "EXPO_PUBLIC_RECIPE_API": "https://recipe-service-production.up.railway.app",
         "EXPO_PUBLIC_NUTRITION_API": "https://nutrition-service-production.up.railway.app",
-        "EXPO_PUBLIC_AI_API": "https://ai-service-production.up.railway.app",
+        "EXPO_PUBLIC_AI_API": "https://ai-service-production-c18a.up.railway.app",
         "EXPO_PUBLIC_SHOPPING_API": "https://shopping-service-production.up.railway.app",
         "EXPO_PUBLIC_HOUSE_API": "https://house-service-production.up.railway.app"
       }
@@ -37,7 +37,7 @@
         "EXPO_PUBLIC_USER_API": "https://smart-cooking-app-production.up.railway.app",
         "EXPO_PUBLIC_RECIPE_API": "https://recipe-service-production.up.railway.app",
         "EXPO_PUBLIC_NUTRITION_API": "https://nutrition-service-production.up.railway.app",
-        "EXPO_PUBLIC_AI_API": "https://ai-service-production.up.railway.app",
+        "EXPO_PUBLIC_AI_API": "https://ai-service-production-c18a.up.railway.app",
         "EXPO_PUBLIC_SHOPPING_API": "https://shopping-service-production.up.railway.app",
         "EXPO_PUBLIC_HOUSE_API": "https://house-service-production.up.railway.app"
       }
@@ -51,7 +51,7 @@
         "EXPO_PUBLIC_USER_API": "https://smart-cooking-app-production.up.railway.app",
         "EXPO_PUBLIC_RECIPE_API": "https://recipe-service-production.up.railway.app",
         "EXPO_PUBLIC_NUTRITION_API": "https://nutrition-service-production.up.railway.app",
-        "EXPO_PUBLIC_AI_API": "https://ai-service-production.up.railway.app",
+        "EXPO_PUBLIC_AI_API": "https://ai-service-production-c18a.up.railway.app",
         "EXPO_PUBLIC_SHOPPING_API": "https://shopping-service-production.up.railway.app",
         "EXPO_PUBLIC_HOUSE_API": "https://house-service-production.up.railway.app"
       }
