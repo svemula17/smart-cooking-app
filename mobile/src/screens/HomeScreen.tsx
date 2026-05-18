@@ -33,7 +33,9 @@ const CUISINES = [
   { cuisine: 'Indo-Chinese', emoji: '🍜' },
   { cuisine: 'Italian', emoji: '🍝' },
   { cuisine: 'Mexican', emoji: '🌮' },
-  { cuisine: 'Thai', emoji: '🍜' },
+  { cuisine: 'Thai', emoji: '🍲' },
+  { cuisine: 'Japanese', emoji: '🍱' },
+  { cuisine: 'Mediterranean', emoji: '🫒' },
 ];
 
 const greeting = () => {

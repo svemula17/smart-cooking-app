@@ -135,9 +135,12 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
       <FlatList
         data={isLoading ? [] : recipes}
         keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
         renderItem={({ item }) => (
           <RecipeCard
             recipe={item}
+            compact
             onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
           />
         )}
@@ -258,8 +261,9 @@ function MissionStat({ value, label }: { value: number; label: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing['2xl'], gap: spacing.md, flexGrow: 1 },
-  searchWrap: { marginTop: spacing.md, marginBottom: spacing.md },
+  list: { paddingHorizontal: spacing.md, paddingBottom: spacing['2xl'], flexGrow: 1 },
+  gridRow: { gap: spacing.md, paddingHorizontal: spacing.xs },
+  searchWrap: { marginTop: spacing.md, marginBottom: spacing.md, paddingHorizontal: spacing.xs },
   missionCard: { marginBottom: spacing.md },
   missionHeader: {
     flexDirection: 'row',

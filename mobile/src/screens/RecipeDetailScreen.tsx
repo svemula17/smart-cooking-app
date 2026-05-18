@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -259,7 +260,16 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         {/* Hero */}
         <View style={[styles.hero, { backgroundColor: c.primaryMuted }]}>
-          <Text style={styles.heroBg}>{cuisineEmoji}</Text>
+          {recipe.image_url && /^https?:\/\//.test(recipe.image_url) ? (
+            <Image
+              source={{ uri: recipe.image_url }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.heroBg}>{cuisineEmoji}</Text>
+          )}
+          <View style={styles.heroScrim} pointerEvents="none" />
           <View style={styles.heroOverlayBtns}>
             <IconButton
               icon="‹"
@@ -730,13 +740,21 @@ function FitMetric({ value, label }: { value: string; label: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  hero: { height: 240, position: 'relative', overflow: 'hidden' },
+  hero: { height: 280, position: 'relative', overflow: 'hidden' },
   heroBg: {
     position: 'absolute',
     fontSize: 140,
     opacity: 0.22,
     alignSelf: 'center',
     top: 30,
+  },
+  heroScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 120,
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   heroOverlayBtns: {
     flexDirection: 'row',

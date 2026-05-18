@@ -16,27 +16,24 @@ const CUISINE_BG: Record<string, string> = {
   Indian: '#F5E6D3', Chinese: '#FFF0E0', Italian: '#FDE8E8',
   Mexican: '#E8F5E9', Thai: '#E0F4F1', Japanese: '#F0E8F5',
   Mediterranean: '#E8EFF5', American: '#FFF3E0', French: '#FFF8E1',
+  'Indo-Chinese': '#FFE8E0',
 };
 
-const DIFFICULTY_COLOR: Record<string, string> = {
-  Easy: '#4CAF50',
-  Medium: '#F9E795',
-  Hard: '#F96167',
-};
-
-const DIFFICULTY_TEXT: Record<string, string> = {
-  Easy: '#2E7D32',
-  Medium: '#7a6010',
-  Hard: '#fff',
+const DIFFICULTY_BG: Record<string, string> = {
+  Easy: 'rgba(76, 175, 80, 0.92)',
+  Medium: 'rgba(255, 167, 38, 0.92)',
+  Hard: 'rgba(249, 97, 103, 0.92)',
 };
 
 function StarRating({ rating, total }: { rating: number; total: number }) {
   const safeRating = rating ?? 0;
-  const stars = Math.round(safeRating);
+  if (!total) return <Text style={styles.noRating}>New</Text>;
   return (
     <View style={styles.starRow}>
-      <Text style={styles.stars}>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</Text>
-      <Text style={styles.starCount}>{safeRating.toFixed(1)} ({total ?? 0})</Text>
+      <Text style={styles.stars}>★</Text>
+      <Text style={styles.starCount}>
+        {safeRating.toFixed(1)} <Text style={styles.starCountDim}>({total})</Text>
+      </Text>
     </View>
   );
 }
@@ -45,33 +42,58 @@ export interface RecipeCardProps {
   recipe: Recipe;
   onPress: () => void;
   nutrition?: { calories: number; protein_g: number; carbs_g: number; fat_g: number } | null;
+  /** Two-column grid layout (used by RecipeBrowser). Defaults to false (full-width). */
+  compact?: boolean;
 }
 
-export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutrition }) => {
+export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutrition, compact = false }) => {
   const dispatch = useDispatch();
   const isFav = useSelector((s: RootState) => s.favorites.ids.includes(recipe.id));
   const totalTime = (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
+
+  // Image source preference: remote URL from DB → bundled local asset → cuisine emoji fallback
+  const remoteUrl = recipe.image_url && /^https?:\/\//i.test(recipe.image_url) ? recipe.image_url : null;
   const localImage = getRecipeImage(recipe.name);
-  const diffBg   = DIFFICULTY_COLOR[recipe.difficulty] ?? '#E0E0E0';
-  const diffTxt  = DIFFICULTY_TEXT[recipe.difficulty] ?? '#333';
+  const imageSource = remoteUrl ? { uri: remoteUrl } : localImage ?? null;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[styles.card, compact && styles.cardCompact]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       {/* Image */}
-      <View style={styles.imageWrapper}>
-        {localImage ? (
-          <Image source={localImage} style={styles.image} resizeMode="cover" />
+      <View style={[styles.imageWrapper, compact && styles.imageWrapperCompact]}>
+        {imageSource ? (
+          <Image source={imageSource} style={styles.image} resizeMode="cover" />
         ) : (
           <View style={[styles.imageFallback, { backgroundColor: CUISINE_BG[recipe.cuisine_type] ?? '#F0F0F0' }]}>
             <Text style={styles.cuisineEmoji}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
           </View>
         )}
-        <View style={[styles.diffBadge, { backgroundColor: diffBg }]}>
-          <Text style={[styles.diffText, { color: diffTxt }]}>{recipe.difficulty}</Text>
+
+        {/* Subtle gradient overlay along bottom for legibility (using a dimmed view) */}
+        <View style={styles.imageOverlay} pointerEvents="none" />
+
+        {/* Difficulty pill (bottom-left over image) */}
+        <View style={[styles.diffBadge, { backgroundColor: DIFFICULTY_BG[recipe.difficulty] ?? 'rgba(0,0,0,0.55)' }]}>
+          <Text style={styles.diffText}>{recipe.difficulty || 'Easy'}</Text>
         </View>
+
+        {/* Time pill (bottom-right over image) */}
+        {totalTime > 0 ? (
+          <View style={styles.timeBadge}>
+            <Text style={styles.timeBadgeText}>⏱ {totalTime}m</Text>
+          </View>
+        ) : null}
+
+        {/* Favorite heart (top-right) */}
         <TouchableOpacity
           style={styles.heartBtn}
-          onPress={(e) => { e.stopPropagation(); dispatch(toggleFavorite(recipe.id)); }}
+          onPress={(e) => {
+            e.stopPropagation();
+            dispatch(toggleFavorite(recipe.id));
+          }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={styles.heartIcon}>{isFav ? '❤️' : '🤍'}</Text>
@@ -79,12 +101,19 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
       </View>
 
       {/* Body */}
-      <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={2}>{recipe.name}</Text>
-        <Text style={styles.cuisine}>{recipe.cuisine_type} · ⏱ {totalTime}m · 👥 {recipe.servings} servings</Text>
+      <View style={[styles.body, compact && styles.bodyCompact]}>
+        <Text style={[styles.title, compact && styles.titleCompact]} numberOfLines={2}>
+          {recipe.name}
+        </Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.cuisineEmojiSmall}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
+          <Text style={styles.cuisine} numberOfLines={1}>
+            {recipe.cuisine_type}
+          </Text>
+        </View>
 
-        {/* Nutrition grid */}
-        {nutrition && (
+        {/* Nutrition grid — full-width cards only */}
+        {nutrition && !compact ? (
           <View style={styles.nutritionGrid}>
             <View style={styles.nutritionItem}>
               <Text style={[styles.nutritionValue, { color: colors.calories }]}>{nutrition.calories}</Text>
@@ -106,9 +135,9 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
               <Text style={styles.nutritionLabel}>fat</Text>
             </View>
           </View>
-        )}
+        ) : null}
 
-        <StarRating rating={recipe.average_rating} total={recipe.total_ratings} />
+        <StarRating rating={recipe.average_rating ?? 0} total={recipe.total_ratings ?? 0} />
       </View>
     </TouchableOpacity>
   );
@@ -117,22 +146,39 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceElevated,
-    borderRadius: 18,
-    marginBottom: 14,
+    borderRadius: 20,
+    marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowColor: '#1f1f1f',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  cardCompact: {
+    flex: 1,
+    marginBottom: 12,
+    borderRadius: 18,
   },
   imageWrapper: {
-    height: 160,
+    height: 180,
     position: 'relative',
+    backgroundColor: '#F0F0F0',
+  },
+  imageWrapperCompact: {
+    height: 130,
   },
   image: {
     width: '100%',
     height: '100%',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 60,
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   imageFallback: {
     width: '100%',
@@ -146,50 +192,93 @@ const styles = StyleSheet.create({
   },
   diffBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    borderRadius: 20,
+    bottom: 10,
+    left: 10,
+    borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  heartBtn: {
-    position: 'absolute',
-    top: 8,
-    left: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heartIcon: {
-    fontSize: 16,
-  },
   diffText: {
     fontSize: 11,
+    fontWeight: '800',
+    color: 'white',
+    letterSpacing: 0.3,
+  },
+  timeBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  timeBadgeText: {
+    fontSize: 11,
     fontWeight: '700',
+    color: colors.text,
+  },
+  heartBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  heartIcon: {
+    fontSize: 18,
   },
   body: {
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  bodyCompact: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   title: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
-    lineHeight: 22,
+    marginBottom: 6,
+    lineHeight: 21,
+  },
+  titleCompact: {
+    fontSize: 14,
+    lineHeight: 19,
+    minHeight: 38, // 2 lines reserved so 2-column grid stays aligned
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  cuisineEmojiSmall: {
+    fontSize: 14,
   },
   cuisine: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginBottom: 10,
+    fontWeight: '600',
+    flex: 1,
   },
   nutritionGrid: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    paddingVertical: 8,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 12,
+    paddingVertical: 10,
     marginBottom: 10,
     alignItems: 'center',
   },
@@ -204,12 +293,14 @@ const styles = StyleSheet.create({
   },
   nutritionValue: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   nutritionLabel: {
     fontSize: 10,
     color: colors.textLight,
-    marginTop: 1,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   starRow: {
     flexDirection: 'row',
@@ -219,10 +310,21 @@ const styles = StyleSheet.create({
   stars: {
     fontSize: 13,
     color: '#F9A825',
-    letterSpacing: 1,
   },
   starCount: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  starCountDim: {
+    color: colors.textLight,
+    fontWeight: '400',
+  },
+  noRating: {
     fontSize: 11,
     color: colors.textLight,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });

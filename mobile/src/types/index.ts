@@ -206,6 +206,7 @@ export type TabParamList = {
   Home:        undefined;
   MealPlanner: undefined;
   House:       undefined;
+  AIChat:      undefined;
   Shopping:    undefined;
   Stats:       undefined;
   Profile:     undefined;
