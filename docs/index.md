@@ -1,10 +1,11 @@
 ---
-title: SmartCooking Legal
+title: SmartCooking
 ---
 
-# SmartCooking — Legal
+# SmartCooking
 
 - [Privacy Policy](./privacy.html)
 - [Terms of Service](./terms.html)
+- [Support](./support.html)
 
 Contact: saikumarvemula.us@gmail.com

@@ -7,7 +7,7 @@ Both stores require URLs for these. Get them right once and you never touch this
 | Privacy Policy | https://svemula17.github.io/smart-cooking-app/privacy | ✅ Live |
 | Terms of Service | https://svemula17.github.io/smart-cooking-app/terms | ✅ Live |
 | Marketing URL (optional but recommended) | https://svemula17.github.io/smart-cooking-app/ | ✅ Live — currently the landing page is the index of legal docs |
-| Support URL (required) | https://svemula17.github.io/smart-cooking-app/support | ❌ **Not built yet** — see below |
+| Support URL (required) | https://svemula17.github.io/smart-cooking-app/support | ✅ Live (`docs/support.md`) |
 | Copyright owner | Sai Kumar Vemula | — |
 | Support email | saikumarvemula.us@gmail.com | ✅ Active |
 
