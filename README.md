@@ -1,5 +1,7 @@
 # SmartCookingApp
 
+[![CI](https://github.com/svemula17/smart-cooking-app/actions/workflows/ci.yml/badge.svg)](https://github.com/svemula17/smart-cooking-app/actions/workflows/ci.yml)
+
 An AI-powered cooking assistant with nutrition tracking, recipe discovery, guided cooking mode, and one-tap grocery delivery.
 
 ## Project Overview

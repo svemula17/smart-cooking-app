@@ -46,16 +46,12 @@ A short, honest list of things we deliberately did NOT do — kept here so futur
 
 ---
 
-### CI/CD pipeline
-**Status:** No automation. Every push deploys via Railway's auto-detect. No lint gate, no test gate.
+### CI/CD pipeline (✅ partially done, see `.github/workflows/ci.yml`)
+**Done:** TypeScript checks across mobile + all 4 backend Node services, plus mobile Jest tests. Runs on every push to main + every PR.
 
-**What's needed:** `.github/workflows/ci.yml` running on every PR:
-- `tsc --noEmit` on `mobile/` and each backend service
-- `eslint` (already configured)
-- `npm test` (now passing on mobile, 6 test files on backend)
-- Block merge if any step fails
+**Still missing:** Backend Jest tests (need a Postgres service container in CI + schema applied) and Python pytest for ai-service / nutrition-service. Backend tests use `supertest` against a real DB, so it's not just a matter of running `jest` — we'd need to provision Postgres in the workflow and apply `database/supabase/01_schema.sql`. ~30-45 min of additional work.
 
-**~1 hour of work.** Highly recommended before the first real beta.
+Also missing: ESLint — no `.eslintrc` config exists anywhere in the repo right now. Worth adding `eslint-config-expo` + a backend ESLint config before public launch.
 
 ---
 

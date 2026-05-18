@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs of the same workflow on the same branch — saves
+# minutes when you push multiple commits back-to-back.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Mobile: typecheck + jest (23 tests) ───────────────────────────────────
+  mobile:
+    name: mobile (tsc + jest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install (root workspaces)
+        run: npm ci --legacy-peer-deps
+
+      # npm workspaces sometimes re-hoists jest@30 into mobile/node_modules
+      # despite the overrides in root package.json. This is a known issue
+      # (we hit it twice locally). The cleanup is cheap so we always do it
+      # before running tests.
+      - name: Strip duplicated jest in mobile/
+        run: |
+          rm -rf node_modules/jest node_modules/jest-runtime node_modules/jest-circus \
+                 node_modules/jest-config node_modules/jest-runner \
+                 node_modules/jest-environment-jsdom node_modules/jest-environment-node \
+                 node_modules/jest-watch-typeahead node_modules/@jest
+        working-directory: mobile
+
+      - name: TypeScript check
+        run: npx tsc --noEmit --skipLibCheck
+        working-directory: mobile
+
+      - name: Jest unit tests
+        run: npm test
+        working-directory: mobile
+
+  # ─── Backend Node services: typecheck across all 4 in parallel ─────────────
+  backend-node:
+    name: backend tsc (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - user-service
+          - recipe-service
+          - shopping-service
+          - house-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install (root workspaces)
+        run: npm ci --legacy-peer-deps
+
+      # house-service is not in the workspaces array, so its node_modules
+      # never gets populated by the root install. Install it explicitly.
+      - name: Install house-service deps (not in workspaces array)
+        if: matrix.service == 'house-service'
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+        working-directory: backend/house-service
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+        working-directory: backend/${{ matrix.service }}
+
+      # Backend tests need a real Postgres. We don't spin one up here —
+      # tracked as a Phase 2 CI improvement in DEFERRED.md. For now,
+      # TypeScript correctness is the gate.
