@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import { RootStackParamList, RecipeWithDetails, Review } from '../types';
 import { NutritionGrid } from '../components/NutritionGrid';
+import { LogMealSheet } from '../components/LogMealSheet';
 import { recipeService } from '../services/recipeService';
 import { shoppingService } from '../services/shoppingService';
 import { toggleFavorite, type RootState } from '../store';
@@ -83,6 +84,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [servings, setServings] = useState<number | null>(null);
+  const [logSheetOpen, setLogSheetOpen] = useState(false);
 
   const [activeTimer, setActiveTimer] = useState<{
     label: string;
@@ -385,6 +387,14 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               Nutrition per serving
             </Text>
             <NutritionGrid nutrition={recipe.nutrition} />
+            <Button
+              label="🍽  Log this meal"
+              variant="secondary"
+              fullWidth
+              size="md"
+              onPress={() => setLogSheetOpen(true)}
+              style={{ marginTop: spacing.md }}
+            />
           </View>
         ) : null}
 
@@ -675,6 +685,12 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           style={{ marginTop: spacing.xs }}
         />
       </Sheet>
+
+      <LogMealSheet
+        visible={logSheetOpen}
+        onClose={() => setLogSheetOpen(false)}
+        recipe={recipe}
+      />
     </SafeAreaView>
   );
 };
