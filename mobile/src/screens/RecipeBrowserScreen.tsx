@@ -147,6 +147,14 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        // Perf: 273 recipes in one list is large enough to feel laggy on older
+        // Androids if we render every cell up-front. These tuning params hold
+        // the visible window tight + clip clip off-screen views.
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        removeClippedSubviews
+        updateCellsBatchingPeriod={100}
         ListHeaderComponent={
           <View>
             <View style={styles.searchWrap}>

@@ -1,12 +1,12 @@
 import React from 'react';
 import {
   Dimensions,
-  ImageBackground,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useHaptics } from './ui/useHaptics';
 
 const { width } = Dimensions.get('window');
@@ -61,17 +61,21 @@ export const CuisineCard: React.FC<CuisineCardProps> = ({ cuisine, emoji, onPres
       style={({ pressed }) => [styles.card, { opacity: pressed ? 0.9 : 1 }]}
     >
       {bgUri ? (
-        <ImageBackground
-          source={{ uri: bgUri }}
-          style={styles.bg}
-          imageStyle={styles.bgImage}
-        >
+        <View style={styles.bg}>
+          <Image
+            source={{ uri: bgUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            recyclingKey={cuisine}
+          />
           <View style={[styles.tint, { backgroundColor: tint }]} />
           <View style={styles.content}>
             <Text style={styles.emoji}>{emoji}</Text>
             <Text style={styles.name}>{cuisine}</Text>
           </View>
-        </ImageBackground>
+        </View>
       ) : (
         <View style={[styles.bg, { backgroundColor: '#F0F0F0' }]}>
           <View style={styles.content}>

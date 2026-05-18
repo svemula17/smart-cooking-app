@@ -10,6 +10,7 @@ import { store, type RootState } from './src/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/ui';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { OfflineBanner } from './src/components/OfflineBanner';
 
 // NOTE: Mobile Sentry temporarily disabled — @sentry/react-native's Expo
 // config plugin doesn't resolve correctly under our npm workspaces hoisting
@@ -47,6 +48,7 @@ function ThemedApp() {
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <RootNavigator />
         </NavigationContainer>
+        <OfflineBanner />
       </ToastProvider>
     </SafeAreaProvider>
   );

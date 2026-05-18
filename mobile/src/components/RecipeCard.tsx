@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import type { Recipe } from '../types';
 import { colors } from '../theme/colors';
@@ -65,7 +66,14 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
       {/* Image */}
       <View style={[styles.imageWrapper, compact && styles.imageWrapperCompact]}>
         {imageSource ? (
-          <Image source={imageSource} style={styles.image} resizeMode="cover" />
+          <Image
+            source={imageSource}
+            style={styles.image}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            recyclingKey={recipe.id}
+          />
         ) : (
           <View style={[styles.imageFallback, { backgroundColor: CUISINE_BG[recipe.cuisine_type] ?? '#F0F0F0' }]}>
             <Text style={styles.cuisineEmoji}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>

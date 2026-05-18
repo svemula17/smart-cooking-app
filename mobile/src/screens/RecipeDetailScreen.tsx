@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Image,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -264,7 +264,9 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Image
               source={{ uri: recipe.image_url }}
               style={StyleSheet.absoluteFill}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={250}
+              cachePolicy="memory-disk"
             />
           ) : (
             <Text style={styles.heroBg}>{cuisineEmoji}</Text>
