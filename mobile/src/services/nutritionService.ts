@@ -1,8 +1,13 @@
 import { nutritionApi } from './api';
+import type { MealType } from '../types';
 
 // ─── Types (mirroring backend nutrition-service/app/schemas/nutrition.py) ─────
+//
+// MealType is the canonical lowercase enum from `types/index.ts` — kept in
+// one place since DB migration 109 unified meal_plans + nutrition_logs.
+// Re-exported here so existing imports from this module keep working.
 
-export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+export type { MealType };
 
 // ── Calculate ─────────────────────────────────────────────────────────────────
 

@@ -88,11 +88,12 @@ ON CONFLICT (user_id, date) DO UPDATE SET
     total_carbs_g   = EXCLUDED.total_carbs_g,
     total_fat_g     = EXCLUDED.total_fat_g;
 
--- ─── Nutrition Logs (yesterday's meals — meal_type uses Capitalized form) ────
+-- ─── Nutrition Logs (yesterday's meals) ──────────────────────────────────────
+-- meal_type is lowercase, unified with meal_plans via migration 109.
 INSERT INTO nutrition_logs (id, user_id, recipe_id, date, meal_type, servings_consumed, calories, protein_g, carbs_g, fat_g) VALUES
-  ('c2000001-0000-0000-0000-000000000001','e18126c0-cb01-4460-9520-11634dfb5084','a0000001-0000-0000-0000-000000000008', CURRENT_DATE - 1, 'Breakfast', 1, 420, 14, 60, 14),
-  ('c2000001-0000-0000-0000-000000000002','e18126c0-cb01-4460-9520-11634dfb5084','a0000001-0000-0000-0000-000000000003', CURRENT_DATE - 1, 'Lunch',     1, 680, 38, 55, 28),
-  ('c2000001-0000-0000-0000-000000000003','e18126c0-cb01-4460-9520-11634dfb5084','a0000001-0000-0000-0000-000000000001', CURRENT_DATE - 1, 'Dinner',    1, 820, 52, 95, 22)
+  ('c2000001-0000-0000-0000-000000000001','e18126c0-cb01-4460-9520-11634dfb5084','a0000001-0000-0000-0000-000000000008', CURRENT_DATE - 1, 'breakfast', 1, 420, 14, 60, 14),
+  ('c2000001-0000-0000-0000-000000000002','e18126c0-cb01-4460-9520-11634dfb5084','a0000001-0000-0000-0000-000000000003', CURRENT_DATE - 1, 'lunch',     1, 680, 38, 55, 28),
+  ('c2000001-0000-0000-0000-000000000003','e18126c0-cb01-4460-9520-11634dfb5084','a0000001-0000-0000-0000-000000000001', CURRENT_DATE - 1, 'dinner',    1, 820, 52, 95, 22)
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── Solo House: "Sai's Place" ───────────────────────────────────────────────

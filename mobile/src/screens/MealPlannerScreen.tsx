@@ -58,10 +58,13 @@ function formatDayHeader(dateStr: string, index: number): { line1: string; line2
 
 const MEAL_CONFIG: Record<MealType, { label: string; emoji: string }> = {
   breakfast: { label: 'Breakfast', emoji: '🌅' },
-  lunch: { label: 'Lunch', emoji: '☀️' },
-  dinner: { label: 'Dinner', emoji: '🌙' },
+  lunch:     { label: 'Lunch',     emoji: '☀️' },
+  dinner:    { label: 'Dinner',    emoji: '🌙' },
+  snack:     { label: 'Snack',     emoji: '🍎' },
 };
 
+// MealPlanner intentionally shows only the three core meals in its grid —
+// snacks live in nutrition_logs and are surfaced on the Stats screen.
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
 function MacroBar({

@@ -26,10 +26,10 @@ interface LogMealSheetProps {
 const SERVING_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
 
 const MEAL_TYPES: { value: MealType; label: string; emoji: string }[] = [
-  { value: 'Breakfast', label: 'Breakfast', emoji: '🥞' },
-  { value: 'Lunch', label: 'Lunch', emoji: '🥗' },
-  { value: 'Dinner', label: 'Dinner', emoji: '🍝' },
-  { value: 'Snack', label: 'Snack', emoji: '🍎' },
+  { value: 'breakfast', label: 'Breakfast', emoji: '🥞' },
+  { value: 'lunch',     label: 'Lunch',     emoji: '🥗' },
+  { value: 'dinner',    label: 'Dinner',    emoji: '🍝' },
+  { value: 'snack',     label: 'Snack',     emoji: '🍎' },
 ];
 
 function num(value: number | string | undefined): number {
@@ -186,10 +186,10 @@ function nextServing(current: number): number {
 
 function suggestMealType(): MealType {
   const h = new Date().getHours();
-  if (h < 10) return 'Breakfast';
-  if (h < 15) return 'Lunch';
-  if (h < 21) return 'Dinner';
-  return 'Snack';
+  if (h < 10) return 'breakfast';
+  if (h < 15) return 'lunch';
+  if (h < 21) return 'dinner';
+  return 'snack';
 }
 
 function Macro({

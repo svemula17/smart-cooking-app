@@ -12,7 +12,7 @@ interface AccessTokenPayload {
 
 /**
  * Verify a JWT access token issued by the user-service. Both services share
- * `JWT_SECRET`. Populates `req.user` on success.
+ * `JWT_SECRET`. Populates `req.auth` on success.
  *
  * Tokens are typed with `type: 'access'` — we reject anything that doesn't
  * carry that claim to prevent refresh tokens from being used as access tokens.
@@ -35,7 +35,7 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
     if (!payload.userId || !payload.email) {
       return next(Errors.invalidToken('Token is missing required claims'));
     }
-    req.user = { userId: payload.userId, email: payload.email };
+    req.auth = { userId: payload.userId, email: payload.email };
     next();
   } catch {
     next(Errors.invalidToken());
@@ -52,10 +52,10 @@ export async function requireAdmin(
   next: NextFunction,
 ): Promise<void> {
   try {
-    if (!req.user) return next(Errors.unauthorized());
+    if (!req.auth) return next(Errors.unauthorized());
     const { rows } = await pool.query<{ is_admin: boolean }>(
       `SELECT is_admin FROM users WHERE id = $1`,
-      [req.user.userId],
+      [req.auth.userId],
     );
     if (!rows[0]) return next(Errors.unauthorized('User no longer exists'));
     if (!rows[0].is_admin) return next(Errors.forbidden('Admin access required'));

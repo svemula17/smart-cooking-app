@@ -19,7 +19,7 @@ export interface PantryItem {
 export const pantryController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user?.userId;
+      const userId = req.auth?.userId;
       if (!userId) return next(Errors.unauthorized());
       const { rows } = await pool.query(
         `SELECT * FROM pantry_items WHERE user_id = $1 ORDER BY category, name`,
@@ -34,7 +34,7 @@ export const pantryController = {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user?.userId;
+      const userId = req.auth?.userId;
       if (!userId) return next(Errors.unauthorized());
       const { name, quantity = 1, unit = 'units', category = 'other', location = 'pantry', expiry_date } = req.body;
       if (!name) return next(Errors.validationError('name is required'));
@@ -52,7 +52,7 @@ export const pantryController = {
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user?.userId;
+      const userId = req.auth?.userId;
       if (!userId) return next(Errors.unauthorized());
       const { id } = req.params;
       const { name, quantity, unit, category, location, expiry_date } = req.body;
@@ -79,7 +79,7 @@ export const pantryController = {
 
   async remove(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user?.userId;
+      const userId = req.auth?.userId;
       if (!userId) return next(Errors.unauthorized());
       const { id } = req.params;
       const { rowCount } = await pool.query(
@@ -95,7 +95,7 @@ export const pantryController = {
 
   async deduct(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user?.userId;
+      const userId = req.auth?.userId;
       if (!userId) return next(Errors.unauthorized());
       const { ingredients } = req.body as { ingredients: Array<{ name: string; quantity: number; unit: string }> };
       if (!Array.isArray(ingredients)) return next(Errors.validationError('ingredients array required'));

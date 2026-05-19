@@ -335,7 +335,7 @@ export async function rateRecipe(req: Request, res: Response, next: NextFunction
     try {
       await ReviewModel.create({
         recipe_id: recipeId,
-        user_id: req.user!.userId,
+        user_id: req.auth!.userId,
         rating,
         comment: comment ?? null,
       });

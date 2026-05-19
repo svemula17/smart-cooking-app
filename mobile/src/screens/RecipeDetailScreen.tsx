@@ -17,6 +17,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootStackParamList, RecipeWithDetails, Review } from '../types';
 import { NutritionGrid } from '../components/NutritionGrid';
 import { LogMealSheet } from '../components/LogMealSheet';
+import { RecipeHero } from '../components/recipe-detail/RecipeHero';
 import { recipeService } from '../services/recipeService';
 import { shoppingService } from '../services/shoppingService';
 import { toggleFavorite, type RootState } from '../store';
@@ -259,67 +260,12 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <View style={[styles.hero, { backgroundColor: c.primaryMuted }]}>
-          {recipe.image_url && /^https?:\/\//.test(recipe.image_url) ? (
-            <Image
-              source={{ uri: recipe.image_url }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={250}
-              cachePolicy="memory-disk"
-            />
-          ) : (
-            <Text style={styles.heroBg}>{cuisineEmoji}</Text>
-          )}
-          <View style={styles.heroScrim} pointerEvents="none" />
-          <View style={styles.heroOverlayBtns}>
-            <IconButton
-              icon="‹"
-              size={40}
-              variant="tinted"
-              accessibilityLabel="Go back"
-              onPress={() => navigation.goBack()}
-            />
-            <IconButton
-              icon={isFav ? '❤️' : '🤍'}
-              size={40}
-              variant="tinted"
-              accessibilityLabel={isFav ? 'Remove from favorites' : 'Add to favorites'}
-              onPress={() => dispatch(toggleFavorite(recipeId))}
-            />
-          </View>
-          <View
-            style={[
-              styles.heroBottom,
-              { backgroundColor: 'rgba(255,255,255,0.94)' },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
-              <Badge
-                label={recipe.difficulty}
-                tone={
-                  recipe.difficulty === 'Easy'
-                    ? 'success'
-                    : recipe.difficulty === 'Medium'
-                    ? 'warning'
-                    : 'error'
-                }
-              />
-              <Badge label={recipe.cuisine_type} tone="info" />
-            </View>
-            <Text style={[typography.h2, { color: c.text }]} numberOfLines={2}>
-              {recipe.name}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs, gap: 6 }}>
-              <Text style={{ fontSize: 14, color: c.warning, letterSpacing: 1 }}>
-                {stars(recipe.average_rating)}
-              </Text>
-              <Text style={[typography.bodySmall, { color: c.textSecondary }]}>
-                {recipe.average_rating.toFixed(1)} ({recipe.total_ratings})
-              </Text>
-            </View>
-          </View>
-        </View>
+        <RecipeHero
+          recipe={recipe}
+          isFav={isFav}
+          onBack={() => navigation.goBack()}
+          onToggleFav={() => dispatch(toggleFavorite(recipeId))}
+        />
 
         {/* Stats */}
         <Card
@@ -742,35 +688,7 @@ function FitMetric({ value, label }: { value: string; label: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  hero: { height: 280, position: 'relative', overflow: 'hidden' },
-  heroBg: {
-    position: 'absolute',
-    fontSize: 140,
-    opacity: 0.22,
-    alignSelf: 'center',
-    top: 30,
-  },
-  heroScrim: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 120,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-  },
-  heroOverlayBtns: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  heroBottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: spacing.lg,
-  },
+  // Hero styles moved to ../components/recipe-detail/RecipeHero.tsx
   block: { marginHorizontal: spacing.lg, marginTop: spacing.lg },
   fitHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   fitMetrics: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },

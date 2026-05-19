@@ -15,7 +15,7 @@ import { Errors } from '../middleware/error.middleware';
 
 export async function generateList(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user!.userId;
+    const userId = req.auth!.userId;
     const { name, recipe_ids } = req.body as { name: string; recipe_ids: string[] };
 
     // Fetch ingredients for all the requested recipes (only valid UUIDs that exist)
@@ -54,7 +54,7 @@ export async function generateList(req: Request, res: Response, next: NextFuncti
 
 export async function getLists(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user!.userId;
+    const userId = req.auth!.userId;
     const { status, page, limit } = req.query as {
       status?: 'active' | 'completed';
       page: string;
@@ -91,7 +91,7 @@ export async function getLists(req: Request, res: Response, next: NextFunction):
 
 export async function getList(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user!.userId;
+    const userId = req.auth!.userId;
     const { id } = req.params;
 
     const list = await ShoppingListModel.findById(id, userId);
@@ -114,7 +114,7 @@ export async function getList(req: Request, res: Response, next: NextFunction): 
 
 export async function checkItem(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user!.userId;
+    const userId = req.auth!.userId;
     const { id, itemId } = req.params;
     const { is_checked } = req.body as { is_checked: boolean };
 
@@ -240,7 +240,7 @@ export async function getNearbyStores(
 
 export async function completeList(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user!.userId;
+    const userId = req.auth!.userId;
     const { id } = req.params;
 
     const updated = await ShoppingListModel.complete(id, userId);
@@ -257,7 +257,7 @@ export async function completeList(req: Request, res: Response, next: NextFuncti
 
 export async function deleteList(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user!.userId;
+    const userId = req.auth!.userId;
     const { id } = req.params;
 
     const deleted = await ShoppingListModel.delete(id, userId);

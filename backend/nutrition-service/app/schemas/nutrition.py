@@ -14,7 +14,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-MealType = Literal["Breakfast", "Lunch", "Dinner", "Snack"]
+# Canonical lowercase meal types — unified with meal_plans via migration
+# 109_unify_meal_type_to_lowercase.sql. Snack is nutrition-log-only in
+# practice but accepted everywhere for consistency.
+MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 
 
 class IngredientInput(BaseModel):

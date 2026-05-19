@@ -16,7 +16,7 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
     if (payload.type !== 'access') {
       return next(Errors.unauthorized('Invalid token type'));
     }
-    req.user = payload;
+    req.auth = payload;
     next();
   } catch {
     next(Errors.unauthorized('Invalid or expired token'));

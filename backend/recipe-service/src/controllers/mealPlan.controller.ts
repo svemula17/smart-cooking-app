@@ -50,7 +50,7 @@ export async function scheduleMeal(req: Request, res: Response, next: NextFuncti
     // SECURITY: ignore any user_id in the body — it must come from the JWT
     // to prevent privilege-escalation (a logged-in user can't create plans
     // for another user just by passing their UUID in the body).
-    const user_id = (req as any).user?.userId;
+    const user_id = req.auth?.userId;
     if (!user_id) return next(Errors.unauthorized('Missing user identity'));
 
     const { recipe_id, scheduled_date, meal_type, cooking_time } = req.body as {
@@ -98,7 +98,7 @@ export async function getMealPlans(req: Request, res: Response, next: NextFuncti
     // SECURITY: only allow a user to read their own meal plans. If the URL
     // userId doesn't match the JWT subject, refuse (don't silently swap to
     // JWT — surfacing the 403 catches client bugs and probes equally).
-    const callerId = (req as any).user?.userId;
+    const callerId = req.auth?.userId;
     if (!callerId) return next(Errors.unauthorized('Missing user identity'));
     const { userId } = req.params as { userId: string };
     if (userId !== callerId) return next(Errors.forbidden('Cannot read another user\'s meal plans'));
@@ -154,7 +154,7 @@ export async function updateMealPlan(req: Request, res: Response, next: NextFunc
 
     const existing = await findPlanById(id);
     if (!existing) return next(Errors.notFound('Meal plan not found'));
-    if (existing.user_id !== (req as any).user?.userId) return next(Errors.forbidden());
+    if (existing.user_id !== req.auth?.userId) return next(Errors.forbidden());
 
     const { rows } = await pool.query(
       `UPDATE meal_plans
@@ -177,7 +177,7 @@ export async function deleteMealPlan(req: Request, res: Response, next: NextFunc
     const { id } = req.params as { id: string };
     const existing = await findPlanById(id);
     if (!existing) return next(Errors.notFound('Meal plan not found'));
-    if (existing.user_id !== (req as any).user?.userId) return next(Errors.forbidden());
+    if (existing.user_id !== req.auth?.userId) return next(Errors.forbidden());
 
     await pool.query('DELETE FROM meal_plans WHERE id = $1', [id]);
     res.json({ success: true, data: { message: 'Meal plan deleted' } } satisfies ApiSuccess<{ message: string }>);

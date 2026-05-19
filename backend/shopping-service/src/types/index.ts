@@ -70,7 +70,7 @@ export interface AuthPayload {
 declare global {
   namespace Express {
     interface Request {
-      user?: AuthPayload;
+      auth?: AuthPayload;
     }
   }
 }

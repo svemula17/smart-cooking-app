@@ -105,7 +105,9 @@ export interface ShoppingListItem {
 
 // ─── Meal Planning ────────────────────────────────────────────────────────────
 
-export type MealType = 'breakfast' | 'lunch' | 'dinner';
+// Canonical meal types — used by both meal_plans and nutrition_logs after
+// migration 109_unify_meal_type_to_lowercase.sql.
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export interface PrepInstruction {
   required: boolean;
