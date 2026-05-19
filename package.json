@@ -4,7 +4,6 @@
   "private": true,
   "description": "AI-powered cooking assistant with nutrition tracking",
   "workspaces": [
-    "mobile",
     "backend/user-service",
     "backend/recipe-service",
     "backend/shopping-service"
