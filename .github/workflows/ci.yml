@@ -27,19 +27,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install (root workspaces)
+      # mobile/ is no longer in the root workspaces array (it stands alone
+      # so EAS, which uploads only mobile/, can resolve its deps). Install
+      # it directly here.
+      - name: Install mobile deps
         run: npm ci --legacy-peer-deps
-
-      # npm workspaces sometimes re-hoists jest@30 into mobile/node_modules
-      # despite the overrides in root package.json. This is a known issue
-      # (we hit it twice locally). The cleanup is cheap so we always do it
-      # before running tests.
-      - name: Strip duplicated jest in mobile/
-        run: |
-          rm -rf node_modules/jest node_modules/jest-runtime node_modules/jest-circus \
-                 node_modules/jest-config node_modules/jest-runner \
-                 node_modules/jest-environment-jsdom node_modules/jest-environment-node \
-                 node_modules/jest-watch-typeahead node_modules/@jest
         working-directory: mobile
 
       - name: TypeScript check
