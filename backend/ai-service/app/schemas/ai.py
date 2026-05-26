@@ -22,7 +22,6 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     conversation_id: Optional[str] = None
     context: Optional[ChatContext] = None
-    is_premium: bool = False
 
 
 class ChatResponse(BaseModel):

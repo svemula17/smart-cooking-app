@@ -54,7 +54,7 @@ async def chat(
     redis: RedisProtocol = Depends(get_redis),
 ) -> ApiSuccess[ChatResponse]:
     assert_owner(user, str(body.user_id))
-    await consume_quota(redis, user_id=str(body.user_id), is_premium=body.is_premium)
+    await consume_quota(redis, user_id=user.user_id)
 
     assistant = CookingAssistant(redis=redis)
     response, conversation_id, tokens, cached = await assistant.ask(
@@ -160,7 +160,7 @@ async def troubleshoot(
     user: AuthenticatedUser = CurrentUser,
     redis: RedisProtocol = Depends(get_redis),
 ) -> ApiSuccess[TroubleshootResponse]:
-    await consume_quota(redis, user_id=user.user_id, is_premium=False)
+    await consume_quota(redis, user_id=user.user_id)
     assistant = CookingAssistant(redis=redis)
     solutions, tokens = await assistant.troubleshoot(
         problem=body.problem,

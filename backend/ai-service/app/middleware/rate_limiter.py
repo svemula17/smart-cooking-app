@@ -1,7 +1,9 @@
 """Per-user daily AI rate limiting backed by Redis.
 
-Free tier: ``FREE_TIER_DAILY_LIMIT`` requests per UTC day (default 5).
-Premium tier: unlimited.
+Every authenticated user gets ``FREE_TIER_DAILY_LIMIT`` LLM calls per UTC day
+(default 5). A premium tier is not yet modeled in the DB; when it ships, the
+bypass should be sourced from JWT claims or a ``users`` lookup — never from
+the request body.
 
 Counters use a key shape of ``ai:usage:{user_id}:{YYYY-MM-DD}`` and are TTL'd
 to ~25 hours so they auto-evict the day after.
@@ -25,15 +27,12 @@ def usage_key(user_id: str) -> str:
     return f"ai:usage:{user_id}:{_today_utc()}"
 
 
-async def consume_quota(redis: RedisProtocol, *, user_id: str, is_premium: bool) -> int:
+async def consume_quota(redis: RedisProtocol, *, user_id: str) -> int:
     """Atomically increment the daily counter, refresh the TTL on first use,
-    and 429 if the free-tier limit has already been reached.
+    and 429 if the daily limit has already been reached.
 
     Returns the post-increment count for caller logging.
     """
-    if is_premium:
-        return 0
-
     key = usage_key(user_id)
     count = await redis.incr(key)
     if count == 1:

@@ -61,7 +61,6 @@ async def test_chat_caches_repeat_questions(app_client, test_user):
     body = {
         "user_id": test_user["id"],
         "message": "what is mise en place",
-        "is_premium": True,  # avoid hitting rate limit on the second call
     }
     first = await app_client.post("/ai/chat", headers=test_user["headers"], json=body)
     assert first.status_code == 200
@@ -114,17 +113,6 @@ async def test_rate_limiting_blocks_after_quota(app_client, test_user):
     )
     assert res.status_code == 429
     assert res.json()["error"]["code"] == "RATE_LIMITED"
-
-
-@pytest.mark.asyncio
-async def test_premium_users_bypass_rate_limit(app_client, test_user):
-    for i in range(5):
-        res = await app_client.post(
-            "/ai/chat",
-            headers=test_user["headers"],
-            json={"user_id": test_user["id"], "message": f"Premium question {i}", "is_premium": True},
-        )
-        assert res.status_code == 200, f"call {i} failed: {res.text}"
 
 
 # ============================================================================
