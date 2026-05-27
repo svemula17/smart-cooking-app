@@ -95,16 +95,21 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
           </View>
         ) : null}
 
-        {/* Favorite heart (top-right) */}
+        {/* Favorite heart (top-right) — refined look */}
         <TouchableOpacity
-          style={styles.heartBtn}
+          style={[styles.heartBtn, isFav && styles.heartBtnActive]}
           onPress={(e) => {
             e.stopPropagation();
             dispatch(toggleFavorite(recipe.id));
           }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={isFav ? 'Remove from favorites' : 'Add to favorites'}
         >
-          <Text style={styles.heartIcon}>{isFav ? '❤️' : '🤍'}</Text>
+          <Text style={[styles.heartIcon, isFav && styles.heartIconActive]}>
+            {isFav ? '♥' : '♡'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -174,7 +179,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F0F0',
   },
   imageWrapperCompact: {
-    height: 130,
+    height: 108,
   },
   image: {
     width: '100%',
@@ -228,22 +233,36 @@ const styles = StyleSheet.create({
   },
   heartBtn: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    top: 8,
+    right: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.96)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  heartBtnActive: {
+    backgroundColor: '#FF3B5C',
+    borderColor: '#FF3B5C',
+    shadowColor: '#FF3B5C',
+    shadowOpacity: 0.45,
   },
   heartIcon: {
-    fontSize: 18,
+    fontSize: 19,
+    color: '#FF3B5C',
+    fontWeight: '900',
+    lineHeight: 22,
+  },
+  heartIconActive: {
+    color: '#FFFFFF',
   },
   body: {
     paddingHorizontal: 14,
@@ -251,9 +270,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   bodyCompact: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 12,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
   },
   title: {
     fontSize: 16,
@@ -263,9 +282,10 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   titleCompact: {
-    fontSize: 14,
-    lineHeight: 19,
-    minHeight: 38, // 2 lines reserved so 2-column grid stays aligned
+    fontSize: 13,
+    lineHeight: 17,
+    minHeight: 34, // 2 lines reserved so 2-column grid stays aligned
+    marginBottom: 4,
   },
   metaRow: {
     flexDirection: 'row',

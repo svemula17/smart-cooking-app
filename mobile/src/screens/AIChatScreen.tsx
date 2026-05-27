@@ -37,7 +37,7 @@ function TypingDots() {
   }, []);
   return (
     <View style={[styles.aiContainer]}>
-      <Avatar name="🤖" size={32} tone="primary" />
+      <Avatar name="🧑‍🍳" size={32} tone="primary" />
       <View
         style={[
           styles.aiBubble,
@@ -78,7 +78,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
   return (
     <View style={styles.aiContainer}>
-      <Avatar name="🤖" size={32} tone="primary" />
+      <Avatar name="🧑‍🍳" size={32} tone="primary" />
       <View style={{ flex: 1, marginLeft: spacing.sm }}>
         <View
           style={[
@@ -175,7 +175,7 @@ export function AIChatScreen({ navigation }: any): React.JSX.Element {
         subtitle="Your personal cooking assistant"
         showBack={!!navigation?.canGoBack?.()}
         border
-        left={<Avatar name="🤖" size={36} tone="primary" />}
+        left={<Avatar name="🧑‍🍳" size={36} tone="primary" />}
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}

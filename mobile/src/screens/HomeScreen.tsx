@@ -20,7 +20,6 @@ import AttendanceSheet from './AttendanceSheet';
 
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
-import { radii } from '../theme/radii';
 import { typography } from '../theme/typography';
 import { Avatar, Badge, Card, IconButton } from '../components/ui';
 import { CuisineCard } from '../components/CuisineCard';
@@ -55,7 +54,7 @@ interface RingProps {
   size?: number;
 }
 
-function GoalRing({ label, emoji, current, goal, color, trackColor, size = 76 }: RingProps) {
+function GoalRing({ label, emoji, current, goal, color, trackColor, size = 56 }: RingProps) {
   const c = useThemeColors();
   const stroke = 8;
   const r = (size - stroke) / 2;
@@ -87,15 +86,14 @@ function GoalRing({ label, emoji, current, goal, color, trackColor, size = 76 }:
         </Svg>
         <View style={StyleSheet.absoluteFill as any}>
           <View style={ringCenter}>
-            <Text style={{ fontSize: 18 }}>{emoji}</Text>
-            <Text style={{ fontSize: 11, fontWeight: '800', color, marginTop: 1 }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color }}>
               {Math.round(pct * 100)}%
             </Text>
           </View>
         </View>
       </View>
       <Text
-        style={[typography.caption, { color: c.textSecondary, marginTop: spacing.xs, fontWeight: '600' }]}
+        style={[typography.caption, { color: c.textSecondary, marginTop: 2, fontWeight: '600', fontSize: 10 }]}
       >
         {label}
       </Text>
@@ -117,7 +115,6 @@ const HomeScreen: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
   const preferences = useSelector((s: RootState) => s.user.preferences);
   const macroProgress = useSelector((s: RootState) => s.user.macroProgress);
-  const cookFromPantry = useSelector((s: RootState) => s.pantry.cookFromPantryMode);
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
   const house = useSelector((s: RootState) => s.house.house);
   const schedule = useSelector((s: RootState) => s.cookSchedule.schedule);
@@ -147,14 +144,6 @@ const HomeScreen: React.FC = () => {
     return days >= 0 && days <= 3;
   });
   const urgentCount = expiringSoon.length;
-  const stableCount = pantryItems.filter((i) => !i.expiry_date).length;
-  const readinessScore =
-    pantryCount === 0
-      ? 0
-      : Math.min(
-          100,
-          Math.round(((stableCount * 0.8 + (pantryCount - urgentCount)) / pantryCount) * 100)
-        );
 
   const goals = {
     calories: preferences?.calories_goal ?? 2000,
@@ -213,97 +202,8 @@ const HomeScreen: React.FC = () => {
           </Card>
         ) : null}
 
-        {/* Today's cook */}
-        {house && todayEntry ? (
-          <Card
-            surface="surface"
-            radius="xl"
-            elevation="card"
-            bordered
-            style={[
-              styles.block,
-              {
-                borderColor: isMyTurn ? c.primary : c.success,
-                backgroundColor: isMyTurn ? c.primaryMuted : c.successMuted,
-              },
-            ]}
-            onPress={isMyTurn ? () => navigation.navigate('Tabs' as any) : undefined}
-            accessibilityLabel={isMyTurn ? "It's your turn to cook" : 'View today’s cook'}
-          >
-            <View style={styles.row}>
-              <Text style={styles.bigEmoji}>👨‍🍳</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[typography.h4, { color: c.text }]}>
-                  {isMyTurn
-                    ? "It's your turn tonight"
-                    : `${todayEntry.cook_name?.split(' ')[0] ?? 'Someone'} is cooking`}
-                </Text>
-                {todayEntry.recipe_name ? (
-                  <Text
-                    style={[typography.bodySmall, { color: c.textSecondary, marginTop: 2 }]}
-                    numberOfLines={1}
-                  >
-                    {todayEntry.recipe_name}
-                  </Text>
-                ) : null}
-              </View>
-              {isMyTurn ? <Badge label="Your turn" tone="primary" /> : null}
-            </View>
-          </Card>
-        ) : null}
-
-        {/* Hero — readiness */}
-        <Card
-          surface="surfaceMuted"
-          radius="2xl"
-          elevation="flat"
-          padding="2xl"
-          style={styles.block}
-        >
-          <Text style={[typography.h2, { color: c.text }]}>
-            Cook smarter with what you already have.
-          </Text>
-          <Text
-            style={[
-              typography.body,
-              { color: c.textSecondary, marginTop: spacing.sm },
-            ]}
-          >
-            {urgentCount > 0
-              ? `${urgentCount} ingredient${urgentCount > 1 ? 's' : ''} need attention soon.`
-              : 'No expiry pressure right now.'}
-          </Text>
-
-          <View style={styles.heroStats}>
-            <HeroStat label="Readiness" value={String(readinessScore)} suffix="%" />
-            <HeroStat label="In pantry" value={String(pantryCount)} />
-            <HeroStat
-              label="Use soon"
-              value={String(urgentCount)}
-              tone={urgentCount > 0 ? 'warning' : 'neutral'}
-            />
-          </View>
-
-          {cookFromPantry ? (
-            <View style={[styles.pillNote, { backgroundColor: c.successMuted }]}>
-              <Badge label="LIVE" tone="success" />
-              <Text style={[typography.bodySmall, { color: c.success, fontWeight: '700' }]}>
-                Pantry matching is shaping recipe priority
-              </Text>
-            </View>
-          ) : null}
-        </Card>
-
-        {/* Daily goals */}
-        <Card surface="surface" radius="2xl" elevation="card" padding="xl" style={styles.block}>
-          <View style={styles.sectionTop}>
-            <View>
-              <Text style={[typography.h3, { color: c.text }]}>Daily goals</Text>
-              <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
-                {macroProgress.calories} / {goals.calories} kcal today
-              </Text>
-            </View>
-          </View>
+        {/* Daily goals — compact */}
+        <Card surface="surface" radius="xl" elevation="card" padding="md" style={styles.block}>
           <View style={styles.ringRow}>
             <GoalRing
               label="Calories"
@@ -340,43 +240,172 @@ const HomeScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Use first */}
-        <SectionHeader title="Use first tonight" subtitle="Keep waste low and momentum high." />
-        <Card surface="surface" radius="xl" elevation="card" padding="xl" style={styles.block}>
-          {expiringSoon.length > 0 ? (
-            <View style={{ gap: spacing.md }}>
-              {expiringSoon.slice(0, 4).map((item) => (
-                <View key={item.id} style={styles.useRow}>
-                  <View style={[styles.dot, { backgroundColor: c.warning }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[typography.h4, { color: c.text }]}>{item.name}</Text>
+        {/* 3 rectangle sections — horizontal scroll */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.rectRow}
+          decelerationRate="fast"
+          snapToInterval={284} // card width 268 + gap 16
+          snapToAlignment="start"
+        >
+          {/* 1) Use first tonight — expiring pantry items */}
+          <Card
+            surface="surface"
+            radius="xl"
+            elevation="card"
+            padding="lg"
+            style={styles.rectCard}
+            onPress={() =>
+              navigation.navigate('RecipeBrowser', {
+                cuisine: 'all',
+                intent: 'use-soon',
+              } as any)
+            }
+            accessibilityLabel="Use first tonight"
+          >
+            <View style={styles.rectHeader}>
+              <Text style={styles.bigEmoji}>⏳</Text>
+              <Text style={[typography.h4, { color: c.text }]}>Use first tonight</Text>
+            </View>
+            {expiringSoon.length > 0 ? (
+              <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+                {expiringSoon.slice(0, 3).map((item) => (
+                  <View key={item.id} style={styles.useRow}>
+                    <View style={[styles.dot, { backgroundColor: c.warning }]} />
                     <Text
-                      style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}
+                      style={[typography.bodySmall, { color: c.text, flex: 1, fontWeight: '600' }]}
                       numberOfLines={1}
                     >
-                      {item.quantity} {item.unit} · {item.location} · expires {item.expiry_date}
+                      {item.name}
                     </Text>
                   </View>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={[typography.body, { color: c.textSecondary }]}>
-              Nothing urgent. Your pantry is in a calm zone.
+                ))}
+              </View>
+            ) : (
+              <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.sm }]}>
+                Nothing expiring soon.
+              </Text>
+            )}
+            <Text style={[styles.rectCta, { color: c.primary }]}>
+              {expiringSoon.length > 0 ? 'Find a dinner →' : 'Add pantry items →'}
             </Text>
-          )}
-          <View style={{ marginTop: spacing.md }}>
-            <Text
-              accessibilityRole="button"
-              onPress={() =>
-                navigation.navigate('RecipeBrowser', { cuisine: 'all', intent: 'use-soon' })
-              }
-              style={{ color: c.primary, fontWeight: '700', fontSize: 14 }}
+          </Card>
+
+          {/* 2) Today in the house — cook, cleaner, dish */}
+          {house ? (
+            <Card
+              surface="surface"
+              radius="xl"
+              elevation="card"
+              padding="lg"
+              bordered
+              style={[
+                styles.rectCard,
+                isMyTurn
+                  ? { borderColor: c.primary, backgroundColor: c.primaryMuted }
+                  : todayEntry
+                  ? { borderColor: c.success, backgroundColor: c.successMuted }
+                  : undefined,
+              ]}
+              onPress={() => navigation.navigate('House' as any)}
+              accessibilityLabel="Today in the house"
             >
-              Find a use-it-now dinner →
-            </Text>
-          </View>
-        </Card>
+              <View style={styles.rectHeader}>
+                <Text style={styles.bigEmoji}>🏡</Text>
+                <Text style={[typography.h4, { color: c.text }]}>Today in the house</Text>
+              </View>
+              <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+                <View style={styles.useRow}>
+                  <Text style={styles.miniEmoji}>👨‍🍳</Text>
+                  <Text
+                    style={[typography.bodySmall, { color: c.text, flex: 1, fontWeight: '600' }]}
+                    numberOfLines={1}
+                  >
+                    {isMyTurn
+                      ? 'You — your turn'
+                      : todayEntry?.cook_name?.split(' ')[0] ?? 'No cook set'}
+                  </Text>
+                </View>
+                <View style={styles.useRow}>
+                  <Text style={styles.miniEmoji}>🍽️</Text>
+                  <Text
+                    style={[typography.bodySmall, { color: c.text, flex: 1, fontWeight: '600' }]}
+                    numberOfLines={1}
+                  >
+                    {todayEntry?.recipe_name ?? 'Dish TBD'}
+                  </Text>
+                </View>
+                <View style={styles.useRow}>
+                  <Text style={styles.miniEmoji}>🧹</Text>
+                  <Text
+                    style={[typography.bodySmall, { color: c.text, flex: 1, fontWeight: '600' }]}
+                    numberOfLines={1}
+                  >
+                    Tap to view chores
+                  </Text>
+                </View>
+              </View>
+              {isMyTurn ? (
+                <View style={{ marginTop: spacing.sm }}>
+                  <Badge label="Your turn" tone="primary" />
+                </View>
+              ) : null}
+            </Card>
+          ) : (
+            <Card
+              surface="surfaceMuted"
+              radius="xl"
+              padding="lg"
+              elevation="flat"
+              style={styles.rectCard}
+              onPress={() => navigation.navigate('HouseOnboarding' as any)}
+              accessibilityLabel="Set up your house"
+            >
+              <View style={styles.rectHeader}>
+                <Text style={styles.bigEmoji}>🏡</Text>
+                <Text style={[typography.h4, { color: c.text }]}>Set up your house</Text>
+              </View>
+              <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.sm }]}>
+                Share cooking, cleaning, and shopping with roommates.
+              </Text>
+              <Text style={[styles.rectCta, { color: c.primary }]}>Get started →</Text>
+            </Card>
+          )}
+
+          {/* 3) Pantry quick picks */}
+          <Card
+            surface="surface"
+            radius="xl"
+            elevation="card"
+            padding="lg"
+            style={styles.rectCard}
+            onPress={() => navigation.navigate('Pantry' as any)}
+            accessibilityLabel="Open pantry"
+          >
+            <View style={styles.rectHeader}>
+              <Text style={styles.bigEmoji}>🥫</Text>
+              <Text style={[typography.h4, { color: c.text }]}>Your pantry</Text>
+            </View>
+            <View style={styles.pantryStatsRow}>
+              <View style={styles.pantryStat}>
+                <Text style={[typography.h2, { color: c.text }]}>{pantryCount}</Text>
+                <Text style={[typography.caption, { color: c.textSecondary, fontWeight: '600' }]}>
+                  In pantry
+                </Text>
+              </View>
+              <View style={styles.pantryStat}>
+                <Text style={[typography.h2, { color: urgentCount > 0 ? c.warning : c.text }]}>
+                  {urgentCount}
+                </Text>
+                <Text style={[typography.caption, { color: c.textSecondary, fontWeight: '600' }]}>
+                  Use soon
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.rectCta, { color: c.primary }]}>Manage pantry →</Text>
+          </Card>
+        </ScrollView>
 
         {/* Cuisines */}
         <SectionHeader
@@ -405,102 +434,12 @@ const HomeScreen: React.FC = () => {
           Browse all cuisines and dishes →
         </Text>
 
-        {/* Quick actions */}
-        <View style={[styles.quickRow, { paddingHorizontal: spacing.xl }]}>
-          <Card
-            onPress={() => navigation.navigate('Pantry')}
-            surface="surfaceMuted"
-            radius="xl"
-            padding="xl"
-            elevation="flat"
-            style={{ flex: 1 }}
-            accessibilityLabel="Open pantry"
-          >
-            <Text style={{ fontSize: 24 }}>🥫</Text>
-            <Text style={[typography.h4, { color: c.text, marginTop: spacing.sm }]}>Pantry</Text>
-            <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
-              Track and use up
-            </Text>
-          </Card>
-          <Card
-            onPress={() =>
-              navigation.navigate('RecipeBrowser', { cuisine: 'all', intent: 'high-protein' })
-            }
-            surface="surfaceMuted"
-            radius="xl"
-            padding="xl"
-            elevation="flat"
-            style={{ flex: 1 }}
-            accessibilityLabel="High-protein picks"
-          >
-            <Text style={{ fontSize: 24 }}>💪</Text>
-            <Text style={[typography.h4, { color: c.text, marginTop: spacing.sm }]}>
-              Protein picks
-            </Text>
-            <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
-              Hit your goal faster
-            </Text>
-          </Card>
-        </View>
       </ScrollView>
 
       <AttendanceSheet visible={showAttendance} onClose={() => setShowAttendance(false)} />
     </SafeAreaView>
   );
 };
-
-function HeroStat({
-  label,
-  value,
-  suffix,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  suffix?: string;
-  tone?: 'neutral' | 'warning';
-}) {
-  const c = useThemeColors();
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: c.surface,
-        borderRadius: radii.lg,
-        padding: spacing.md,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: '800',
-            color: tone === 'warning' ? c.warning : c.text,
-          }}
-        >
-          {value}
-        </Text>
-        {suffix ? (
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '700',
-              color: tone === 'warning' ? c.warning : c.textSecondary,
-              marginLeft: 2,
-            }}
-          >
-            {suffix}
-          </Text>
-        ) : null}
-      </View>
-      <Text
-        style={[typography.caption, { color: c.textSecondary, fontWeight: '600', marginTop: 2 }]}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   const c = useThemeColors();
@@ -523,46 +462,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  block: { marginHorizontal: spacing.xl, marginBottom: spacing.lg },
+  block: { marginHorizontal: spacing.xl, marginBottom: spacing.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  bigEmoji: { fontSize: 26 },
-  heroStats: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  pillNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-  },
-  sectionTop: { marginBottom: spacing.lg },
+  bigEmoji: { fontSize: 22 },
+  miniEmoji: { fontSize: 14, width: 18, textAlign: 'center' },
   ringRow: { flexDirection: 'row', justifyContent: 'space-between' },
   sectionHeader: {
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
-  useRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  rectRow: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
     gap: spacing.md,
   },
-  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
+  rectCard: {
+    width: 268,
+    minHeight: 168,
+    marginBottom: spacing.sm,
+  },
+  rectHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  rectCta: {
+    fontWeight: '700',
+    fontSize: 13,
+    marginTop: spacing.md,
+  },
+  pantryStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  pantryStat: { flex: 1 },
+  useRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   cuisineGrid: {
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  quickRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
 });
 
 export default HomeScreen;

@@ -26,7 +26,7 @@ import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { radii } from '../theme/radii';
 import { typography } from '../theme/typography';
-import { Button, Chip, Divider, IconButton, TextField } from '../components/ui';
+import { Button, Chip, Divider, TextField } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 type Mode = 'login' | 'register';
@@ -137,7 +137,6 @@ export function LoginScreen({ route, navigation }: Props): React.JSX.Element {
 
       {/* Hero header */}
       <View style={[styles.hero, { backgroundColor: c.primary }]}>
-        <Text style={styles.logoEmoji}>🍳</Text>
         <Text style={[styles.appName, { color: c.onPrimary }]}>SmartCooking</Text>
         <Text style={[styles.tagline, { color: 'rgba(255,255,255,0.78)' }]}>
           Cook smarter, eat better
@@ -236,12 +235,14 @@ export function LoginScreen({ route, navigation }: Props): React.JSX.Element {
               }
               error={errors.password}
               trailing={
-                <IconButton
-                  icon={showPass ? '🙈' : '👁'}
-                  size={32}
+                <Text
+                  accessibilityRole="button"
                   accessibilityLabel={showPass ? 'Hide password' : 'Show password'}
                   onPress={() => setShowPass((s) => !s)}
-                />
+                  style={{ color: c.primary, fontWeight: '600', fontSize: 13, paddingHorizontal: spacing.sm }}
+                >
+                  {showPass ? 'Hide' : 'Show'}
+                </Text>
               }
               accessibilityLabel="Password"
             />
@@ -262,14 +263,16 @@ export function LoginScreen({ route, navigation }: Props): React.JSX.Element {
                 onSubmitEditing={handleSubmit}
                 error={errors.confirm}
                 trailing={
-                  <IconButton
-                    icon={showConfirm ? '🙈' : '👁'}
-                    size={32}
+                  <Text
+                    accessibilityRole="button"
                     accessibilityLabel={
                       showConfirm ? 'Hide password' : 'Show password'
                     }
                     onPress={() => setShowConfirm((s) => !s)}
-                  />
+                    style={{ color: c.primary, fontWeight: '600', fontSize: 13, paddingHorizontal: spacing.sm }}
+                  >
+                    {showConfirm ? 'Hide' : 'Show'}
+                  </Text>
                 }
                 accessibilityLabel="Confirm password"
               />
@@ -363,7 +366,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing['2xl'],
     gap: 4,
   },
-  logoEmoji: { fontSize: 48, marginBottom: 4 },
   appName: { fontSize: 28, fontWeight: '800', letterSpacing: 0.5 },
   tagline: { fontSize: 14, letterSpacing: 0.3 },
   scrollContent: { paddingBottom: spacing['4xl'] },

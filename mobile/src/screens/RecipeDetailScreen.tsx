@@ -39,7 +39,153 @@ import {
 } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
-type TabKey = 'Need' | 'Flow' | 'Proof';
+type TabKey = 'Need' | 'Flow' | 'Review';
+
+// ─── Ingredient emoji map ────────────────────────────────────────────────
+// Keep the keys *substrings* in lowercase. We test each ingredient name with
+// includes() so "boneless chicken thigh" still matches "chicken".
+const INGREDIENT_EMOJI: { match: string; emoji: string }[] = [
+  // Proteins
+  { match: 'chicken', emoji: '🍗' },
+  { match: 'beef', emoji: '🥩' },
+  { match: 'lamb', emoji: '🥩' },
+  { match: 'mutton', emoji: '🥩' },
+  { match: 'pork', emoji: '🥓' },
+  { match: 'bacon', emoji: '🥓' },
+  { match: 'ham', emoji: '🥓' },
+  { match: 'sausage', emoji: '🌭' },
+  { match: 'turkey', emoji: '🦃' },
+  { match: 'duck', emoji: '🦆' },
+  { match: 'fish', emoji: '🐟' },
+  { match: 'salmon', emoji: '🐟' },
+  { match: 'tuna', emoji: '🐟' },
+  { match: 'shrimp', emoji: '🦐' },
+  { match: 'prawn', emoji: '🦐' },
+  { match: 'crab', emoji: '🦀' },
+  { match: 'lobster', emoji: '🦞' },
+  { match: 'squid', emoji: '🦑' },
+  { match: 'octopus', emoji: '🐙' },
+  { match: 'egg', emoji: '🥚' },
+  { match: 'tofu', emoji: '🍢' },
+  { match: 'paneer', emoji: '🧀' },
+  // Dairy
+  { match: 'milk', emoji: '🥛' },
+  { match: 'yogurt', emoji: '🥛' },
+  { match: 'yoghurt', emoji: '🥛' },
+  { match: 'curd', emoji: '🥛' },
+  { match: 'cream', emoji: '🥛' },
+  { match: 'cheese', emoji: '🧀' },
+  { match: 'butter', emoji: '🧈' },
+  { match: 'ghee', emoji: '🧈' },
+  // Vegetables
+  { match: 'tomato', emoji: '🍅' },
+  { match: 'onion', emoji: '🧅' },
+  { match: 'garlic', emoji: '🧄' },
+  { match: 'ginger', emoji: '🫚' },
+  { match: 'chili', emoji: '🌶️' },
+  { match: 'chilli', emoji: '🌶️' },
+  { match: 'pepper', emoji: '🫑' },
+  { match: 'bell pepper', emoji: '🫑' },
+  { match: 'capsicum', emoji: '🫑' },
+  { match: 'carrot', emoji: '🥕' },
+  { match: 'potato', emoji: '🥔' },
+  { match: 'sweet potato', emoji: '🍠' },
+  { match: 'corn', emoji: '🌽' },
+  { match: 'broccoli', emoji: '🥦' },
+  { match: 'cauliflower', emoji: '🥦' },
+  { match: 'cabbage', emoji: '🥬' },
+  { match: 'spinach', emoji: '🥬' },
+  { match: 'lettuce', emoji: '🥬' },
+  { match: 'kale', emoji: '🥬' },
+  { match: 'mushroom', emoji: '🍄' },
+  { match: 'avocado', emoji: '🥑' },
+  { match: 'cucumber', emoji: '🥒' },
+  { match: 'eggplant', emoji: '🍆' },
+  { match: 'aubergine', emoji: '🍆' },
+  { match: 'brinjal', emoji: '🍆' },
+  { match: 'zucchini', emoji: '🥒' },
+  { match: 'pumpkin', emoji: '🎃' },
+  { match: 'peas', emoji: '🫛' },
+  // Fruits + citrus
+  { match: 'lemon', emoji: '🍋' },
+  { match: 'lime', emoji: '🍋' },
+  { match: 'orange', emoji: '🍊' },
+  { match: 'apple', emoji: '🍎' },
+  { match: 'banana', emoji: '🍌' },
+  { match: 'mango', emoji: '🥭' },
+  { match: 'coconut', emoji: '🥥' },
+  { match: 'pineapple', emoji: '🍍' },
+  { match: 'strawberry', emoji: '🍓' },
+  { match: 'grape', emoji: '🍇' },
+  // Grains + starches
+  { match: 'rice', emoji: '🍚' },
+  { match: 'pasta', emoji: '🍝' },
+  { match: 'noodle', emoji: '🍜' },
+  { match: 'bread', emoji: '🍞' },
+  { match: 'tortilla', emoji: '🫓' },
+  { match: 'roti', emoji: '🫓' },
+  { match: 'naan', emoji: '🫓' },
+  { match: 'flour', emoji: '🌾' },
+  { match: 'oat', emoji: '🌾' },
+  { match: 'quinoa', emoji: '🌾' },
+  // Legumes
+  { match: 'bean', emoji: '🫘' },
+  { match: 'lentil', emoji: '🫘' },
+  { match: 'dal', emoji: '🫘' },
+  { match: 'chickpea', emoji: '🫘' },
+  { match: 'soy', emoji: '🫘' },
+  { match: 'nut', emoji: '🥜' },
+  { match: 'peanut', emoji: '🥜' },
+  { match: 'almond', emoji: '🥜' },
+  { match: 'cashew', emoji: '🥜' },
+  { match: 'walnut', emoji: '🥜' },
+  // Pantry + condiments
+  { match: 'oil', emoji: '🫗' },
+  { match: 'olive oil', emoji: '🫒' },
+  { match: 'vinegar', emoji: '🧪' },
+  { match: 'soy sauce', emoji: '🍶' },
+  { match: 'sauce', emoji: '🥫' },
+  { match: 'ketchup', emoji: '🥫' },
+  { match: 'mustard', emoji: '🥫' },
+  { match: 'mayo', emoji: '🥫' },
+  { match: 'salt', emoji: '🧂' },
+  { match: 'sugar', emoji: '🍬' },
+  { match: 'honey', emoji: '🍯' },
+  { match: 'chocolate', emoji: '🍫' },
+  { match: 'cocoa', emoji: '🍫' },
+  { match: 'wine', emoji: '🍷' },
+  { match: 'beer', emoji: '🍺' },
+  { match: 'water', emoji: '💧' },
+  { match: 'broth', emoji: '🥣' },
+  { match: 'stock', emoji: '🥣' },
+  // Spices + herbs
+  { match: 'cinnamon', emoji: '🧂' },
+  { match: 'cumin', emoji: '🧂' },
+  { match: 'turmeric', emoji: '🧂' },
+  { match: 'paprika', emoji: '🧂' },
+  { match: 'cardamom', emoji: '🧂' },
+  { match: 'clove', emoji: '🧂' },
+  { match: 'masala', emoji: '🧂' },
+  { match: 'curry', emoji: '🧂' },
+  { match: 'mint', emoji: '🌿' },
+  { match: 'basil', emoji: '🌿' },
+  { match: 'cilantro', emoji: '🌿' },
+  { match: 'coriander', emoji: '🌿' },
+  { match: 'parsley', emoji: '🌿' },
+  { match: 'thyme', emoji: '🌿' },
+  { match: 'rosemary', emoji: '🌿' },
+  { match: 'oregano', emoji: '🌿' },
+  { match: 'sesame', emoji: '🌱' },
+];
+
+function ingredientEmoji(name: string): string {
+  const lower = name.toLowerCase();
+  // Longest match wins to disambiguate "olive oil" vs "oil"
+  const hit = INGREDIENT_EMOJI
+    .filter((m) => lower.includes(m.match))
+    .sort((a, b) => b.match.length - a.match.length)[0];
+  return hit?.emoji ?? '🥄';
+}
 
 const CUISINE_EMOJI: Record<string, string> = {
   Indian: '🍛',
@@ -358,7 +504,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Tabs */}
         <View style={[styles.block, { flexDirection: 'row', gap: spacing.sm }]}>
-          {(['Need', 'Flow', 'Proof'] as TabKey[]).map((tab) => (
+          {(['Need', 'Flow', 'Review'] as TabKey[]).map((tab) => (
             <Chip
               key={tab}
               label={tab}
@@ -411,6 +557,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                           <Text style={{ color: c.onPrimary, fontWeight: '800' }}>✓</Text>
                         ) : null}
                       </View>
+                      <Text style={styles.ingEmoji}>{ingredientEmoji(ing.ingredient_name)}</Text>
                       <View style={{ flex: 1 }}>
                         <Text
                           style={[
@@ -486,7 +633,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </>
           ) : null}
 
-          {activeTab === 'Proof' ? (
+          {activeTab === 'Review' ? (
             <>
               <Button
                 label="⭐  Leave a rating"
@@ -693,6 +840,7 @@ const styles = StyleSheet.create({
   fitHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   fitMetrics: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   ingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  ingEmoji: { fontSize: 22 },
   checkbox: {
     width: 24,
     height: 24,

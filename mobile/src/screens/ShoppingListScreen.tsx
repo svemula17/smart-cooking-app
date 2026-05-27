@@ -405,10 +405,21 @@ export function ShoppingListScreen(): React.JSX.Element {
   const [houseMode, setHouseMode] = useState(false);
   const qc = useQueryClient();
 
-  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
+  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ['shopping-lists', user?.id],
-    queryFn: () => shoppingService.getLists(),
+    queryFn: async () => {
+      try {
+        return await shoppingService.getLists();
+      } catch (e: any) {
+        const status = e?.response?.status;
+        // 404 = no lists exist yet — treat as empty rather than error.
+        if (status === 404) return { lists: [], pagination: { page: 1, limit: 0, total: 0, totalPages: 0 } };
+        // Bubble up everything else; useQuery's isError will flip true.
+        throw e;
+      }
+    },
     enabled: !!user?.id,
+    retry: 1,
   });
 
   useFocusEffect(
@@ -467,8 +478,24 @@ export function ShoppingListScreen(): React.JSX.Element {
           <ListRowSkeleton />
           <ListRowSkeleton />
         </View>
+      ) : !user?.id ? (
+        // Guest mode — friendly prompt instead of generic error
+        <EmptyState
+          icon="🛒"
+          title="Sign in to use shopping lists"
+          body="Lists sync to your account so they're there on every device."
+        />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        // Show the actual error so the user knows whether to retry or wait
+        <ErrorState
+          title="Couldn't load shopping lists"
+          body={
+            (error as any)?.message?.includes('Network')
+              ? 'Check your connection and try again.'
+              : 'The shopping service is taking a moment. Tap to retry.'
+          }
+          onRetry={() => refetch()}
+        />
       ) : (
         <FlatList
           data={[...active, ...completed]}

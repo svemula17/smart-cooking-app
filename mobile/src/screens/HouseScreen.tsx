@@ -340,6 +340,7 @@ export default function HouseScreen({ navigation }: any) {
         {/* Quick links */}
         <View style={[styles.block, { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }]}>
           {[
+            { label: '💬 Chat', screen: 'HouseChat' },
             { label: '🧹 Chores', screen: 'Chores' },
             { label: '🏆 Leaderboard', screen: 'Leaderboard' },
             { label: '🌍 Passport', screen: 'CuisinePassport' },

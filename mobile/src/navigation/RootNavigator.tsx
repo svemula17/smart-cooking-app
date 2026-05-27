@@ -27,6 +27,7 @@ import CuisinePassportScreen from '../screens/CuisinePassportScreen';
 import HouseReportScreen from '../screens/HouseReportScreen';
 import PrepMealsScreen from '../screens/PrepMealsScreen';
 import ChoresScreen from '../screens/ChoresScreen';
+import HouseChatScreen from '../screens/HouseChatScreen';
 import AIChatScreen from '../screens/AIChatScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
@@ -49,7 +50,7 @@ interface TabIconConfig {
 const TAB_CONFIG: Record<string, TabIconConfig> = {
   Home: { emoji: '🏡', label: 'Home', a11y: 'Home tab' },
   MealPlanner: { emoji: '📅', label: 'Plan', a11y: 'Meal planner tab' },
-  AIChat: { emoji: '🤖', label: 'Chef AI', a11y: 'AI chef assistant tab' },
+  AIChat: { emoji: '🧑‍🍳', label: 'Chef AI', a11y: 'AI chef assistant tab' },
   House: { emoji: '👨‍👩‍👧', label: 'House', a11y: 'Household tab' },
   Shopping: { emoji: '🛒', label: 'Shop', a11y: 'Shopping list tab' },
   Stats: { emoji: '📊', label: 'Stats', a11y: 'Stats tab' },
@@ -213,6 +214,11 @@ export function RootNavigator(): React.JSX.Element {
       <Stack.Screen
         name="Chores"
         component={ChoresScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="HouseChat"
+        component={HouseChatScreen as AnyComponent}
         options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>

@@ -199,6 +199,7 @@ export type RootStackParamList = {
   HouseReport: undefined;
   PrepMeals: undefined;
   Chores: undefined;
+  HouseChat: undefined;
   HouseOnboarding: undefined;
   Search: undefined;
   AIChat: undefined;
