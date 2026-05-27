@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../store';
 import { addExpense } from '../store/slices/expenseSlice';
 import * as houseService from '../services/houseService';
+import { BILL_TEMPLATES, EXPENSE_CATEGORIES } from '../utils/expenseCategories';
 
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
@@ -25,17 +26,9 @@ import {
   Card,
   Chip,
   Header,
-  IconButton,
   TextField,
   useToast,
 } from '../components/ui';
-
-const CATEGORIES = [
-  { key: 'groceries', label: '🛒 Groceries' },
-  { key: 'utilities', label: '⚡ Utilities' },
-  { key: 'household', label: '🏠 Household' },
-  { key: 'other', label: '📦 Other' },
-];
 
 export default function AddExpenseScreen({ navigation }: any) {
   const c = useThemeColors();
@@ -138,6 +131,31 @@ export default function AddExpenseScreen({ navigation }: any) {
             />
           </View>
 
+          {/* Quick bill templates — one tap to prefill description + category.
+              Common recurring bills (rent, internet, electricity etc) take
+              ~5 seconds instead of having to type them out every month. */}
+          <View style={styles.field}>
+            <Text style={[typography.label, { color: c.textSecondary, marginBottom: spacing.sm }]}>
+              Quick add
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
+            >
+              {BILL_TEMPLATES.map((tpl) => (
+                <Chip
+                  key={tpl.label}
+                  label={tpl.label}
+                  onPress={() => {
+                    setDescription(tpl.description);
+                    setCategory(tpl.categoryKey);
+                  }}
+                />
+              ))}
+            </ScrollView>
+          </View>
+
           {/* Description */}
           <View style={styles.field}>
             <TextField
@@ -155,10 +173,10 @@ export default function AddExpenseScreen({ navigation }: any) {
               Category
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              {CATEGORIES.map((cat) => (
+              {EXPENSE_CATEGORIES.map((cat) => (
                 <Chip
                   key={cat.key}
-                  label={cat.label}
+                  label={`${cat.emoji} ${cat.label}`}
                   selected={category === cat.key}
                   onPress={() => setCategory(cat.key)}
                 />

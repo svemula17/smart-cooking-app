@@ -15,6 +15,7 @@ import type { RootState } from '../store';
 import { removeExpense, setBalances, setExpenses } from '../store/slices/expenseSlice';
 import * as houseService from '../services/houseService';
 import type { Expense } from '../services/houseService';
+import { getCategoryMeta } from '../utils/expenseCategories';
 
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
@@ -32,6 +33,27 @@ const timeAgo = (iso: string): string => {
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
   return `${days}d ago`;
+};
+
+// Returns { ym: 'YYYY-MM', total, byCategory: { [key]: amount } } per month.
+// Keep the iteration cheap — expenses lists are paginated to 1 page (~20
+// rows) before this gets called.
+function bucketByMonth(expenses: Expense[]): Record<string, { total: number; byCategory: Record<string, number> }> {
+  const out: Record<string, { total: number; byCategory: Record<string, number> }> = {};
+  for (const e of expenses) {
+    const ym = e.created_at.slice(0, 7); // YYYY-MM
+    if (!out[ym]) out[ym] = { total: 0, byCategory: {} };
+    const amt = parseFloat(e.amount as any) || 0;
+    out[ym].total += amt;
+    out[ym].byCategory[e.category] = (out[ym].byCategory[e.category] ?? 0) + amt;
+  }
+  return out;
+}
+
+const monthLabel = (ym: string): string => {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, (m ?? 1) - 1, 1);
+  return d.toLocaleDateString([], { month: 'long', year: 'numeric' });
 };
 
 export default function ExpensesScreen({ navigation }: any) {
@@ -114,14 +136,30 @@ export default function ExpensesScreen({ navigation }: any) {
     (s) => s.from_user_id === currentUser?.id || s.to_user_id === currentUser?.id
   );
 
+  // Monthly summary — uses the loaded expenses list (most recent page first
+  // from the API). For deeper trends you'd need to paginate, but a single
+  // page is enough for "this month vs last month".
+  const months = bucketByMonth(expenses);
+  const thisYm = new Date().toISOString().slice(0, 7);
+  const prevDate = new Date();
+  prevDate.setMonth(prevDate.getMonth() - 1);
+  const prevYm = prevDate.toISOString().slice(0, 7);
+  const thisMonth = months[thisYm];
+  const prevMonth = months[prevYm];
+  const monthDelta =
+    prevMonth && prevMonth.total > 0 && thisMonth
+      ? ((thisMonth.total - prevMonth.total) / prevMonth.total) * 100
+      : null;
+  // Top 4 categories for the breakdown bars
+  const topCategories = thisMonth
+    ? Object.entries(thisMonth.byCategory)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 4)
+    : [];
+
   const renderExpense = ({ item }: { item: Expense }) => {
     const isPaidByMe = item.paid_by === currentUser?.id;
-    const icon =
-      item.category === 'groceries'
-        ? '🛒'
-        : item.category === 'utilities'
-        ? '⚡'
-        : '🏠';
+    const icon = getCategoryMeta(item.category).emoji;
     return (
       <Card
         surface="surface"
@@ -234,6 +272,82 @@ export default function ExpensesScreen({ navigation }: any) {
           );
         })}
       </Card>
+
+      {/* Monthly summary — totals + category breakdown + MoM trend */}
+      {thisMonth ? (
+        <Card
+          surface="surface"
+          radius="2xl"
+          padding="lg"
+          elevation="card"
+          bordered
+          style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <View>
+              <Text style={[typography.overline, { color: c.textSecondary }]}>
+                {monthLabel(thisYm)}
+              </Text>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: c.text, marginTop: 2 }}>
+                ₹{thisMonth.total.toFixed(2)}
+              </Text>
+            </View>
+            {monthDelta !== null ? (
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '700',
+                    color: monthDelta > 0 ? c.error : c.success,
+                  }}
+                >
+                  {monthDelta > 0 ? '▲' : '▼'} {Math.abs(monthDelta).toFixed(0)}%
+                </Text>
+                <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+                  vs last month
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Per-category bars — height encodes share of total */}
+          <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+            {topCategories.map(([key, amt]) => {
+              const meta = getCategoryMeta(key);
+              const pct = thisMonth.total > 0 ? (amt / thisMonth.total) * 100 : 0;
+              return (
+                <View key={key} style={{ gap: 4 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={[typography.bodySmall, { color: c.text, fontWeight: '600' }]}>
+                      {meta.emoji}  {meta.label}
+                    </Text>
+                    <Text style={[typography.caption, { color: c.textSecondary, fontWeight: '600' }]}>
+                      ₹{amt.toFixed(2)} · {pct.toFixed(0)}%
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: c.surfaceMuted,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <View
+                      style={{
+                        height: '100%',
+                        width: `${pct}%`,
+                        backgroundColor: c.primary,
+                        borderRadius: 3,
+                      }}
+                    />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </Card>
+      ) : null}
 
       <Text
         style={[typography.overline, { color: c.textSecondary, marginHorizontal: spacing.lg, marginBottom: spacing.sm }]}
