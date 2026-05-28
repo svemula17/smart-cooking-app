@@ -188,6 +188,14 @@ export default function RecipesPage() {
           <div className="text-5xl mb-4">🔍</div>
           <p className="text-gray-500 font-medium">No recipes found</p>
           <p className="text-gray-400 text-sm mt-1">Try different filters or search terms</p>
+          {(query || cuisine || difficulty) && (
+            <button
+              onClick={() => { setQuery(''); setCuisine(''); setDifficulty(''); }}
+              className="mt-4 text-sm font-semibold text-green-700 hover:text-green-800 underline"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

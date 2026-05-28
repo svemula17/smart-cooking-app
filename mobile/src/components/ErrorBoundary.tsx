@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -83,44 +85,44 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: spacing['2xl'],
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 24,
+    borderRadius: radii['2xl'],
     padding: 28,
     alignItems: 'center',
     maxWidth: 480,
     width: '100%',
-    shadowColor: '#1A1410',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.10,
     shadowRadius: 18,
     elevation: 8,
   },
   emoji: {
     fontSize: 56,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   title: {
     fontSize: 20,
     fontWeight: '800',
     color: colors.text,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   button: {
     backgroundColor: colors.primary,
     paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 100,
+    paddingVertical: spacing.md,
+    borderRadius: radii.pill,
   },
   buttonText: {
     color: 'white',
@@ -129,22 +131,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   devBox: {
-    marginTop: 20,
+    marginTop: spacing.xl,
     width: '100%',
     maxHeight: 260,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceInverse,
+    borderRadius: radii.md,
   },
   devLabel: {
     fontSize: 10,
-    color: '#FF6B70',
+    color: colors.error,
     fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   devText: {
     fontSize: 12,
-    color: '#D4D4D4',
+    color: colors.borderStrong,
     fontFamily: 'Menlo',
     marginTop: 4,
   },

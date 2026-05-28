@@ -4,6 +4,8 @@ import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import type { Recipe } from '../types';
 import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
 import { getRecipeImage } from '../utils/recipeImages';
 import { toggleFavorite, type RootState } from '../store';
 
@@ -14,16 +16,16 @@ const CUISINE_EMOJI: Record<string, string> = {
 };
 
 const CUISINE_BG: Record<string, string> = {
-  Indian: '#F5E6D3', Chinese: '#FFF0E0', Italian: '#FDE8E8',
-  Mexican: '#E8F5E9', Thai: '#E0F4F1', Japanese: '#F0E8F5',
-  Mediterranean: '#E8EFF5', American: '#FFF3E0', French: '#FFF8E1',
-  'Indo-Chinese': '#FFE8E0',
+  Indian: colors.indian, Chinese: colors.chinese, Italian: colors.italian,
+  Mexican: colors.mexican, Thai: colors.thai, Japanese: colors.japanese,
+  Mediterranean: colors.mediterranean, American: colors.american, French: colors.french,
+  'Indo-Chinese': colors.indoChinese,
 };
 
 const DIFFICULTY_BG: Record<string, string> = {
-  Easy: 'rgba(76, 175, 80, 0.92)',
-  Medium: 'rgba(255, 167, 38, 0.92)',
-  Hard: 'rgba(249, 97, 103, 0.92)',
+  Easy: 'rgba(0, 176, 80, 0.92)',
+  Medium: 'rgba(255, 138, 0, 0.92)',
+  Hard: 'rgba(229, 20, 26, 0.92)',
 };
 
 function StarRating({ rating, total }: { rating: number; total: number }) {
@@ -75,7 +77,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
             recyclingKey={recipe.id}
           />
         ) : (
-          <View style={[styles.imageFallback, { backgroundColor: CUISINE_BG[recipe.cuisine_type] ?? '#F0F0F0' }]}>
+          <View style={[styles.imageFallback, { backgroundColor: CUISINE_BG[recipe.cuisine_type] ?? colors.surfaceMuted }]}>
             <Text style={styles.cuisineEmoji}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
           </View>
         )}
@@ -159,24 +161,24 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceElevated,
-    borderRadius: 20,
-    marginBottom: 16,
+    borderRadius: radii.xl,
+    marginBottom: spacing.lg,
     overflow: 'hidden',
-    shadowColor: '#1f1f1f',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
   },
   cardCompact: {
     flex: 1,
-    marginBottom: 12,
+    marginBottom: spacing.md,
     borderRadius: 18,
   },
   imageWrapper: {
     height: 180,
     position: 'relative',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceMuted,
   },
   imageWrapperCompact: {
     height: 108,
@@ -207,7 +209,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     left: 10,
-    borderRadius: 14,
+    borderRadius: radii.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -221,7 +223,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     right: 10,
-    borderRadius: 14,
+    borderRadius: radii.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
     backgroundColor: 'rgba(255,255,255,0.95)',
@@ -250,19 +252,19 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.6)',
   },
   heartBtnActive: {
-    backgroundColor: '#FF3B5C',
-    borderColor: '#FF3B5C',
-    shadowColor: '#FF3B5C',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOpacity: 0.45,
   },
   heartIcon: {
     fontSize: 19,
-    color: '#FF3B5C',
+    color: colors.primary,
     fontWeight: '900',
     lineHeight: 22,
   },
   heartIconActive: {
-    color: '#FFFFFF',
+    color: colors.onPrimary,
   },
   body: {
     paddingHorizontal: 14,
@@ -305,7 +307,7 @@ const styles = StyleSheet.create({
   nutritionGrid: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceMuted,
-    borderRadius: 12,
+    borderRadius: radii.md,
     paddingVertical: 10,
     marginBottom: 10,
     alignItems: 'center',
@@ -337,7 +339,7 @@ const styles = StyleSheet.create({
   },
   stars: {
     fontSize: 13,
-    color: '#F9A825',
+    color: colors.warning,
   },
   starCount: {
     fontSize: 12,

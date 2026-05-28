@@ -51,31 +51,36 @@ export default function Navbar() {
           <div className="relative">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Open profile menu"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
               className="flex items-center gap-2 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-full transition-colors"
             >
               <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
                 {user?.name?.[0]?.toUpperCase() ?? '?'}
               </div>
               <span className="text-sm font-medium text-gray-700 hidden sm:block">{user?.name}</span>
-              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+              <div role="menu" className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
                 <div className="px-4 py-2 border-b border-gray-100">
                   <p className="text-sm font-semibold text-gray-800">{user?.name}</p>
                   <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                 </div>
                 <Link
                   to="/profile"
+                  role="menuitem"
                   onClick={() => setMenuOpen(false)}
                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   Profile
                 </Link>
                 <button
+                  role="menuitem"
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
@@ -87,17 +92,20 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="md:hidden border-t border-gray-100 px-4 py-2 flex gap-4 overflow-x-auto">
-        {TABS.map((t) => (
-          <Link
-            key={t.to}
-            to={t.to}
-            className={`text-sm font-medium whitespace-nowrap flex items-center gap-1 ${isActive(t.to)}`}
-          >
-            <span>{t.icon}</span>
-            {t.label}
-          </Link>
-        ))}
+      <div className="md:hidden border-t border-gray-100 relative">
+        <div className="px-4 py-2 flex gap-4 overflow-x-auto">
+          {TABS.map((t) => (
+            <Link
+              key={t.to}
+              to={t.to}
+              className={`text-sm font-medium whitespace-nowrap flex items-center gap-1 ${isActive(t.to)}`}
+            >
+              <span>{t.icon}</span>
+              {t.label}
+            </Link>
+          ))}
+        </div>
+        <div className="pointer-events-none absolute top-0 right-0 h-full w-8 bg-gradient-to-l from-white to-transparent" aria-hidden="true" />
       </div>
     </nav>
   );

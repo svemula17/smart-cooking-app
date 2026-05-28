@@ -1,41 +1,41 @@
 import { StyleSheet, TextStyle } from 'react-native';
 import { colors } from './colors';
 
-// Type scale — warm-modern food-app native.
-// Every variant defines lineHeight + letterSpacing so layouts stay consistent.
+// Clean modern type scale — heavy display weights, tight tracking, neutral body.
 export const typography = StyleSheet.create({
   display: {
-    fontSize: 36,
-    fontWeight: '800',
-    lineHeight: 42,
-    letterSpacing: -0.8,
+    fontSize: 38,
+    fontWeight: '900',
+    lineHeight: 44,
+    letterSpacing: -1,
     color: colors.text,
   },
   h1: {
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 34,
-    letterSpacing: -0.5,
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 36,
+    letterSpacing: -0.7,
     color: colors.text,
   },
   h2: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 28,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
     color: colors.text,
   },
   h3: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 24,
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
     color: colors.text,
   },
   h4: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 20,
+    letterSpacing: -0.1,
     color: colors.text,
   },
   body: {
@@ -52,28 +52,27 @@ export const typography = StyleSheet.create({
   },
   caption: {
     fontSize: 11,
-    fontWeight: '400',
+    fontWeight: '500',
     lineHeight: 15,
     color: colors.textLight,
   },
   label: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     lineHeight: 17,
-    letterSpacing: 0.1,
     color: colors.textSecondary,
   },
   button: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 20,
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   overline: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 14,
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
     textTransform: 'uppercase' as TextStyle['textTransform'],
     color: colors.textSecondary,
   },

@@ -3,9 +3,9 @@ import type { ApiError } from '../types';
 
 export class AppError extends Error {
   constructor(
-    public readonly message: string,
     public readonly statusCode: number,
     public readonly code: string,
+    message: string,
     public readonly details?: unknown,
   ) {
     super(message);
@@ -16,25 +16,25 @@ export class AppError extends Error {
 
 export const Errors = {
   notFound: (resource = 'Resource') =>
-    new AppError(`${resource} not found`, 404, 'NOT_FOUND'),
+    new AppError(404, 'NOT_FOUND', `${resource} not found`),
 
   unauthorized: (msg = 'Authentication required') =>
-    new AppError(msg, 401, 'UNAUTHORIZED'),
+    new AppError(401, 'UNAUTHORIZED', msg),
 
   forbidden: (msg = 'Insufficient permissions') =>
-    new AppError(msg, 403, 'FORBIDDEN'),
+    new AppError(403, 'FORBIDDEN', msg),
 
   badRequest: (msg: string, details?: unknown) =>
-    new AppError(msg, 400, 'BAD_REQUEST', details),
+    new AppError(400, 'BAD_REQUEST', msg, details),
 
   validation: (details: unknown) =>
-    new AppError('Validation failed', 400, 'VALIDATION_ERROR', details),
+    new AppError(400, 'VALIDATION_ERROR', 'Validation failed', details),
 
   conflict: (msg: string, code = 'CONFLICT') =>
-    new AppError(msg, 409, code),
+    new AppError(409, code, msg),
 
   internal: (msg = 'Internal server error') =>
-    new AppError(msg, 500, 'INTERNAL_ERROR'),
+    new AppError(500, 'INTERNAL_ERROR', msg),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -42,13 +42,17 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   if (err instanceof AppError) {
     const body: ApiError = {
       success: false,
-      error: { message: err.message, code: err.code, details: err.details },
+      error: {
+        message: err.message,
+        code: err.code,
+        ...(err.details !== undefined ? { details: err.details } : {}),
+      },
     };
     res.status(err.statusCode).json(body);
     return;
   }
 
-  console.error('[shopping-service] Unhandled error:', err);
+  console.error('[shopping-service] unhandled error:', err);
   const body: ApiError = {
     success: false,
     error: { message: 'Internal server error', code: 'INTERNAL_ERROR' },

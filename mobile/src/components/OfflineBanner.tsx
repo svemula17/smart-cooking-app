@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import NetInfo from '@react-native-community/netinfo';
+import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 
 /**
  * Persistent banner that slides in from the top whenever the device loses
@@ -67,7 +70,7 @@ export function OfflineBanner(): React.JSX.Element | null {
       style={[
         styles.banner,
         {
-          backgroundColor: offline ? '#D94550' : '#2E7D32',
+          backgroundColor: offline ? colors.error : colors.success,
           paddingTop: insets.top + 6,
           transform: [{ translateY }],
         },
@@ -88,16 +91,16 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm + 2,
     alignItems: 'center',
     zIndex: 9999,
     elevation: 9999,
   },
   text: {
+    fontSize: typography.label.fontSize,
     color: 'white',
     fontWeight: '700',
-    fontSize: 13,
     letterSpacing: 0.3,
   },
 });

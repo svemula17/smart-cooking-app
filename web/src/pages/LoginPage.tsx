@@ -45,8 +45,10 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Tabs */}
-          <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+          <div role="tablist" aria-label="Authentication mode" className="flex bg-gray-100 rounded-xl p-1 mb-6">
             <button
+              role="tab"
+              aria-selected={tab === 'login'}
               onClick={() => { setTab('login'); setError(''); }}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 tab === 'login' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'
@@ -55,6 +57,8 @@ export default function LoginPage() {
               Sign In
             </button>
             <button
+              role="tab"
+              aria-selected={tab === 'register'}
               onClick={() => { setTab('register'); setError(''); }}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 tab === 'register' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500'

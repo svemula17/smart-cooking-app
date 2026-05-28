@@ -93,7 +93,7 @@ export function errorHandler(
   }
 
   // eslint-disable-next-line no-console
-  console.error('[error.middleware] unhandled error:', err);
+  console.error('[user-service] unhandled error:', err);
   const body: ApiError = {
     success: false,
     error: { message: 'An unexpected error occurred', code: 'INTERNAL_ERROR' },

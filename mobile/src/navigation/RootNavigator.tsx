@@ -49,7 +49,7 @@ interface TabIconConfig {
 
 const TAB_CONFIG: Record<string, TabIconConfig> = {
   Home: { emoji: '🏡', label: 'Home', a11y: 'Home tab' },
-  MealPlanner: { emoji: '📅', label: 'Plan', a11y: 'Meal planner tab' },
+  MealPlanner: { emoji: '📅', label: 'Meals', a11y: 'Meal planner tab' },
   AIChat: { emoji: '🧑‍🍳', label: 'Chef AI', a11y: 'AI chef assistant tab' },
   House: { emoji: '👨‍👩‍👧', label: 'House', a11y: 'Household tab' },
   Shopping: { emoji: '🛒', label: 'Shop', a11y: 'Shopping list tab' },
@@ -97,7 +97,7 @@ function TabNavigator() {
           height: 56 + Math.max(insets.bottom, spacing.sm),
           ...Platform.select({
             ios: {
-              shadowColor: '#1A1410',
+              shadowColor: '#000000',
               shadowOffset: { width: 0, height: -2 },
               shadowOpacity: 0.04,
               shadowRadius: 8,

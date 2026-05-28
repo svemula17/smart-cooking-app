@@ -27,12 +27,12 @@ const make = (
     default: ios(shadowColor, opacity, radius, offsetY),
   }) as Elevation;
 
-// Warm-modern shadows: soft, slightly downward, low opacity.
+// Crisp neutral shadows.
 export const elevation = {
   flat: { shadowColor: 'transparent', elevation: 0 } as Elevation,
-  card: make('#1A1410', 0.06, 8, 2, 2),
-  raised: make('#1A1410', 0.1, 16, 6, 6),
-  overlay: make('#1A1410', 0.18, 24, 12, 12),
+  card: make('#000000', 0.05, 10, 3, 2),
+  raised: make('#000000', 0.09, 18, 8, 6),
+  overlay: make('#000000', 0.18, 28, 14, 12),
 } as const;
 
 export type ElevationKey = keyof typeof elevation;

@@ -8,6 +8,9 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useHaptics } from './ui/useHaptics';
+import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
@@ -77,10 +80,10 @@ export const CuisineCard: React.FC<CuisineCardProps> = ({ cuisine, emoji, onPres
           </View>
         </View>
       ) : (
-        <View style={[styles.bg, { backgroundColor: '#F0F0F0' }]}>
+        <View style={[styles.bg, { backgroundColor: colors.surfaceMuted }]}>
           <View style={styles.content}>
             <Text style={styles.emoji}>{emoji}</Text>
-            <Text style={[styles.name, { color: '#333' }]}>{cuisine}</Text>
+            <Text style={[styles.name, { color: colors.text }]}>{cuisine}</Text>
           </View>
         </View>
       )}
@@ -92,28 +95,28 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: 120,
-    borderRadius: 22,
-    marginBottom: 12,
+    borderRadius: radii.xl,
+    marginBottom: spacing.md,
     overflow: 'hidden',
-    shadowColor: '#1A1410',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
     shadowRadius: 12,
-    elevation: 6,
+    elevation: 5,
   },
   bg: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   bgImage: {
-    borderRadius: 22,
+    borderRadius: radii.xl,
   },
   tint: {
     ...StyleSheet.absoluteFillObject,
   },
   content: {
-    padding: 14,
-    paddingBottom: 12,
+    padding: spacing.md,
+    paddingBottom: spacing.md,
   },
   emoji: {
     fontSize: 32,

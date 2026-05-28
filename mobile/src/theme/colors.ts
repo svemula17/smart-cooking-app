@@ -1,85 +1,84 @@
-// Warm-modern, food-app native palette.
-// Existing keys are preserved for backwards compatibility with screens not yet
-// migrated. New semantic tokens (surface*, border*, on*, overlay) are the
-// preferred way for new code to reach for color.
+// White-first, bold-accent palette. Single vibrant brand color, near-black
+// text, vivid data-viz hues for nutrition. Existing semantic keys are
+// preserved so callers don't need to change.
 
 export const colors = {
   // Brand
-  primary: '#F96167', // Coral red
-  primaryLight: '#FFEAEB',
-  primaryDark: '#D94550',
-  primaryMuted: '#FFF3F3',
-  secondary: '#F4C95D', // Warm gold (slightly tightened from #F9E795)
-  secondaryLight: '#FFF6E0',
-  accent: '#2F3C7E', // Navy
+  primary: '#FF3D2E', // Bold red-coral
+  primaryLight: '#FFE5E1',
+  primaryDark: '#D62C1F',
+  primaryMuted: '#FFF1EF',
+  secondary: '#00B050', // Fresh green
+  secondaryLight: '#E6F5EB',
+  accent: '#0F0F0F', // Near-black emphasis
 
-  // Semantic surfaces (warm neutrals)
-  background: '#FFFBF7', // Warm off-white
+  // Semantic surfaces (clean whites + neutral grays)
+  background: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceMuted: '#FBF6EF',
+  surfaceMuted: '#F5F5F5',
   surfaceRaised: '#FFFFFF',
-  surfaceInverse: '#1A1410',
-  surfaceElevated: '#FFFFFF', // back-compat alias
+  surfaceInverse: '#0F0F0F',
+  surfaceElevated: '#FFFFFF',
 
   // Borders
-  border: '#EFE6DA',
-  borderStrong: '#E0D4C2',
-  borderMuted: '#F4ECDF',
-  divider: '#F4ECDF',
+  border: '#EAEAEA',
+  borderStrong: '#D4D4D4',
+  borderMuted: '#F0F0F0',
+  divider: '#EAEAEA',
 
   // Text / on-surface
-  text: '#1F1A15',
-  textSecondary: '#6B5F52',
-  textLight: '#A89B8B',
+  text: '#0F0F0F',
+  textSecondary: '#666666',
+  textLight: '#999999',
   textInverse: '#FFFFFF',
   onPrimary: '#FFFFFF',
-  onSecondary: '#1F1A15',
+  onSecondary: '#FFFFFF',
 
   // Overlay (modals, sheets, scrim)
-  overlay: 'rgba(26, 20, 16, 0.45)',
-  overlayStrong: 'rgba(26, 20, 16, 0.65)',
+  overlay: 'rgba(15, 15, 15, 0.45)',
+  overlayStrong: 'rgba(15, 15, 15, 0.65)',
 
   // Feedback
-  success: '#2E9E6A',
-  successMuted: '#E6F5EE',
-  warning: '#E8932A',
-  warningMuted: '#FDF1E0',
-  error: '#E5484D',
-  errorMuted: '#FCE9EA',
-  info: '#3B82F6',
-  infoMuted: '#E6EFFE',
+  success: '#00B050',
+  successMuted: '#E6F5EB',
+  warning: '#FF8A00',
+  warningMuted: '#FFF1E0',
+  error: '#E5141A',
+  errorMuted: '#FBE5E6',
+  info: '#0066FF',
+  infoMuted: '#E5EFFE',
 
-  // Macro colors
-  calories: '#F96167',
-  protein: '#4A90D9',
-  carbs: '#F9A825',
-  fat: '#7B61FF',
-  fiber: '#4CAF50',
+  // Macro colors (vibrant data viz)
+  calories: '#FF3D2E',
+  protein: '#FF8A00',
+  carbs: '#FFC107',
+  fat: '#9C27B0',
+  fiber: '#00B050',
 
   // Difficulty badges
-  easy: '#E6F5EE',
-  easyText: '#1F7A4F',
-  medium: '#FDF1E0',
-  mediumText: '#A66514',
-  hard: '#FCE9EA',
-  hardText: '#A8262A',
+  easy: '#E6F5EB',
+  easyText: '#00873E',
+  medium: '#FFF1E0',
+  mediumText: '#B96A00',
+  hard: '#FBE5E6',
+  hardText: '#A8121A',
 
-  // Cuisine card backgrounds
-  indian: '#FFE5B4',
-  chinese: '#FFD1DC',
-  indoChinese: '#E6F3FF',
-  italian: '#C8E6C9',
-  mexican: '#FFECB3',
-  thai: '#F8BBD0',
-  japanese: '#E8EAF6',
-  mediterranean: '#E0F7FA',
-  american: '#FBE9E7',
-  french: '#FCE4EC',
+  // Cuisine card backgrounds (modernized pastels on white)
+  indian: '#FFE9B8',
+  chinese: '#FFD5DC',
+  indoChinese: '#D9E9FF',
+  italian: '#D1EBD6',
+  mexican: '#FFEABE',
+  thai: '#FBCBDB',
+  japanese: '#E2E5F5',
+  mediterranean: '#D4F2F4',
+  american: '#FFD9CE',
+  french: '#FBD4E0',
 
-  // Backward-compat aliases (used by pre-existing stub screens)
-  textMuted: '#6B5F52',
-  danger: '#E5484D',
-  primaryDanger: '#E5484D',
+  // Backward-compat aliases
+  textMuted: '#666666',
+  danger: '#E5141A',
+  primaryDanger: '#E5141A',
 } as const;
 
 export type ColorKey = keyof typeof colors;
