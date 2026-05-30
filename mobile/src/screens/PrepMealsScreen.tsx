@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ThemedStatusBar } from '../components/ThemedStatusBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
@@ -78,7 +79,7 @@ export default function PrepMealsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Prep meals"
         subtitle="Ready-to-eat portions from earlier cooks"

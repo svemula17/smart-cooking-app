@@ -12,6 +12,7 @@
 // do?", "who owes who?" — with a single tap to act on any of them.
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   RefreshControl,
   ScrollView,
@@ -364,7 +365,7 @@ export default function HouseScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={load} tintColor={c.primary} />

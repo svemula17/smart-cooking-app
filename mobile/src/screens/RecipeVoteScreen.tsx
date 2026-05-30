@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ThemedStatusBar } from '../components/ThemedStatusBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -63,7 +64,7 @@ export default function RecipeVoteScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Vote on tonight’s meal"
         subtitle={

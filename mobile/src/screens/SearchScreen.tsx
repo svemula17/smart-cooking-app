@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
   Keyboard,
@@ -97,7 +98,7 @@ export function SearchScreen(): React.JSX.Element {
   if (shouldSearch) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-        <StatusBar barStyle="dark-content" />
+        <ThemedStatusBar />
         <View style={[styles.searchHeader, { borderBottomColor: c.border }]}>
           <TextField
             ref={inputRef}
@@ -171,7 +172,7 @@ export function SearchScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <ScrollView
         contentContainerStyle={{ paddingBottom: spacing['3xl'] }}
         keyboardShouldPersistTaps="handled"

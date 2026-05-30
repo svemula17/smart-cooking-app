@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   RefreshControl,
   ScrollView,
@@ -69,7 +70,7 @@ export default function HouseReportScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Weekly Report"
         onBack={() => navigation.goBack()}

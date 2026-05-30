@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
   RefreshControl,
@@ -179,7 +180,7 @@ export default function CookScheduleScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Cook schedule"
         onBack={() => navigation.goBack()}

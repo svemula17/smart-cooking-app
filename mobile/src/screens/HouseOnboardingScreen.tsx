@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ThemedStatusBar } from '../components/ThemedStatusBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -83,7 +84,7 @@ export default function HouseOnboardingScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <View style={styles.topBar}>
         {mode !== 'choose' ? (
           <IconButton

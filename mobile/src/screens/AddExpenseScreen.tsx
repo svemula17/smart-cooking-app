@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -90,7 +91,7 @@ export default function AddExpenseScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Add expense"
         onBack={() => navigation.goBack()}

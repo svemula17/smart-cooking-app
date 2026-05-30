@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   Alert,
   ScrollView,
@@ -188,7 +189,7 @@ export function PantryScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Pantry"
         onBack={() => navigation.goBack()}

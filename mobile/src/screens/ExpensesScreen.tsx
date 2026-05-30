@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   Alert,
   FlatList,
@@ -205,7 +206,7 @@ export default function ExpensesScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Expenses"
         onBack={() => navigation.goBack()}

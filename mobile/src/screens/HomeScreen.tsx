@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   RefreshControl,
   ScrollView,
@@ -154,7 +155,7 @@ const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ThemedStatusBar />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}

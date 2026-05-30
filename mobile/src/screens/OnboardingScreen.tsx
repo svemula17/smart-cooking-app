@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -106,7 +107,7 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

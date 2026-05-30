@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   AccessibilityInfo,
   Animated,
@@ -292,7 +293,7 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
       accessibilityRole="image"
       accessibilityLabel="SmartCooking — loading"
     >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ThemedStatusBar />
 
       {/* Reduced-motion overlay */}
       <Animated.View

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   Alert,
   Linking,
@@ -208,7 +209,7 @@ export function ProfileScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ThemedStatusBar />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Identity */}
         <View style={styles.identity}>

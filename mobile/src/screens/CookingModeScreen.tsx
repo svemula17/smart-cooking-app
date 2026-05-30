@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Animated,
@@ -275,7 +276,7 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>

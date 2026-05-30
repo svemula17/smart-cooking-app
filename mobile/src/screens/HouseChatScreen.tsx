@@ -9,6 +9,7 @@
 // feedback on the UX while the real-time layer is being built.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -132,7 +133,7 @@ export default function HouseChatScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header title={`${house.name} chat`} onBack={() => navigation.goBack()} border />
 
       <KeyboardAvoidingView

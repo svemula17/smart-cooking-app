@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   Dimensions,
   ScrollView,
@@ -82,7 +83,13 @@ function TrendChart({
           backgroundGradientFrom: c.surface,
           backgroundGradientTo: c.surface,
           decimalPlaces: 0,
-          color: (opacity = 1) => `rgba(0,0,0,${opacity * 0.4})`,
+          // Bezier line color — uses theme.textLight (already theme-aware
+          // hex) with an opacity multiplier appended as hex alpha so it
+          // stays readable in dark mode.
+          color: (opacity = 1) => {
+            const alpha = Math.round(opacity * 102).toString(16).padStart(2, '0');
+            return `${c.textLight}${alpha}`;
+          },
           labelColor: () => c.textLight,
           style: { borderRadius: 16 },
           propsForDots: { r: '3', strokeWidth: '2', stroke: color },
@@ -197,7 +204,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <View style={styles.header}>
         <View>
           <Text style={[typography.h1, { color: c.text }]}>Stats</Text>

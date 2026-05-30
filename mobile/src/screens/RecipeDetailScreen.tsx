@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   Alert,
   ScrollView,
@@ -399,7 +400,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}

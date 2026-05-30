@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -169,7 +170,7 @@ export function AIChatScreen({ navigation }: any): React.JSX.Element {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header
         title="Smart Chef AI"
         subtitle="Your personal cooking assistant"

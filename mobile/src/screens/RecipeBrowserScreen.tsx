@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
   ScrollView,
@@ -111,7 +112,7 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <ThemedStatusBar />
       <Header title={headerTitle} border />
 
       <FlatList
