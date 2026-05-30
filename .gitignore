@@ -81,3 +81,9 @@ logs/
 # ----- Docker -----
 .docker/
 .supabase-url
+
+# sed backup files
+*.bak
+*.bak[0-9]
+*.tmp
+*.tmp[0-9]
