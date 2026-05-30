@@ -4,7 +4,9 @@ import { pool, withTransaction } from '../config/database';
 import { Errors } from '../middleware/error.middleware';
 import { generateInviteCode } from '../utils/inviteCode';
 
-const joinSchema = Joi.object({ invite_code: Joi.string().trim().uppercase().length(7).required() });
+// 3–10 char invite codes — supports vanity codes (e.g. "SAI") plus the
+// 7-char auto-generated default from generateInviteCode().
+const joinSchema = Joi.object({ invite_code: Joi.string().trim().uppercase().min(3).max(10).required() });
 
 export async function joinHouse(req: Request, res: Response, next: NextFunction): Promise<void> {
   const { error, value } = joinSchema.validate(req.body);

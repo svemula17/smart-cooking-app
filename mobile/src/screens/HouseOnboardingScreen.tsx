@@ -57,7 +57,10 @@ export default function HouseOnboardingScreen() {
   };
 
   const handleJoin = async () => {
-    if (code.trim().length !== 7) return Alert.alert('Enter the 7-character invite code');
+    const trimmed = code.trim();
+    if (trimmed.length < 3 || trimmed.length > 10) {
+      return Alert.alert('Invite code must be 3–10 characters');
+    }
     setLoading(true);
     try {
       const result = await houseService.joinHouse(code.trim());
@@ -179,7 +182,7 @@ export default function HouseOnboardingScreen() {
                 },
               ]}
             >
-              Ask a roommate for the 7-character invite code.
+              Ask a roommate for the house invite code.
             </Text>
             <TextField
               placeholder="SAIRAJ7"
