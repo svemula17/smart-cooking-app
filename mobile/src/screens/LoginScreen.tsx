@@ -346,7 +346,7 @@ export function LoginScreen({ route, navigation }: Props): React.JSX.Element {
               ]}
             >
               Browse recipes without an account.{'\n'}
-              Shopping lists and AI chat require sign-in.
+              Pantry, meal plans, house features, and AI chat require sign-in.
             </Text>
           </View>
         </ScrollView>

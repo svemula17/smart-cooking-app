@@ -199,7 +199,8 @@ export type RootStackParamList = {
   PrepMeals: undefined;
   Chores: undefined;
   HouseChat: undefined;
-  HouseOnboarding: undefined;
+  // HouseOnboarding intentionally NOT a registered stack route — it renders
+  // inside HouseScreen when the user has no house. Don't add a navigate.
   Search: undefined;
   AIChat: undefined;
 };

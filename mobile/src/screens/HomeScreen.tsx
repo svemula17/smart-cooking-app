@@ -361,7 +361,9 @@ const HomeScreen: React.FC = () => {
               padding="lg"
               elevation="flat"
               style={styles.rectCard}
-              onPress={() => navigation.navigate('HouseOnboarding' as any)}
+              // HouseOnboarding isn't a registered route — it renders inside
+              // HouseScreen when the user has no house. Just open the House tab.
+              onPress={() => navigation.navigate('House' as never)}
               accessibilityLabel="Set up your house"
             >
               <View style={styles.rectHeader}>
@@ -369,7 +371,7 @@ const HomeScreen: React.FC = () => {
                 <Text style={[typography.h4, { color: c.text }]}>Set up your house</Text>
               </View>
               <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.sm }]}>
-                Share cooking, cleaning, and shopping with roommates.
+                Share cooking, cleaning, and house duties with roommates.
               </Text>
               <Text style={[styles.rectCta, { color: c.primary }]}>Get started →</Text>
             </Card>

@@ -174,7 +174,7 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                   { emoji: '🥗', text: '30+ curated recipes across 8 cuisines' },
                   { emoji: '📊', text: 'Macro tracking & daily goals' },
                   { emoji: '🤖', text: 'AI cooking assistant' },
-                  { emoji: '🛒', text: 'Smart ingredient shopping lists' },
+                  { emoji: '🥫', text: 'Pantry tracking & expiring-soon alerts' },
                 ].map(({ emoji, text }) => (
                   <Card
                     key={text}
