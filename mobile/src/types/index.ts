@@ -188,7 +188,6 @@ export type RootStackParamList = {
   RecipeDetail: { recipeId: string };
   CookingMode: { recipeId: string };
   RecipeSelect: { date: string; mealType: MealType };
-  Pantry: undefined;
   HouseMembers: undefined;
   CookSchedule: undefined;
   Expenses: undefined;
@@ -207,10 +206,9 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home:        undefined;
-  MealPlanner: undefined;
   House:       undefined;
-  AIChat:      undefined;
-  Shopping:    undefined;
+  MealPlanner: undefined;
+  Pantry:      undefined;
   Stats:       undefined;
   Profile:     undefined;
 };

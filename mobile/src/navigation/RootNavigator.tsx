@@ -11,7 +11,6 @@ import HomeScreen from '../screens/HomeScreen';
 import RecipeBrowserScreen from '../screens/RecipeBrowserScreen';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import { CookingModeScreen } from '../screens/CookingModeScreen';
-import { ShoppingListScreen } from '../screens/ShoppingListScreen';
 import { MealPlannerScreen } from '../screens/MealPlannerScreen';
 import { MonthlyTrackingScreen } from '../screens/MonthlyTrackingScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -49,10 +48,9 @@ interface TabIconConfig {
 
 const TAB_CONFIG: Record<string, TabIconConfig> = {
   Home: { emoji: '🏡', label: 'Home', a11y: 'Home tab' },
-  MealPlanner: { emoji: '📅', label: 'Meals', a11y: 'Meal planner tab' },
-  AIChat: { emoji: '🧑‍🍳', label: 'Chef AI', a11y: 'AI chef assistant tab' },
   House: { emoji: '👨‍👩‍👧', label: 'House', a11y: 'Household tab' },
-  Shopping: { emoji: '🛒', label: 'Shop', a11y: 'Shopping list tab' },
+  MealPlanner: { emoji: '📅', label: 'Meals', a11y: 'Meal planner tab' },
+  Pantry: { emoji: '🥫', label: 'Pantry', a11y: 'Pantry tab' },
   Stats: { emoji: '📊', label: 'Stats', a11y: 'Stats tab' },
   Profile: { emoji: '👤', label: 'You', a11y: 'Profile tab' },
 };
@@ -118,10 +116,9 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen as AnyComponent} />
-      <Tab.Screen name="MealPlanner" component={MealPlannerScreen as AnyComponent} />
-      <Tab.Screen name="AIChat" component={AIChatScreen as AnyComponent} />
       <Tab.Screen name="House" component={HouseScreen as AnyComponent} />
-      <Tab.Screen name="Shopping" component={ShoppingListScreen as AnyComponent} />
+      <Tab.Screen name="MealPlanner" component={MealPlannerScreen as AnyComponent} />
+      <Tab.Screen name="Pantry" component={PantryScreen as AnyComponent} />
       <Tab.Screen name="Stats" component={MonthlyTrackingScreen as AnyComponent} />
       <Tab.Screen name="Profile" component={ProfileScreen as AnyComponent} />
     </Tab.Navigator>
@@ -160,11 +157,6 @@ export function RootNavigator(): React.JSX.Element {
         name="CookingMode"
         component={CookingModeScreen as AnyComponent}
         options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal' }}
-      />
-      <Stack.Screen
-        name="Pantry"
-        component={PantryScreen as AnyComponent}
-        options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="HouseMembers"
@@ -220,6 +212,11 @@ export function RootNavigator(): React.JSX.Element {
         name="HouseChat"
         component={HouseChatScreen as AnyComponent}
         options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="AIChat"
+        component={AIChatScreen as AnyComponent}
+        options={{ animation: 'slide_from_bottom' }}
       />
     </Stack.Navigator>
   );

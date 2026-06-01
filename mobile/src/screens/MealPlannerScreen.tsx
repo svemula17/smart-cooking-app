@@ -17,7 +17,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
 import { mealPlanService } from '../services/mealPlanService';
-import { shoppingService } from '../services/shoppingService';
 import { scheduleMealReminders } from '../services/reminderService';
 import { recipeService } from '../services/recipeService';
 import { getRecipeImage } from '../utils/recipeImages';
@@ -440,17 +439,6 @@ export function MealPlannerScreen(): React.JSX.Element {
     onError: () => toast.show('Could not remove', 'error'),
   });
 
-  const generateList = useMutation({
-    mutationFn: (recipeIds: string[]) =>
-      shoppingService.generate({
-        user_id: user!.id,
-        name: `Week of ${startDate}`,
-        recipe_ids: recipeIds,
-      }),
-    onSuccess: () => toast.show('Shopping list created', 'success'),
-    onError: () => toast.show('Could not generate list', 'error'),
-  });
-
   const plans: MealPlan[] = data?.meal_plans ?? [];
   const plansByDate = weekDates.reduce<Record<string, MealPlan[]>>((acc, d) => {
     acc[d] = plans.filter((p) => p.scheduled_date === d);
@@ -475,17 +463,6 @@ export function MealPlannerScreen(): React.JSX.Element {
             label={houseMode ? '🏠 House' : '👤 Personal'}
             selected={houseMode}
             onPress={() => setHouseMode((v) => !v)}
-          />
-        ) : null}
-        {plans.length > 0 ? (
-          <Button
-            label="🛒"
-            size="sm"
-            loading={generateList.isPending}
-            onPress={() => {
-              const recipeIds = [...new Set(plans.map((p) => p.recipe_id))];
-              generateList.mutate(recipeIds);
-            }}
           />
         ) : null}
       </View>

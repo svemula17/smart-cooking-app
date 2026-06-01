@@ -20,7 +20,6 @@ import { NutritionGrid } from '../components/NutritionGrid';
 import { LogMealSheet } from '../components/LogMealSheet';
 import { RecipeHero } from '../components/recipe-detail/RecipeHero';
 import { recipeService } from '../services/recipeService';
-import { shoppingService } from '../services/shoppingService';
 import { toggleFavorite, type RootState } from '../store';
 
 import { useThemeColors } from '../theme/useThemeColors';
@@ -253,20 +252,6 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     enabled: !!recipe,
   });
 
-  const addToList = useMutation({
-    mutationFn: () =>
-      shoppingService.generate({
-        user_id: user!.id,
-        name: `${recipe!.name} — Shopping List`,
-        recipe_ids: [recipeId],
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['shopping-lists'] });
-      toast.show('Added to shopping list', 'success');
-    },
-    onError: () => toast.show('Could not create list', 'error'),
-  });
-
   const rate = useMutation({
     mutationFn: () =>
       recipeService.rate(recipeId, ratingStars, ratingComment.trim() || undefined),
@@ -310,21 +295,6 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     },
     []
   );
-
-  const handleAddToList = () => {
-    if (!user) {
-      Alert.alert('Sign In Required', 'Please sign in to save shopping lists.');
-      return;
-    }
-    Alert.alert(
-      'Create shopping list?',
-      `Generate a list with ingredients for "${recipe?.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Create', onPress: () => addToList.mutate() },
-      ]
-    );
-  };
 
   if (isLoading) {
     return (
@@ -734,13 +704,6 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           fullWidth
           size="lg"
           style={{ flex: 1 }}
-        />
-        <Button
-          label="🛒 Unlock"
-          onPress={handleAddToList}
-          loading={addToList.isPending}
-          variant="secondary"
-          size="lg"
         />
       </View>
 

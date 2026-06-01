@@ -6,6 +6,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -381,7 +382,7 @@ const HomeScreen: React.FC = () => {
             elevation="card"
             padding="lg"
             style={styles.rectCard}
-            onPress={() => navigation.navigate('Pantry' as any)}
+            onPress={() => navigation.navigate('Pantry' as never)}
             accessibilityLabel="Open pantry"
           >
             <View style={styles.rectHeader}>
@@ -437,6 +438,23 @@ const HomeScreen: React.FC = () => {
 
       </ScrollView>
 
+      {/* Chef AI floating action button — was a tab, demoted to FAB on Home */}
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Open Chef AI assistant"
+        onPress={() => navigation.navigate('AIChat')}
+        activeOpacity={0.85}
+        style={[
+          styles.aiFab,
+          {
+            backgroundColor: c.primary,
+            shadowColor: '#000',
+          },
+        ]}
+      >
+        <Text style={styles.aiFabEmoji}>🧑‍🍳</Text>
+      </TouchableOpacity>
+
       <AttendanceSheet visible={showAttendance} onClose={() => setShowAttendance(false)} />
     </SafeAreaView>
   );
@@ -459,6 +477,22 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { paddingBottom: spacing['4xl'] },
+  aiFab: {
+    position: 'absolute',
+    right: spacing.xl,
+    // Sits above the bottom tab bar (~56pt) + a margin
+    bottom: 80,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  aiFabEmoji: { fontSize: 26 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
