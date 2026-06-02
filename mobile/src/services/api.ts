@@ -13,6 +13,40 @@ const RETRIABLE_METHODS = new Set(['get', 'head', 'options']);
 
 interface RetryableConfig extends InternalAxiosRequestConfig {
   _retryCount?: number;
+  _refreshAttempted?: boolean;
+}
+
+// ─── Refresh-token coordination ──────────────────────────────────────────────
+// When N requests fail with 401 at the same time (likely after the 15-min
+// access token expires), we don't want to fire N refresh calls. They share
+// one in-flight refresh promise, then each retries with the new token.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function attemptRefresh(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const rt = await storage.getRefreshToken();
+      if (!rt) return null;
+      // Use raw axios so we don't recurse through our own interceptor.
+      const r = await axios.post(
+        `${API_URLS.user}/auth/refresh`,
+        { refreshToken: rt },
+        { timeout: 12_000, headers: { 'Content-Type': 'application/json' } },
+      );
+      const newAccess: string | undefined = r.data?.data?.accessToken;
+      if (!newAccess) return null;
+      await storage.setAccessToken(newAccess);
+      _token = newAccess;
+      return newAccess;
+    } catch {
+      // Refresh failed (expired, revoked, network) → caller will clear auth.
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
 }
 
 function isRetriable(error: AxiosError): boolean {
@@ -49,11 +83,33 @@ function makeClient(baseURL: string): AxiosInstance {
     return config;
   });
 
-  // ─── Response: 401 → clear auth, transient → retry once ────────────────────
+  // ─── Response: 401 → refresh + retry once, transient → retry once ──────────
   instance.interceptors.response.use(
     (r) => r,
     async (error: AxiosError) => {
-      // 401 → drop token + bubble up so callers can route to Login
+      const cfg = error.config as RetryableConfig | undefined;
+
+      // 401 → try refreshing the access token ONCE before giving up.
+      // Skip refresh attempts on /auth/* itself to avoid loops.
+      if (
+        error.response?.status === 401 &&
+        cfg &&
+        !cfg._refreshAttempted &&
+        !cfg.url?.startsWith('/auth/')
+      ) {
+        cfg._refreshAttempted = true;
+        const newToken = await attemptRefresh();
+        if (newToken) {
+          if (cfg.headers) cfg.headers.Authorization = `Bearer ${newToken}`;
+          return instance.request(cfg);
+        }
+        // Refresh failed → clear auth so the UI can route to Login.
+        _token = null;
+        await storage.clearAuth();
+        return Promise.reject(error);
+      }
+
+      // 401 we couldn't (or shouldn't) refresh — fall through to clear auth.
       if (error.response?.status === 401) {
         _token = null;
         await storage.clearAuth();
@@ -61,7 +117,6 @@ function makeClient(baseURL: string): AxiosInstance {
       }
 
       // One-shot retry on idempotent + transient failures
-      const cfg = error.config as RetryableConfig | undefined;
       if (cfg && isRetriable(error)) {
         cfg._retryCount = (cfg._retryCount ?? 0) + 1;
         if (cfg._retryCount <= RETRY_MAX) {
