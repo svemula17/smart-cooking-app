@@ -204,6 +204,7 @@ export type RootStackParamList = {
   Search: undefined;
   AIChat: undefined;
   MakeNow: undefined;
+  ScanReceipt: undefined;
 };
 
 export type TabParamList = {

@@ -35,7 +35,14 @@
     },
     "owner": "svemula17",
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SmartCooking uses your photos to scan grocery receipts and add items to your pantry.",
+          "cameraPermission": "SmartCooking uses your camera to scan grocery receipts and add items to your pantry."
+        }
+      ]
     ]
   }
 }

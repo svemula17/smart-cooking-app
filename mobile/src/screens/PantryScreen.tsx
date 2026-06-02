@@ -193,7 +193,17 @@ export function PantryScreen() {
       <Header
         title="Pantry"
         onBack={() => navigation.goBack()}
-        right={<Button label="+ Add" size="sm" onPress={openAdd} />}
+        right={
+          <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+            <Button
+              label="📷 Scan"
+              size="sm"
+              variant="secondary"
+              onPress={() => navigation.navigate('ScanReceipt' as never)}
+            />
+            <Button label="+ Add" size="sm" onPress={openAdd} />
+          </View>
+        }
       />
 
       <ScrollView showsVerticalScrollIndicator={false}>

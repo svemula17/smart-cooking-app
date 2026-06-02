@@ -29,6 +29,7 @@ import ChoresScreen from '../screens/ChoresScreen';
 import HouseChatScreen from '../screens/HouseChatScreen';
 import AIChatScreen from '../screens/AIChatScreen';
 import MakeNowScreen from '../screens/MakeNowScreen';
+import ScanReceiptScreen from '../screens/ScanReceiptScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
 import { useThemeColors } from '../theme/useThemeColors';
@@ -222,6 +223,11 @@ export function RootNavigator(): React.JSX.Element {
       <Stack.Screen
         name="MakeNow"
         component={MakeNowScreen as AnyComponent}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="ScanReceipt"
+        component={ScanReceiptScreen as AnyComponent}
         options={{ animation: 'slide_from_bottom' }}
       />
     </Stack.Navigator>

@@ -22,6 +22,8 @@ from app.schemas.ai import (
     ChatResponse,
     MultiDishRequest,
     MultiDishResponse,
+    ParseReceiptRequest,
+    ParseReceiptResponse,
     SubstituteRequest,
     SubstituteResponse,
     TipsRequest,
@@ -33,6 +35,7 @@ from app.schemas.ai import (
 )
 from app.services.ai_assistant import CookingAssistant
 from app.services.multi_dish_coordinator import MultiDishCoordinator
+from app.services.receipt_parser import parse_receipt
 from app.services.substitution_service import get_substitutes
 from app.services.variety_algorithm import VarietyAlgorithm
 
@@ -210,3 +213,24 @@ async def tips(
         total_minutes=int(recipe["total_minutes"] or 0),
     )
     return ApiSuccess(data=TipsResponse(tips=tips_list, cached=cached))
+
+
+# ============================================================================
+# 7. POST /ai/parse-receipt
+# ============================================================================
+
+@router.post(
+    "/parse-receipt",
+    response_model=ApiSuccess[ParseReceiptResponse],
+    summary="Parse a receipt photo into structured line items (OpenAI Vision)",
+)
+async def parse_receipt_route(
+    body: ParseReceiptRequest,
+    user: AuthenticatedUser = CurrentUser,  # noqa: ARG001 — auth only
+    redis: RedisProtocol = Depends(get_redis),
+) -> ApiSuccess[ParseReceiptResponse]:
+    # Quota: receipt OCR is a vision call (more expensive than chat) so
+    # we still bill against the same per-user quota bucket.
+    await consume_quota(redis, user_id=user.user_id)
+    result = await parse_receipt(body.image_base64)
+    return ApiSuccess(data=result)

@@ -143,6 +143,32 @@ class TipsResponse(BaseModel):
     cached: bool = False
 
 
+# ---------- Receipt scan (vision-based OCR) ----------
+
+class ReceiptItem(BaseModel):
+    name: str
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    price: Optional[float] = None
+
+
+class ParseReceiptRequest(BaseModel):
+    # Base64-encoded image (data: prefix optional). Keep payload <= 4MB.
+    image_base64: str = Field(min_length=100)
+    # Optional currency hint to help LLM normalize prices.
+    currency: Optional[str] = None
+
+
+class ParseReceiptResponse(BaseModel):
+    items: List[ReceiptItem]
+    store: Optional[str] = None
+    total: Optional[float] = None
+    purchase_date: Optional[str] = None  # ISO yyyy-mm-dd
+    # Empty when the LLM/key isn't available; mobile shows a manual-entry fallback.
+    parser_available: bool = True
+    tokens_used: int = 0
+
+
 # ---------- Envelopes ----------
 
 T = TypeVar("T")
