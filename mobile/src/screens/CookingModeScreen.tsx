@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Animated,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -24,6 +23,7 @@ import { spacing } from '../theme/spacing';
 import { radii } from '../theme/radii';
 import { typography } from '../theme/typography';
 import {
+  Badge,
   Button,
   Card,
   ErrorState,
@@ -32,115 +32,80 @@ import {
   useHaptics,
   useToast,
 } from '../components/ui';
+import { ActiveTimersBar } from '../components/ActiveTimersBar';
+import { useCookingTimers } from '../hooks/useCookingTimers';
+import { formatScaled } from '../utils/scaleQuantity';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CookingMode'>;
 
-interface CountdownTimerProps {
+// Inline "start this step's timer" button — pushes into the shared pool
+// (managed by useCookingTimers) so it persists across step navigation.
+interface StartTimerButtonProps {
+  label: string;
   seconds: number;
-  onDone?: () => void;
+  isQueued: boolean;
+  onAdd: () => void;
 }
-
-function CountdownTimer({ seconds, onDone }: CountdownTimerProps) {
+function StartTimerButton({ label, seconds, isQueued, onAdd }: StartTimerButtonProps) {
   const c = useThemeColors();
-  const haptics = useHaptics();
-  const [remaining, setRemaining] = useState(seconds);
-  const [running, setRunning] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const progress = useRef(new Animated.Value(1)).current;
-
-  const reset = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = null;
-    setRunning(false);
-    setRemaining(seconds);
-    progress.setValue(1);
-  }, [seconds, progress]);
-
-  useEffect(() => {
-    reset();
-  }, [seconds, reset]);
-
-  useEffect(() => {
-    if (!running) return;
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!);
-          intervalRef.current = null;
-          setRunning(false);
-          haptics.notify('success');
-          onDone?.();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [running, onDone, haptics]);
-
-  useEffect(() => {
-    Animated.timing(progress, {
-      toValue: seconds > 0 ? remaining / seconds : 0,
-      duration: 400,
-      useNativeDriver: false,
-    }).start();
-  }, [remaining, seconds, progress]);
-
-  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
-  const ss = String(remaining % 60).padStart(2, '0');
-
-  const progressWidth = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
-
-  const progressColor = progress.interpolate({
-    inputRange: [0, 0.3, 1],
-    outputRange: [c.error, c.warning, c.success],
-  });
-
+  const mins = Math.round(seconds / 60);
   return (
-    <Card surface="surface" radius="lg" padding="lg" elevation="card" style={{ marginVertical: spacing.lg }}>
-      <View
-        style={{
-          height: 6,
-          backgroundColor: c.surfaceMuted,
-          borderRadius: 3,
-          overflow: 'hidden',
-          marginBottom: spacing.md,
-        }}
-      >
-        <Animated.View style={{ height: '100%', width: progressWidth, backgroundColor: progressColor }} />
-      </View>
+    <Card surface="surfaceMuted" radius="lg" padding="lg" elevation="flat" style={{ marginTop: spacing.lg }}>
       <View style={styles.timerRow}>
-        <Text
-          style={{
-            fontSize: 38,
-            fontWeight: '800',
-            color: c.text,
-            letterSpacing: 2,
-            fontVariant: ['tabular-nums'],
-          }}
-        >
-          {mm}:{ss}
-        </Text>
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Button
-            label={running ? 'Pause' : remaining === 0 ? 'Done' : 'Start'}
-            onPress={() => {
-              haptics.impact('light');
-              setRunning((r) => !r);
-            }}
-            disabled={remaining === 0}
-            variant={running ? 'secondary' : 'primary'}
-            size="md"
-          />
-          <IconButton icon="↺" accessibilityLabel="Reset timer" onPress={reset} variant="tinted" />
+        <View style={{ flex: 1 }}>
+          <Text style={[typography.overline, { color: c.textSecondary }]}>STEP TIMER</Text>
+          <Text style={{ fontSize: 20, fontWeight: '800', color: c.text, marginTop: 2 }}>
+            {mins} min · {label}
+          </Text>
         </View>
+        <Button
+          label={isQueued ? 'Running ↓' : '▶ Start'}
+          onPress={onAdd}
+          disabled={isQueued}
+          variant={isQueued ? 'secondary' : 'primary'}
+          size="md"
+        />
       </View>
     </Card>
+  );
+}
+
+// Compact +/− servings stepper rendered in the header
+function ServingsStepper({
+  value,
+  base,
+  onChange,
+}: {
+  value: number;
+  base: number;
+  onChange: (next: number) => void;
+}) {
+  const c = useThemeColors();
+  return (
+    <View style={[styles.stepper, { backgroundColor: c.surfaceMuted, borderColor: c.border }]}>
+      <IconButton
+        icon="−"
+        size={28}
+        accessibilityLabel="Decrease servings"
+        onPress={() => onChange(Math.max(1, value - 1))}
+      />
+      <View style={{ alignItems: 'center', minWidth: 48 }}>
+        <Text style={{ color: c.text, fontWeight: '800', fontSize: 14 }}>
+          {value} {value === 1 ? 'serving' : 'servings'}
+        </Text>
+        {value !== base ? (
+          <Text style={[typography.caption, { color: c.textSecondary, fontSize: 10 }]}>
+            ({base} default)
+          </Text>
+        ) : null}
+      </View>
+      <IconButton
+        icon="+"
+        size={28}
+        accessibilityLabel="Increase servings"
+        onPress={() => onChange(Math.min(20, value + 1))}
+      />
+    </View>
   );
 }
 
@@ -154,7 +119,13 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
   const [currentStep, setCurrentStep] = useState(0);
   const [offlineRecipe, setOfflineRecipe] = useState<RecipeWithDetails | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [servings, setServings] = useState<number | null>(null);
+  // Stable map of step index → timer id (so the same step's timer doesn't
+  // get added twice).
+  const [stepTimerIds, setStepTimerIds] = useState<Record<number, string>>({});
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const timers = useCookingTimers((label) => toast.show(`⏰ ${label}`, 'success'));
 
   const pantryItems = useSelector((s: RootState) => s.pantry.items);
 
@@ -184,6 +155,17 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
   }, [networkRecipe, recipeId, offlineRecipe, isError]);
 
   const recipe = networkRecipe ?? offlineRecipe;
+
+  // Initialize servings on first load from the recipe's default
+  useEffect(() => {
+    if (recipe && servings === null) setServings(recipe.servings ?? 4);
+  }, [recipe, servings]);
+  const baseServings = recipe?.servings ?? 4;
+  const effectiveServings = servings ?? baseServings;
+  const scaleFactor = useMemo(
+    () => (baseServings > 0 ? effectiveServings / baseServings : 1),
+    [baseServings, effectiveServings],
+  );
 
   const deduct = useMutation({
     mutationFn: (ingredients: Array<{ name: string; quantity: number; unit: string }>) =>
@@ -302,6 +284,11 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
         </View>
       ) : null}
 
+      {/* Servings scaler */}
+      <View style={styles.scalerRow}>
+        <ServingsStepper value={effectiveServings} base={baseServings} onChange={setServings} />
+      </View>
+
       {/* Step dots */}
       <View style={styles.dots}>
         {steps.map((_step: RecipeStep, i: number) => (
@@ -343,9 +330,21 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
               {step.instruction}
             </Text>
             {step.time_minutes && step.time_minutes > 0 ? (
-              <CountdownTimer
+              <StartTimerButton
+                label={`Step ${step.step_number}`}
                 seconds={step.time_minutes * 60}
-                onDone={() => toast.show(`Step ${step.step_number} timer done`, 'info')}
+                isQueued={
+                  stepTimerIds[currentStep] != null &&
+                  timers.list.some((t) => t.id === stepTimerIds[currentStep])
+                }
+                onAdd={() => {
+                  const id = timers.add(
+                    `Step ${step.step_number} — ${recipe.name.split(' ').slice(0, 3).join(' ')}`,
+                    step.time_minutes! * 60,
+                  );
+                  setStepTimerIds((prev) => ({ ...prev, [currentStep]: id }));
+                  haptics.impact('light');
+                }}
               />
             ) : null}
           </Card>
@@ -353,14 +352,17 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
 
         {recipe.ingredients.length > 0 ? (
           <View style={{ marginTop: spacing['2xl'] }}>
-            <Text style={[typography.h4, { color: c.text, marginBottom: spacing.md }]}>
-              Ingredients
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+              <Text style={[typography.h4, { color: c.text }]}>Ingredients</Text>
+              {scaleFactor !== 1 ? (
+                <Badge label={`×${scaleFactor.toFixed(scaleFactor % 1 === 0 ? 0 : 2)}`} tone="primary" />
+              ) : null}
+            </View>
             {recipe.ingredients.map((ing: Ingredient) => (
               <View key={ing.id} style={styles.ingRow}>
                 <View style={[styles.ingBullet, { backgroundColor: c.primary }]} />
                 <Text style={[typography.body, { color: c.text, flex: 1, fontSize: 15 }]}>
-                  {ing.quantity} {ing.unit} {ing.ingredient_name}
+                  {formatScaled(ing.quantity, scaleFactor)} {ing.unit} {ing.ingredient_name}
                   {ing.notes ? (
                     <Text style={{ color: c.textSecondary, fontStyle: 'italic' }}>
                       {' '}
@@ -373,6 +375,14 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Active timers — persists across step navigation */}
+      <ActiveTimersBar
+        timers={timers.list}
+        onToggle={timers.toggle}
+        onReset={timers.reset}
+        onRemove={timers.remove}
+      />
 
       {/* Nav buttons */}
       <View style={[styles.navBar, { borderTopColor: c.border }]}>
@@ -445,5 +455,20 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  scalerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    gap: spacing.xs,
   },
 });
