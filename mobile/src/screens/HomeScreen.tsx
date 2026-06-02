@@ -409,6 +409,31 @@ const HomeScreen: React.FC = () => {
             </View>
             <Text style={[styles.rectCta, { color: c.primary }]}>Manage pantry →</Text>
           </Card>
+
+          {/* 4) What can I make now? — AI-style pantry matcher */}
+          <Card
+            surface="surface"
+            radius="xl"
+            elevation="card"
+            padding="lg"
+            bordered
+            style={[styles.rectCard, { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
+            onPress={() => navigation.navigate('MakeNow' as never)}
+            accessibilityLabel="What can I make right now"
+          >
+            <View style={styles.rectHeader}>
+              <Text style={styles.bigEmoji}>✨</Text>
+              <Text style={[typography.h4, { color: c.text }]}>What can I make?</Text>
+            </View>
+            <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.xs }]}>
+              {pantryCount === 0
+                ? 'Add pantry items to see dishes you can cook right now.'
+                : `Match ${pantryCount} pantry items against every recipe to find dinners you can make tonight.`}
+            </Text>
+            <Text style={[styles.rectCta, { color: c.primary, marginTop: spacing.md }]}>
+              Find recipes →
+            </Text>
+          </Card>
         </ScrollView>
 
         {/* Cuisines */}

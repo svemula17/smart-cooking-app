@@ -203,6 +203,7 @@ export type RootStackParamList = {
   // inside HouseScreen when the user has no house. Don't add a navigate.
   Search: undefined;
   AIChat: undefined;
+  MakeNow: undefined;
 };
 
 export type TabParamList = {
