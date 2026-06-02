@@ -52,7 +52,7 @@ const SEED_MESSAGES = (houseName: string): ChatMessage[] => [
     id: 'seed-1',
     userId: 'system',
     userName: houseName,
-    text: `Welcome to ${houseName} chat — coordinate cooking, shopping, and chores here.`,
+    text: `Welcome to ${houseName} chat — coordinate cooking, chores, and house life here.`,
     createdAt: Date.now() - 1000 * 60 * 60 * 4,
   },
 ];

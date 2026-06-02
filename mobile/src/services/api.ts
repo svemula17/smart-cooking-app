@@ -137,7 +137,6 @@ function makeClient(baseURL: string): AxiosInstance {
 
 export const userApi       = makeClient(API_URLS.user);
 export const recipeApi     = makeClient(API_URLS.recipe);
-export const shoppingApi   = makeClient(API_URLS.shopping);
 export const nutritionApi  = makeClient(API_URLS.nutrition);
 export const aiApi         = makeClient(API_URLS.ai);
 export const houseApi      = makeClient(API_URLS.house);
