@@ -282,15 +282,15 @@ async def get_monthly_stats(
     rows = await pool.fetch(
         """
         SELECT
-            log_date::text AS date,
+            "date"::text   AS date,
             SUM(calories)  AS total_calories,
             SUM(protein_g) AS total_protein,
             SUM(carbs_g)   AS total_carbs,
             SUM(fat_g)     AS total_fat
         FROM nutrition_logs
-        WHERE user_id = $1 AND log_date BETWEEN $2 AND $3
-        GROUP BY log_date
-        ORDER BY log_date
+        WHERE user_id = $1 AND "date" BETWEEN $2 AND $3
+        GROUP BY "date"
+        ORDER BY "date"
         """,
         user_id, start_date, end_date,
     )
