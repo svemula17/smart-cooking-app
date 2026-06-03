@@ -16,23 +16,31 @@ const AVATAR_SIZE = 44;
 const TABLE_RADIUS = 80; // distance of avatars from center when settled
 const CORNER_OFFSET = 0.18; // % from screen edges to start from
 
-// Avatars start at the 4 corners — diagonal sweep into the table
+// Avatars fly in from off-screen in the rough direction of their seat,
+// so they read as gathering radially toward the shared table.
 const STARTS = [
-  { x: -W * 0.4, y: -H * 0.25 }, // top-left
-  { x:  W * 0.4, y: -H * 0.25 }, // top-right
-  { x: -W * 0.4, y:  H * 0.25 }, // bottom-left
-  { x:  W * 0.4, y:  H * 0.25 }, // bottom-right
+  { x: 0,         y: -H * 0.42 }, // Cook  — from above
+  { x:  W * 0.55, y: 0         }, // Plan  — from the right
+  { x: 0,         y:  H * 0.42 }, // Share — from below
+  { x: -W * 0.55, y: 0         }, // Track — from the left
 ];
 
-// Each avatar settles at one of 4 cardinal points around the table
+// Each avatar settles at one of 4 cardinal points around the table.
+// Order matches PILLARS below: north, east, south, west.
 const SEATS = [
-  { x: -TABLE_RADIUS, y: 0  }, // west
-  { x:  TABLE_RADIUS, y: 0  }, // east
-  { x: 0, y:  TABLE_RADIUS  }, // south
-  { x: 0, y: -TABLE_RADIUS  }, // north
+  { x: 0, y: -TABLE_RADIUS  }, // north  → Cook
+  { x:  TABLE_RADIUS, y: 0  }, // east   → Plan
+  { x: 0, y:  TABLE_RADIUS  }, // south  → Share
+  { x: -TABLE_RADIUS, y: 0  }, // west   → Track
 ];
 
-const COLORS = ['primary', 'success', 'warning', 'info'] as const;
+// The app's 4 pillars — one per seat at the table.
+const PILLARS = [
+  { emoji: '🍳', label: 'Cook',  color: 'primary' },
+  { emoji: '📅', label: 'Plan',  color: 'info' },
+  { emoji: '🏡', label: 'Share', color: 'success' },
+  { emoji: '📊', label: 'Track', color: 'warning' },
+] as const;
 
 export function RoundtableSplash({ onDone }: Props) {
   const c = useThemeColors();
@@ -109,29 +117,50 @@ export function RoundtableSplash({ onDone }: Props) {
         <Text style={{ fontSize: 30, color: c.textLight }}>💨</Text>
       </Animated.View>
 
-      {/* Avatars (roommates) */}
+      {/* The 4 pillars, seated around the table */}
       {SEATS.map((seat, i) => {
+        const pillar = PILLARS[i];
         const start = STARTS[i];
         const tx = slides[i].interpolate({ inputRange: [0, 1], outputRange: [start.x, seat.x] });
         const ty = slides[i].interpolate({ inputRange: [0, 1], outputRange: [start.y, seat.y] });
         const op = slides[i].interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] });
-        const scale = slides[i].interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.5, 1.05, 1] });
-        const color = (c as any)[COLORS[i]] as string;
+        const scale = slides[i].interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.5, 1.08, 1] });
+        // Label fades in only after the pillar settles into its seat.
+        const labelOpacity = slides[i].interpolate({ inputRange: [0, 0.85, 1], outputRange: [0, 0, 1] });
+        const color = (c as any)[pillar.color] as string;
+        // Push the label outward from the table center so it doesn't overlap the plate.
+        const labelOffset = {
+          x: seat.x === 0 ? 0 : seat.x > 0 ? 30 : -30,
+          y: seat.y === 0 ? 0 : seat.y > 0 ? 34 : -34,
+        };
         return (
           <Animated.View
             key={i}
-            style={[
-              styles.avatar,
-              {
-                left: W / 2 - AVATAR_SIZE / 2,
-                top:  H / 2 - AVATAR_SIZE / 2,
-                backgroundColor: color,
-                transform: [{ translateX: tx }, { translateY: ty }, { scale }],
-                opacity: op,
-              },
-            ]}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: W / 2 - AVATAR_SIZE / 2,
+              top:  H / 2 - AVATAR_SIZE / 2,
+              transform: [{ translateX: tx }, { translateY: ty }, { scale }],
+              opacity: op,
+              alignItems: 'center',
+            }}
           >
-            <Text style={styles.avatarLetter}>{['A','B','C','D'][i]}</Text>
+            <View style={[styles.avatar, { backgroundColor: color }]}>
+              <Text style={styles.avatarEmoji}>{pillar.emoji}</Text>
+            </View>
+            <Animated.Text
+              style={[
+                styles.pillarLabel,
+                {
+                  color: c.textSecondary,
+                  opacity: labelOpacity,
+                  transform: [{ translateX: labelOffset.x }, { translateY: labelOffset.y }],
+                },
+              ]}
+            >
+              {pillar.label}
+            </Animated.Text>
           </Animated.View>
         );
       })}
@@ -150,7 +179,6 @@ export function RoundtableSplash({ onDone }: Props) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   avatar: {
-    position: 'absolute',
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
@@ -162,7 +190,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  avatarLetter: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  avatarEmoji: { fontSize: 22 },
+  pillarLabel: {
+    position: 'absolute',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   wordmarkWrap: { position: 'absolute', bottom: H * 0.18, alignSelf: 'center', alignItems: 'center', width: '100%' },
   wordmark: { fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
   tagline: { marginTop: spacing.xs, fontSize: 11, fontWeight: '600', letterSpacing: 3, textTransform: 'uppercase' },

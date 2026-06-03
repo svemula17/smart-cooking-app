@@ -61,7 +61,7 @@ const CONCEPTS: Concept[] = [
     key: 'roundtable',
     letter: 'D',
     title: 'The Roundtable',
-    pitch: '4 roommate dots fly to the table → plate appears in the middle with steam',
+    pitch: 'The 4 pillars (Cook · Plan · Share · Track) gather around the table → plate appears with steam',
     vibe: 'Roommate sharing (your moat)',
     duration: '~1.6s',
   },
