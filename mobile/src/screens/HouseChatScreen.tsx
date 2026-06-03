@@ -123,7 +123,7 @@ export default function HouseChatScreen({ navigation }: any) {
           <Button
             label="Set up a house"
             variant="primary"
-            onPress={() => navigation.navigate('HouseOnboarding')}
+            onPress={() => navigation.navigate('House')}
             style={{ marginTop: spacing.lg }}
           />
         </View>
