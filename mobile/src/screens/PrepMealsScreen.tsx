@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { ThemedStatusBar } from '../components/ThemedStatusBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,7 +26,7 @@ interface PrepMeal {
   available_until: string;
 }
 
-export default function PrepMealsScreen({ navigation }: any) {
+export default function PrepMealsScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const toast = useToast();
   const { house } = useSelector((s: RootState) => s.house);

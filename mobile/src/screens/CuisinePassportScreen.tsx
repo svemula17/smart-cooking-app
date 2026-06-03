@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { ThemedStatusBar } from '../components/ThemedStatusBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +34,7 @@ interface CuisineData {
   last_cooked: string;
 }
 
-export default function CuisinePassportScreen({ navigation }: any) {
+export default function CuisinePassportScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const { house } = useSelector((s: RootState) => s.house);
   const [unlocked, setUnlocked] = useState<string[]>([]);

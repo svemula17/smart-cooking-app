@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import type { RootState } from '../store';
+import type { AppNavigation, AppRoute } from '../types';
 import { setMyVote, setProposal, setProposalLoading } from '../store/slices/proposalSlice';
 import { houseApi } from '../services/api';
 
@@ -13,8 +14,14 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Badge, Button, Card, Header, Skeleton, useToast } from '../components/ui';
 
-export default function RecipeVoteScreen({ route, navigation }: any) {
-  const { proposalId } = route.params as { proposalId: string };
+export default function RecipeVoteScreen({
+  route,
+  navigation,
+}: {
+  route: AppRoute<'RecipeVote'>;
+  navigation: AppNavigation;
+}) {
+  const { proposalId } = route.params;
   const c = useThemeColors();
   const dispatch = useDispatch();
   const toast = useToast();
@@ -160,7 +167,7 @@ export default function RecipeVoteScreen({ route, navigation }: any) {
             fullWidth
             onPress={() =>
               navigation.navigate('RecipeDetail', {
-                recipeId: activeProposal.selected_recipe_id,
+                recipeId: activeProposal!.selected_recipe_id!,
               })
             }
             style={{ marginTop: spacing.md }}

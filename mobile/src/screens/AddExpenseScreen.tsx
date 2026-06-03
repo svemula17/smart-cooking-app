@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { AppNavigation } from '../types';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   KeyboardAvoidingView,
@@ -31,7 +32,7 @@ import {
   useToast,
 } from '../components/ui';
 
-export default function AddExpenseScreen({ navigation }: any) {
+export default function AddExpenseScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const dispatch = useDispatch();
   const toast = useToast();

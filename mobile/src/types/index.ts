@@ -1,3 +1,6 @@
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+
 // ─── Auth & User ──────────────────────────────────────────────────────────────
 
 export interface User {
@@ -187,12 +190,11 @@ export type RootStackParamList = {
   RecipeBrowser: { cuisine: string; intent?: 'rescue' | 'fast' | 'low-effort' | 'high-protein' | 'use-soon' };
   RecipeDetail: { recipeId: string };
   CookingMode: { recipeId: string };
-  RecipeSelect: { date: string; mealType: MealType };
   HouseMembers: undefined;
   CookSchedule: undefined;
   Expenses: undefined;
   AddExpense: undefined;
-  RecipeVote: undefined;
+  RecipeVote: { proposalId: string };
   Leaderboard: undefined;
   CuisinePassport: undefined;
   HouseReport: undefined;
@@ -216,6 +218,19 @@ export type TabParamList = {
   Stats:       undefined;
   Profile:     undefined;
 };
+
+// ─── Navigation helpers ───────────────────────────────────────────────────────
+// Shared, properly-typed navigation prop so screens stop using `: any` (which
+// silently allowed navigation to non-existent routes — e.g. the HouseOnboarding
+// crash). The param list merges the root stack with the tab routes, because at
+// runtime React Navigation lets a stack screen navigate to a tab (e.g.
+// navigate('House')) by bubbling up the tree. Route names are now checked at
+// compile time across both.
+export type AppParamList = RootStackParamList & TabParamList;
+export type AppNavigation = NativeStackNavigationProp<AppParamList>;
+
+/** Typed route prop for screens that read `route.params`. */
+export type AppRoute<T extends keyof RootStackParamList> = RouteProp<RootStackParamList, T>;
 
 // ─── API envelopes ────────────────────────────────────────────────────────────
 

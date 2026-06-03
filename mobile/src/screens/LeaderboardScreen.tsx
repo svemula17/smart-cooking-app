@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { ThemedStatusBar } from '../components/ThemedStatusBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +25,7 @@ interface Ranking {
 
 const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
-export default function LeaderboardScreen({ navigation }: any) {
+export default function LeaderboardScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const { house } = useSelector((s: RootState) => s.house);
   const currentUser = useSelector((s: RootState) => s.auth.user);

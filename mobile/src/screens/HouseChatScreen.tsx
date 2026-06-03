@@ -9,6 +9,7 @@
 // feedback on the UX while the real-time layer is being built.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
@@ -57,7 +58,7 @@ const SEED_MESSAGES = (houseName: string): ChatMessage[] => [
   },
 ];
 
-export default function HouseChatScreen({ navigation }: any) {
+export default function HouseChatScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const user = useSelector((s: RootState) => s.auth.user);
   const house = useSelector((s: RootState) => s.house.house);

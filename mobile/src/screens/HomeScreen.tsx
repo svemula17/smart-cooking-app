@@ -12,10 +12,9 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 
-import { RootStackParamList } from '../types';
+import type { AppNavigation } from '../types';
 import { RootState } from '../store';
 import type { CookScheduleEntry } from '../services/houseService';
 import AttendanceSheet from './AttendanceSheet';
@@ -26,7 +25,7 @@ import { typography } from '../theme/typography';
 import { Avatar, Badge, Card, IconButton } from '../components/ui';
 import { CuisineCard } from '../components/CuisineCard';
 
-type HomeNav = NativeStackNavigationProp<RootStackParamList>;
+type HomeNav = AppNavigation;
 
 const CUISINES = [
   { cuisine: 'Indian', emoji: '🍛' },
@@ -172,6 +171,13 @@ const HomeScreen: React.FC = () => {
               {userName} 👋
             </Text>
           </View>
+          <IconButton
+            icon="🔍"
+            accessibilityLabel="Search recipes"
+            onPress={() => navigation.navigate('Search')}
+            size={40}
+            style={{ marginRight: spacing.xs }}
+          />
           <Avatar name={user?.name} size={44} tone="primary" />
         </View>
 
@@ -363,7 +369,7 @@ const HomeScreen: React.FC = () => {
               style={styles.rectCard}
               // HouseOnboarding isn't a registered route — it renders inside
               // HouseScreen when the user has no house. Just open the House tab.
-              onPress={() => navigation.navigate('House' as never)}
+              onPress={() => navigation.navigate('House')}
               accessibilityLabel="Set up your house"
             >
               <View style={styles.rectHeader}>
@@ -384,7 +390,7 @@ const HomeScreen: React.FC = () => {
             elevation="card"
             padding="lg"
             style={styles.rectCard}
-            onPress={() => navigation.navigate('Pantry' as never)}
+            onPress={() => navigation.navigate('Pantry')}
             accessibilityLabel="Open pantry"
           >
             <View style={styles.rectHeader}>
@@ -418,7 +424,7 @@ const HomeScreen: React.FC = () => {
             padding="lg"
             bordered
             style={[styles.rectCard, { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
-            onPress={() => navigation.navigate('MakeNow' as never)}
+            onPress={() => navigation.navigate('MakeNow')}
             accessibilityLabel="What can I make right now"
           >
             <View style={styles.rectHeader}>

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
+import type { AppNavigation } from '../types';
 
 import type { PantryItem } from '../services/pantryService';
 import { RootState } from '../store';
@@ -82,7 +83,7 @@ const EMPTY_FORM: ItemForm = {
 
 export function PantryScreen() {
   const c = useThemeColors();
-  const navigation = useNavigation();
+  const navigation = useNavigation<AppNavigation>();
   const dispatch = useDispatch();
   const toast = useToast();
 
@@ -199,7 +200,7 @@ export function PantryScreen() {
               label="📷 Scan"
               size="sm"
               variant="secondary"
-              onPress={() => navigation.navigate('ScanReceipt' as never)}
+              onPress={() => navigation.navigate('ScanReceipt')}
             />
             <Button label="+ Add" size="sm" onPress={openAdd} />
           </View>

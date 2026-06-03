@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
@@ -43,7 +44,7 @@ const formatDate = (iso: string): string => {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
-export default function CookScheduleScreen({ navigation }: any) {
+export default function CookScheduleScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const dispatch = useDispatch();
   const toast = useToast();

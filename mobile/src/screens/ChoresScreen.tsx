@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   FlatList,
@@ -460,7 +461,7 @@ function DutyRow({
   );
 }
 
-export default function ChoresScreen({ navigation }: any) {
+export default function ChoresScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const { house, members } = useSelector((s: RootState) => s.house);
   const currentUser = useSelector((s: RootState) => s.auth.user);

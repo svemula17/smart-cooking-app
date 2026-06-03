@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import { aiService } from '../services/aiService';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, AppNavigation } from '../types';
 import type { RootState } from '../store';
 
 import { useThemeColors } from '../theme/useThemeColors';
@@ -104,7 +104,7 @@ const SUGGESTIONS = [
   'Help me use up my vegetables',
 ];
 
-export function AIChatScreen({ navigation }: any): React.JSX.Element {
+export function AIChatScreen({ navigation }: { navigation: AppNavigation }): React.JSX.Element {
   const c = useThemeColors();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');

@@ -27,6 +27,7 @@ import { Share } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import type { RootState } from '../store';
+import type { AppNavigation, RootStackParamList } from '../types';
 import { setHouse, setHouseError, setHouseLoading } from '../store/slices/houseSlice';
 import { setSchedule } from '../store/slices/cookScheduleSlice';
 import { setBalances, setExpenses } from '../store/slices/expenseSlice';
@@ -188,7 +189,7 @@ function MyChoreToday({
 
 // ─── screen ──────────────────────────────────────────────────────────────────
 
-export default function HouseScreen({ navigation }: any) {
+export default function HouseScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const dispatch = useDispatch();
   const { house, members, isLoading } = useSelector((s: RootState) => s.house);
@@ -290,7 +291,7 @@ export default function HouseScreen({ navigation }: any) {
           label="Cook"
           size="sm"
           onPress={() =>
-            navigation.navigate('CookingMode', { recipeId: todayEntry.recipe_id })
+            navigation.navigate('CookingMode', { recipeId: todayEntry.recipe_id! })
           }
           hapticStyle="medium"
         />
@@ -352,7 +353,7 @@ export default function HouseScreen({ navigation }: any) {
   );
 
   // ─── more grid ─────────────────────────────────────────────────────────────
-  const moreLinks: { label: string; emoji: string; screen: string }[] = [
+  const moreLinks: { label: string; emoji: string; screen: keyof RootStackParamList }[] = [
     { label: 'Chores',     emoji: '🧹', screen: 'Chores' },
     { label: 'Expenses',   emoji: '💸', screen: 'Expenses' },
     { label: 'Members',    emoji: '👥', screen: 'HouseMembers' },
@@ -602,7 +603,11 @@ export default function HouseScreen({ navigation }: any) {
                 radius="lg"
                 padding="md"
                 elevation="flat"
-                onPress={() => navigation.navigate(link.screen)}
+                // `screen` is typed `keyof RootStackParamList`, so bad route
+                // names are caught in the moreLinks array above. The `as never`
+                // only bridges RN's per-literal navigate() overloads for a
+                // data-driven (dynamic) route name.
+                onPress={() => navigation.navigate(link.screen as never)}
                 accessibilityLabel={link.label}
                 style={styles.moreTile}
               >

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   RefreshControl,
@@ -30,7 +31,7 @@ interface Report {
   total_waste: number;
 }
 
-export default function HouseReportScreen({ navigation }: any) {
+export default function HouseReportScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const { house } = useSelector((s: RootState) => s.house);
   const [report, setReport] = useState<Report | null>(null);

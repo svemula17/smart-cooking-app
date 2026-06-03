@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { AppNavigation } from '../types';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   Alert,
@@ -57,7 +58,7 @@ const monthLabel = (ym: string): string => {
   return d.toLocaleDateString([], { month: 'long', year: 'numeric' });
 };
 
-export default function ExpensesScreen({ navigation }: any) {
+export default function ExpensesScreen({ navigation }: { navigation: AppNavigation }) {
   const c = useThemeColors();
   const dispatch = useDispatch();
   const toast = useToast();
