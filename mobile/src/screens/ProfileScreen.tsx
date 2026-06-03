@@ -337,6 +337,20 @@ export function ProfileScreen(): React.JSX.Element {
           </View>
         </Card>
 
+        {/* Lab — playground for experimental UI */}
+        <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
+          <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>Lab</Text>
+          <TouchableOpacity
+            style={styles.row}
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('SplashPrototypes' as never)}
+          >
+            <Text style={{ fontSize: 18, marginRight: spacing.sm }}>🎬</Text>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>Splash animation prototypes</Text>
+            <Text style={[typography.body, { color: c.textSecondary }]}>›</Text>
+          </TouchableOpacity>
+        </Card>
+
         {/* Legal */}
         <Card surface="surface" radius="xl" padding="lg" elevation="card" bordered style={styles.block}>
           <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>Legal</Text>

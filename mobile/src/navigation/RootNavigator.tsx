@@ -30,6 +30,7 @@ import HouseChatScreen from '../screens/HouseChatScreen';
 import AIChatScreen from '../screens/AIChatScreen';
 import MakeNowScreen from '../screens/MakeNowScreen';
 import ScanReceiptScreen from '../screens/ScanReceiptScreen';
+import SplashPrototypesScreen from '../screens/SplashPrototypesScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
 import { useThemeColors } from '../theme/useThemeColors';
@@ -229,6 +230,11 @@ export function RootNavigator(): React.JSX.Element {
         name="ScanReceipt"
         component={ScanReceiptScreen as AnyComponent}
         options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="SplashPrototypes"
+        component={SplashPrototypesScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );
