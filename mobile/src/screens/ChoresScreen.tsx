@@ -48,6 +48,28 @@ const formatDate = (iso: string): string => {
 
 const EMOJI_PICKS = ['🧽', '🪣', '🧺', '🪴', '🗑️', '🚽', '🪟', '💡', '🔧', '📦'];
 
+// Common chores — one tap fills name + emoji + sensible frequency.
+const CHORE_PRESETS: { name: string; emoji: string; frequency: 'daily' | 'weekly' }[] = [
+  { name: 'Dishes',         emoji: '🍽️', frequency: 'daily' },
+  { name: 'House Cleaning', emoji: '🧹', frequency: 'weekly' },
+  { name: 'Trash',          emoji: '🗑️', frequency: 'daily' },
+  { name: 'Laundry',        emoji: '🧺', frequency: 'weekly' },
+  { name: 'Bathroom',       emoji: '🚽', frequency: 'weekly' },
+  { name: 'Vacuum',         emoji: '🧹', frequency: 'weekly' },
+  { name: 'Groceries',      emoji: '🛒', frequency: 'weekly' },
+];
+
+// Next N days as selectable options for manual scheduling.
+function nextDays(n: number): { iso: string; label: string }[] {
+  const out: { iso: string; label: string }[] = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    out.push({ iso: d.toISOString().slice(0, 10), label: formatDate(d.toISOString().slice(0, 10)) });
+  }
+  return out;
+}
+
 function AddChoreSheet({
   visible,
   houseId,
@@ -89,15 +111,35 @@ function AddChoreSheet({
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="New chore" height={520}>
+    <Sheet visible={visible} onClose={onClose} title="New chore" height={560}>
       <View style={{ gap: spacing.md }}>
+        <View>
+          <Text style={[typography.label, { color: c.textSecondary, marginBottom: spacing.xs }]}>
+            Quick pick
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {CHORE_PRESETS.map((p) => (
+                <Chip
+                  key={p.name}
+                  label={`${p.emoji} ${p.name}`}
+                  selected={name === p.name && emoji === p.emoji}
+                  onPress={() => {
+                    setName(p.name);
+                    setEmoji(p.emoji);
+                    setFreq(p.frequency);
+                  }}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
         <TextField
           label="Name"
           placeholder="e.g. Take out trash"
           value={name}
           onChangeText={setName}
           maxLength={50}
-          autoFocus
         />
         <View>
           <Text style={[typography.label, { color: c.textSecondary, marginBottom: spacing.xs }]}>
@@ -148,6 +190,122 @@ function AddChoreSheet({
           fullWidth
           size="lg"
           style={{ marginTop: spacing.md }}
+        />
+      </View>
+    </Sheet>
+  );
+}
+
+function ScheduleChoreSheet({
+  visible,
+  houseId,
+  choreTypes,
+  members,
+  onClose,
+  onScheduled,
+}: {
+  visible: boolean;
+  houseId: string;
+  choreTypes: ChoreType[];
+  members: { user_id: string; name: string }[];
+  onClose: () => void;
+  onScheduled: (entry: ChoreEntry) => void;
+}) {
+  const c = useThemeColors();
+  const toast = useToast();
+  const [typeId, setTypeId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [date, setDate] = useState<string>(TODAY);
+  const [loading, setLoading] = useState(false);
+
+  const days = nextDays(14);
+
+  const handleAssign = async () => {
+    if (!typeId) return toast.show('Pick a chore', 'warning');
+    if (!userId) return toast.show('Pick who does it', 'warning');
+    setLoading(true);
+    try {
+      const entry = await houseService.assignChore(houseId, {
+        chore_type_id: typeId,
+        user_id: userId,
+        scheduled_date: date,
+      });
+      onScheduled(entry);
+      setTypeId(null);
+      setUserId(null);
+      setDate(TODAY);
+      onClose();
+      toast.show('Chore scheduled', 'success');
+    } catch (e: any) {
+      toast.show(e?.response?.data?.error?.message ?? 'Could not schedule', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const Label = ({ children }: { children: string }) => (
+    <Text style={[typography.label, { color: c.textSecondary, marginBottom: spacing.xs }]}>
+      {children}
+    </Text>
+  );
+
+  return (
+    <Sheet visible={visible} onClose={onClose} title="Schedule a chore" height={560}>
+      <View style={{ gap: spacing.lg }}>
+        <View>
+          <Label>Chore</Label>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {choreTypes.map((ct) => (
+                <Chip
+                  key={ct.id}
+                  label={`${ct.emoji} ${ct.name}`}
+                  selected={typeId === ct.id}
+                  onPress={() => setTypeId(ct.id)}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        <View>
+          <Label>Who</Label>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {members.map((m) => (
+                <Chip
+                  key={m.user_id}
+                  label={m.name}
+                  selected={userId === m.user_id}
+                  onPress={() => setUserId(m.user_id)}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        <View>
+          <Label>When</Label>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {days.map((d) => (
+                <Chip
+                  key={d.iso}
+                  label={d.label}
+                  selected={date === d.iso}
+                  onPress={() => setDate(d.iso)}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        <Button
+          label="Schedule chore"
+          onPress={handleAssign}
+          loading={loading}
+          fullWidth
+          size="lg"
         />
       </View>
     </Sheet>
@@ -472,6 +630,8 @@ export default function ChoresScreen({ navigation }: { navigation: AppNavigation
   const [choreTypes, setChoreTypes] = useState<ChoreType[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleVersion, setScheduleVersion] = useState(0); // bump → active tab refetches
   const [loading, setLoading] = useState(true);
 
   const isAdmin = members.find((m) => m.user_id === currentUser?.id)?.role === 'admin';
@@ -512,15 +672,23 @@ export default function ChoresScreen({ navigation }: { navigation: AppNavigation
         title="House chores"
         onBack={() => navigation.goBack()}
         right={
-          isAdmin ? (
+          <View style={{ flexDirection: 'row', gap: spacing.xs, alignItems: 'center' }}>
             <IconButton
-              icon="+"
+              icon="📅"
               size={36}
-              variant="filled"
-              accessibilityLabel="Add chore"
-              onPress={() => setShowAdd(true)}
+              accessibilityLabel="Schedule a chore"
+              onPress={() => setShowSchedule(true)}
             />
-          ) : null
+            {isAdmin ? (
+              <IconButton
+                icon="+"
+                size={36}
+                variant="filled"
+                accessibilityLabel="Add chore type"
+                onPress={() => setShowAdd(true)}
+              />
+            ) : null}
+          </View>
         }
         border
       />
@@ -546,13 +714,14 @@ export default function ChoresScreen({ navigation }: { navigation: AppNavigation
       {!loading ? (
         activeTab === 0 ? (
           <TodayTab
+            key={`today-${scheduleVersion}`}
             houseId={house.id}
             currentUserId={currentUser?.id ?? ''}
             cookToday={cookToday}
           />
         ) : (
           <ChoreScheduleTab
-            key={choreTypes[activeTab - 1]?.id}
+            key={`${choreTypes[activeTab - 1]?.id}-${scheduleVersion}`}
             houseId={house.id}
             choreType={choreTypes[activeTab - 1]!}
             currentUserId={currentUser?.id ?? ''}
@@ -566,6 +735,15 @@ export default function ChoresScreen({ navigation }: { navigation: AppNavigation
         houseId={house.id}
         onClose={() => setShowAdd(false)}
         onCreated={(ct) => setChoreTypes((prev) => [...prev, ct])}
+      />
+
+      <ScheduleChoreSheet
+        visible={showSchedule}
+        houseId={house.id}
+        choreTypes={choreTypes}
+        members={members.map((m) => ({ user_id: m.user_id, name: m.name }))}
+        onClose={() => setShowSchedule(false)}
+        onScheduled={() => setScheduleVersion((v) => v + 1)}
       />
     </SafeAreaView>
   );

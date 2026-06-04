@@ -215,6 +215,15 @@ export async function deleteChoreType(houseId: string, typeId: string): Promise<
   await houseApi.delete(`/houses/${houseId}/chore-types/${typeId}`);
 }
 
+/** Manually assign a single chore to a member on a specific date. */
+export async function assignChore(
+  houseId: string,
+  params: { chore_type_id: string; user_id: string; scheduled_date: string; notes?: string },
+): Promise<ChoreEntry> {
+  const { data } = await houseApi.post(`/houses/${houseId}/chores`, params);
+  return data.data.chore;
+}
+
 export async function generateChoreSchedule(
   houseId: string,
   typeId: string,
