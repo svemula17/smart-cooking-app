@@ -160,6 +160,63 @@ export async function generateChoreSchedule(req: Request, res: Response, next: N
   } catch (err) { next(err); }
 }
 
+// ── Manual Assignment ─────────────────────────────────────────────────────────
+
+const assignSchema = Joi.object({
+  chore_type_id:  Joi.string().uuid().required(),
+  user_id:        Joi.string().uuid().required(),
+  scheduled_date: Joi.string().isoDate().required(),
+  notes:          Joi.string().max(500).allow(null, ''),
+});
+
+/**
+ * Manually schedule a single chore: assign a chore type to a specific member
+ * on a specific date. Complements generateChoreSchedule (auto-rotation).
+ * Returns the new entry in the same joined shape as getChoreSchedule.
+ */
+export async function assignChore(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const { error, value } = assignSchema.validate(req.body);
+  if (error) return next(Errors.validationError(error.details));
+  const { houseId } = req.params;
+
+  try {
+    // Chore type must belong to this house
+    const typeRow = await pool.query(
+      'SELECT id FROM house_chore_types WHERE id = $1 AND house_id = $2',
+      [value.chore_type_id, houseId],
+    );
+    if (typeRow.rows.length === 0) return next(Errors.notFound('Chore type not found'));
+
+    // Assignee must be a member of this house
+    const memberRow = await pool.query(
+      'SELECT user_id FROM house_members WHERE house_id = $1 AND user_id = $2',
+      [houseId, value.user_id],
+    );
+    if (memberRow.rows.length === 0) return next(Errors.notFound('Assignee is not a house member'));
+
+    const ins = await pool.query(
+      `INSERT INTO chore_schedule (house_id, chore_type_id, user_id, scheduled_date, notes)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [houseId, value.chore_type_id, value.user_id, value.scheduled_date, value.notes ?? null],
+    );
+
+    const { rows } = await pool.query(
+      `SELECT cs.*,
+              u.name  AS assignee_name,
+              ct.name AS chore_name,
+              ct.emoji,
+              ct.frequency
+       FROM chore_schedule cs
+       JOIN users u              ON u.id  = cs.user_id
+       JOIN house_chore_types ct ON ct.id = cs.chore_type_id
+       WHERE cs.id = $1`,
+      [ins.rows[0].id],
+    );
+
+    res.status(201).json({ success: true, data: { chore: rows[0] } });
+  } catch (err) { next(err); }
+}
+
 // ── Schedule Queries ──────────────────────────────────────────────────────────
 
 export async function getChoreSchedule(req: Request, res: Response, next: NextFunction): Promise<void> {

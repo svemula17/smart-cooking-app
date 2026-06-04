@@ -14,7 +14,7 @@ import { getLeaderboard, getCuisinePassport, getWeeklyReport } from '../controll
 import { getAchievements } from '../controllers/achievement.controller';
 import {
   listChoreTypes, createChoreType, deleteChoreType,
-  generateChoreSchedule, getChoreSchedule, updateChoreEntry, swapChore,
+  generateChoreSchedule, getChoreSchedule, updateChoreEntry, swapChore, assignChore,
 } from '../controllers/chore.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import { requireHouseAdmin, requireHouseMember } from '../middleware/houseMember.middleware';
@@ -97,6 +97,7 @@ router.delete('/:houseId/chore-types/:typeId',         requireHouseAdmin,  delet
 
 // Chore Schedule
 router.post('/:houseId/chores/:typeId/generate',       requireHouseMember, generateChoreSchedule);
+router.post('/:houseId/chores',                        requireHouseMember, assignChore);
 router.get('/:houseId/chores',                         requireHouseMember, getChoreSchedule);
 router.patch('/:houseId/chores/:choreId',              requireHouseMember, updateChoreEntry);
 router.put('/:houseId/chores/:choreId/swap',           requireHouseMember, swapChore);
