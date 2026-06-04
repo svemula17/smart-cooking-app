@@ -12,15 +12,16 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
 import { mealPlanService } from '../services/mealPlanService';
 import { scheduleMealReminders } from '../services/reminderService';
 import { recipeService } from '../services/recipeService';
+import * as shoppingService from '../services/shoppingService';
 import { getRecipeImage } from '../utils/recipeImages';
-import type { MealPlan, MealType, Recipe } from '../types';
+import type { MealPlan, MealType, Recipe, AppNavigation } from '../types';
 import type { RootState } from '../store';
 
 import { useThemeColors } from '../theme/useThemeColors';
@@ -377,6 +378,8 @@ export function MealPlannerScreen(): React.JSX.Element {
   const [houseMode, setHouseMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selecting, setSelecting] = useState<{ date: string; mealType: MealType } | null>(null);
+  const [buildingList, setBuildingList] = useState(false);
+  const navigation = useNavigation<AppNavigation>();
   const qc = useQueryClient();
 
   const weekDates = getWeekDates();
@@ -445,6 +448,27 @@ export function MealPlannerScreen(): React.JSX.Element {
     return acc;
   }, {});
 
+  // Build a shopping list from every recipe planned this week, then open it.
+  const recipeIds = Array.from(new Set(plans.map((p) => p.recipe_id).filter(Boolean))) as string[];
+  const handleBuildShoppingList = async () => {
+    if (recipeIds.length === 0) {
+      toast.show('Plan some meals first', 'warning');
+      return;
+    }
+    setBuildingList(true);
+    try {
+      const list = await shoppingService.generateFromRecipes(
+        `Meal plan · ${weekDates[0]}`,
+        recipeIds,
+      );
+      navigation.navigate('ShoppingList', { listId: list.id });
+    } catch {
+      toast.show('Could not build shopping list', 'error');
+    } finally {
+      setBuildingList(false);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <ThemedStatusBar />
@@ -466,6 +490,19 @@ export function MealPlannerScreen(): React.JSX.Element {
           />
         ) : null}
       </View>
+
+      {plans.length > 0 ? (
+        <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
+          <Button
+            label={`🛒 Shopping list (${recipeIds.length} recipe${recipeIds.length === 1 ? '' : 's'})`}
+            variant="secondary"
+            size="md"
+            fullWidth
+            loading={buildingList}
+            onPress={handleBuildShoppingList}
+          />
+        </View>
+      ) : null}
 
       {!user ? (
         <EmptyState

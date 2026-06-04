@@ -207,6 +207,7 @@ export type RootStackParamList = {
   AIChat: undefined;
   MakeNow: undefined;
   ScanReceipt: undefined;
+  ShoppingList: { listId: string };
   SplashPrototypes: undefined;
 };
 

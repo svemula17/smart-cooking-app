@@ -140,6 +140,7 @@ export const recipeApi     = makeClient(API_URLS.recipe);
 export const nutritionApi  = makeClient(API_URLS.nutrition);
 export const aiApi         = makeClient(API_URLS.ai);
 export const houseApi      = makeClient(API_URLS.house);
+export const shoppingApi   = makeClient(API_URLS.shopping);
 
 // Keep a sync-accessible token for hot-path needs (set after login)
 let _token: string | null = null;

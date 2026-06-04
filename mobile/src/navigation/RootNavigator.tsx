@@ -11,6 +11,7 @@ import HomeScreen from '../screens/HomeScreen';
 import RecipeBrowserScreen from '../screens/RecipeBrowserScreen';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
+import ShoppingListScreen from '../screens/ShoppingListScreen';
 import { CookingModeScreen } from '../screens/CookingModeScreen';
 import { MealPlannerScreen } from '../screens/MealPlannerScreen';
 import { MonthlyTrackingScreen } from '../screens/MonthlyTrackingScreen';
@@ -156,6 +157,11 @@ export function RootNavigator(): React.JSX.Element {
         name="Search"
         component={SearchScreen as AnyComponent}
         options={{ animation: 'fade' }}
+      />
+      <Stack.Screen
+        name="ShoppingList"
+        component={ShoppingListScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="RecipeDetail"
