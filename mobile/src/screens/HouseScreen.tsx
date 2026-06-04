@@ -357,8 +357,6 @@ export default function HouseScreen({ navigation }: { navigation: AppNavigation 
     { label: 'Chores',     emoji: '🧹', screen: 'Chores' },
     { label: 'Expenses',   emoji: '💸', screen: 'Expenses' },
     { label: 'Members',    emoji: '👥', screen: 'HouseMembers' },
-    { label: 'Leaderboard',emoji: '🏆', screen: 'Leaderboard' },
-    { label: 'Passport',   emoji: '🌍', screen: 'CuisinePassport' },
     { label: 'Report',     emoji: '📊', screen: 'HouseReport' },
     { label: 'Meal prep',  emoji: '🍱', screen: 'PrepMeals' },
     { label: 'Schedule',   emoji: '📅', screen: 'CookSchedule' },
