@@ -9,6 +9,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -474,6 +475,15 @@ export function MealPlannerScreen(): React.JSX.Element {
       <ThemedStatusBar />
 
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{ marginRight: spacing.sm }}
+        >
+          <Text style={{ fontSize: 28, color: c.text, lineHeight: 30 }}>‹</Text>
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[typography.h1, { color: c.text }]}>
             {houseMode ? 'House plan' : 'Meal plan'}

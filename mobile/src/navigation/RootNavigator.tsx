@@ -54,7 +54,6 @@ interface TabIconConfig {
 const TAB_CONFIG: Record<string, TabIconConfig> = {
   Home: { emoji: '🏡', label: 'Home', a11y: 'Home tab' },
   House: { emoji: '👨‍👩‍👧', label: 'House', a11y: 'Household tab' },
-  MealPlanner: { emoji: '📅', label: 'Meals', a11y: 'Meal planner tab' },
   Pantry: { emoji: '🥫', label: 'Pantry', a11y: 'Pantry tab' },
   Stats: { emoji: '📊', label: 'Stats', a11y: 'Stats tab' },
   Profile: { emoji: '👤', label: 'You', a11y: 'Profile tab' },
@@ -122,7 +121,6 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen as AnyComponent} />
       <Tab.Screen name="House" component={HouseScreen as AnyComponent} />
-      <Tab.Screen name="MealPlanner" component={MealPlannerScreen as AnyComponent} />
       <Tab.Screen name="Pantry" component={PantryScreen as AnyComponent} />
       <Tab.Screen name="Stats" component={MonthlyTrackingScreen as AnyComponent} />
       <Tab.Screen name="Profile" component={ProfileScreen as AnyComponent} />
@@ -157,6 +155,11 @@ export function RootNavigator(): React.JSX.Element {
         name="Search"
         component={SearchScreen as AnyComponent}
         options={{ animation: 'fade' }}
+      />
+      <Stack.Screen
+        name="MealPlanner"
+        component={MealPlannerScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="ShoppingList"

@@ -208,13 +208,13 @@ export type RootStackParamList = {
   MakeNow: undefined;
   ScanReceipt: undefined;
   ShoppingList: { listId: string };
+  MealPlanner: undefined;
   SplashPrototypes: undefined;
 };
 
 export type TabParamList = {
   Home:        undefined;
   House:       undefined;
-  MealPlanner: undefined;
   Pantry:      undefined;
   Stats:       undefined;
   Profile:     undefined;

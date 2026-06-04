@@ -354,6 +354,7 @@ export default function HouseScreen({ navigation }: { navigation: AppNavigation 
 
   // ─── more grid ─────────────────────────────────────────────────────────────
   const moreLinks: { label: string; emoji: string; screen: keyof RootStackParamList }[] = [
+    { label: 'Meal plan',  emoji: '🗓️', screen: 'MealPlanner' },
     { label: 'Chores',     emoji: '🧹', screen: 'Chores' },
     { label: 'Expenses',   emoji: '💸', screen: 'Expenses' },
     { label: 'Members',    emoji: '👥', screen: 'HouseMembers' },

@@ -440,6 +440,28 @@ const HomeScreen: React.FC = () => {
               Find recipes →
             </Text>
           </Card>
+
+          {/* 5) Plan your week — meal planner (moved out of the tab bar) */}
+          <Card
+            surface="surface"
+            radius="xl"
+            elevation="card"
+            padding="lg"
+            style={styles.rectCard}
+            onPress={() => navigation.navigate('MealPlanner')}
+            accessibilityLabel="Plan your meals"
+          >
+            <View style={styles.rectHeader}>
+              <Text style={styles.bigEmoji}>🗓️</Text>
+              <Text style={[typography.h4, { color: c.text }]}>Plan your week</Text>
+            </View>
+            <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.xs }]}>
+              Schedule meals for the next 7 days, then build a shopping list in one tap.
+            </Text>
+            <Text style={[styles.rectCta, { color: c.primary, marginTop: spacing.md }]}>
+              Open meal plan →
+            </Text>
+          </Card>
         </ScrollView>
 
         {/* Cuisines */}
