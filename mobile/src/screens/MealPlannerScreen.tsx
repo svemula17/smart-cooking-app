@@ -346,10 +346,17 @@ function RecipeSelectSheet({
           ItemSeparatorComponent={() => (
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.border }} />
           )}
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            // Prefer the recipe's remote photo (DB image_url), fall back to a
+            // bundled asset, then an emoji — same precedence as RecipeCard.
+            const remoteUrl =
+              item.image_url && /^https?:\/\//i.test(item.image_url) ? item.image_url : null;
+            const localImage = getRecipeImage(item.name);
+            const imageSource = remoteUrl ? { uri: remoteUrl } : localImage;
+            return (
             <View style={styles.selectRow}>
-              {getRecipeImage(item.name) ? (
-                <Image source={getRecipeImage(item.name)!} style={styles.selectThumb} />
+              {imageSource ? (
+                <Image source={imageSource} style={styles.selectThumb} />
               ) : (
                 <View style={[styles.selectThumb, { backgroundColor: c.surfaceMuted, alignItems: 'center', justifyContent: 'center' }]}>
                   <Text style={{ fontSize: 20 }}>🍽️</Text>
@@ -363,7 +370,8 @@ function RecipeSelectSheet({
               </View>
               <Button label="Add" size="sm" onPress={() => onSelect(item.id)} />
             </View>
-          )}
+            );
+          }}
         />
       )}
     </Sheet>

@@ -502,7 +502,7 @@ const HomeScreen: React.FC = () => {
         style={[
           styles.aiFab,
           {
-            backgroundColor: c.primary,
+            backgroundColor: c.secondary,
             shadowColor: '#000',
           },
         ]}

@@ -75,14 +75,12 @@ export const CuisineCard: React.FC<CuisineCardProps> = ({ cuisine, emoji, onPres
           />
           <View style={[styles.tint, { backgroundColor: tint }]} />
           <View style={styles.content}>
-            <Text style={styles.emoji}>{emoji}</Text>
             <Text style={styles.name}>{cuisine}</Text>
           </View>
         </View>
       ) : (
         <View style={[styles.bg, { backgroundColor: colors.surfaceMuted }]}>
           <View style={styles.content}>
-            <Text style={styles.emoji}>{emoji}</Text>
             <Text style={[styles.name, { color: colors.text }]}>{cuisine}</Text>
           </View>
         </View>
