@@ -10,6 +10,27 @@ export interface AuthResponse {
   refreshToken?: string;
 }
 
+// The user-service returns tokens NESTED under `tokens`
+// ({ user, tokens: { accessToken, refreshToken } }). Older builds returned
+// them flat. We normalize to the flat AuthResponse the app uses everywhere —
+// reading the nested shape wrong is what silently broke auth (tokens never
+// got stored, so every authenticated request 401'd even though the UI looked
+// logged in). Tolerate both shapes so a future change can't regress this.
+interface RawAuthResponse {
+  user: User;
+  tokens?: { accessToken?: string; refreshToken?: string };
+  accessToken?: string;
+  refreshToken?: string;
+}
+
+function normalizeAuth(raw: RawAuthResponse): AuthResponse {
+  return {
+    user: raw.user,
+    accessToken: raw.tokens?.accessToken ?? raw.accessToken ?? '',
+    refreshToken: raw.tokens?.refreshToken ?? raw.refreshToken,
+  };
+}
+
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 async function persistAuth(data: AuthResponse): Promise<void> {
@@ -29,23 +50,23 @@ export const authService = {
     email: string,
     password: string,
   ): Promise<AuthResponse> {
-    const res = await userApi.post<{ data: AuthResponse }>('/auth/register', {
+    const res = await userApi.post<{ data: RawAuthResponse }>('/auth/register', {
       name,
       email,
       password,
     });
-    const data = res.data.data;
+    const data = normalizeAuth(res.data.data);
     await persistAuth(data);
     return data;
   },
 
   /** Log in with email + password */
   async login(email: string, password: string): Promise<AuthResponse> {
-    const res = await userApi.post<{ data: AuthResponse }>('/auth/login', {
+    const res = await userApi.post<{ data: RawAuthResponse }>('/auth/login', {
       email,
       password,
     });
-    const data = res.data.data;
+    const data = normalizeAuth(res.data.data);
     await persistAuth(data);
     return data;
   },
