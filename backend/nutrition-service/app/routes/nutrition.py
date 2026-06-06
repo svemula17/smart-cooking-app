@@ -266,16 +266,17 @@ async def get_monthly_stats(
         start_date = date_type(today.year, today.month, 1)
         end_date = today
 
-    # Fetch user goals
+    # Fetch user goals. NB: user_preferences uses daily_* column names
+    # (daily_calories, daily_protein, …), not *_goal.
     goal_row = await pool.fetchrow(
-        "SELECT calories_goal, protein_goal, carbs_goal, fat_goal FROM user_preferences WHERE user_id = $1",
+        "SELECT daily_calories, daily_protein, daily_carbs, daily_fat FROM user_preferences WHERE user_id = $1",
         user_id,
     )
     goals = {
-        "calories": float(goal_row["calories_goal"]) if goal_row else 2000.0,
-        "protein":  float(goal_row["protein_goal"])  if goal_row else 150.0,
-        "carbs":    float(goal_row["carbs_goal"])    if goal_row else 250.0,
-        "fat":      float(goal_row["fat_goal"])      if goal_row else 65.0,
+        "calories": float(goal_row["daily_calories"]) if goal_row else 2000.0,
+        "protein":  float(goal_row["daily_protein"])  if goal_row else 150.0,
+        "carbs":    float(goal_row["daily_carbs"])    if goal_row else 250.0,
+        "fat":      float(goal_row["daily_fat"])      if goal_row else 65.0,
     }
 
     # Fetch raw daily aggregates
