@@ -7,7 +7,13 @@ import { calculateNetBalances, simplifyDebts } from '../utils/balanceCalculator'
 const createSchema = Joi.object({
   amount: Joi.number().positive().max(99999).required(),
   description: Joi.string().trim().min(1).max(255).required(),
-  category: Joi.string().valid('groceries', 'utilities', 'household', 'other').default('groceries'),
+  // Must stay in sync with mobile/src/utils/expenseCategories.ts
+  category: Joi.string()
+    .valid(
+      'groceries', 'rent', 'utilities', 'internet', 'subscriptions',
+      'gas', 'insurance', 'trash', 'transport', 'household', 'other',
+    )
+    .default('groceries'),
   paid_by: Joi.string().uuid().required(),
   split_user_ids: Joi.array().items(Joi.string().uuid()).min(1).required(),
   custom_splits: Joi.object().pattern(Joi.string().uuid(), Joi.number().positive()),
