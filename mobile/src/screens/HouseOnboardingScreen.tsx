@@ -23,16 +23,17 @@ export default function HouseOnboardingScreen() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Local-only fallback so the user can demo the rest of the house flow even
-  // when not signed in (or when the backend is unreachable). Generates a
-  // deterministic mock house with a friendly invite code.
-  const buildMockHouse = (houseName: string) => ({
-    id: `local-${Date.now()}`,
-    name: houseName,
-    invite_code: 'DEMO' + Math.random().toString(36).slice(2, 5).toUpperCase(),
-    created_by: 'local-user',
-    created_at: new Date().toISOString(),
-  });
+  // Surface a clear, actionable error. A 401 / network failure used to fall
+  // back to a fake "offline preview" house with a local-only id — but every
+  // house feature (schedule, chores, expenses) then hit the API with that
+  // bogus id and failed ("Could not load schedule"), which was far more
+  // confusing than just telling the user to sign in.
+  const explainError = (e: any, fallback: string): string => {
+    const status = e?.response?.status;
+    if (status === 401) return 'Please sign in again to use house features.';
+    if (!e?.response) return 'No connection. Check your internet and try again.';
+    return e?.response?.data?.error?.message ?? fallback;
+  };
 
   const handleCreate = async () => {
     if (!name.trim()) return Alert.alert('Enter a house name');
@@ -42,16 +43,7 @@ export default function HouseOnboardingScreen() {
       dispatch(setHouse({ house: result.house, members: [] }));
       toast.show('House created', 'success');
     } catch (e: any) {
-      const status = e?.response?.status;
-      // 401 = unauthenticated (guest mode). Use local mock so the user can
-      // still preview the in-app house flow.
-      if (status === 401 || !e?.response) {
-        const house = buildMockHouse(name.trim());
-        dispatch(setHouse({ house: house as any, members: [] }));
-        toast.show('House created (offline preview)', 'success');
-      } else {
-        toast.show(e?.response?.data?.error?.message ?? 'Could not create house', 'error');
-      }
+      toast.show(explainError(e, 'Could not create house'), 'error');
     } finally {
       setLoading(false);
     }
@@ -68,15 +60,7 @@ export default function HouseOnboardingScreen() {
       dispatch(setHouse({ house: result.house, members: result.members }));
       toast.show('Joined house', 'success');
     } catch (e: any) {
-      const status = e?.response?.status;
-      if (status === 401 || !e?.response) {
-        // Same offline-preview fallback for join.
-        const house = buildMockHouse(`House ${code.trim()}`);
-        dispatch(setHouse({ house: house as any, members: [] }));
-        toast.show('Joined (offline preview)', 'success');
-      } else {
-        toast.show(e?.response?.data?.error?.message ?? 'Invalid invite code', 'error');
-      }
+      toast.show(explainError(e, 'Invalid invite code'), 'error');
     } finally {
       setLoading(false);
     }
