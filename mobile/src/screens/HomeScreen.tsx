@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   RefreshControl,
@@ -12,10 +12,11 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 
 import type { AppNavigation } from '../types';
-import { RootState } from '../store';
+import { RootState, type AppDispatch, setPreferences } from '../store';
+import { userService } from '../services/userService';
 import type { CookScheduleEntry } from '../services/houseService';
 import AttendanceSheet from './AttendanceSheet';
 
@@ -111,6 +112,7 @@ const ringCenter = {
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNav>();
   const c = useThemeColors();
+  const dispatch = useDispatch<AppDispatch>();
   const isDark = useSelector((s: RootState) => s.settings.isDark);
 
   const user = useSelector((s: RootState) => s.auth.user);
@@ -128,6 +130,16 @@ const HomeScreen: React.FC = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 600);
   }, []);
+
+  // Load macro goals into the store on entry so the rings reflect real goals
+  // (preferences aren't otherwise fetched until you open Profile).
+  useEffect(() => {
+    if (!user) return;
+    userService
+      .getPreferences()
+      .then((p) => p && dispatch(setPreferences(p)))
+      .catch(() => {});
+  }, [user, dispatch]);
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const todayEntry: CookScheduleEntry | undefined = schedule.find(

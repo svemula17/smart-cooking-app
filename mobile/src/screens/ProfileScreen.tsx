@@ -114,7 +114,7 @@ export function ProfileScreen(): React.JSX.Element {
 
   const { data: prefs } = useQuery({
     queryKey: ['user-prefs'],
-    queryFn: async () => (await userService.getProfile()) as unknown as UserPreferences,
+    queryFn: async () => (await userService.getPreferences()) ?? undefined,
     initialData: storePrefs ?? undefined,
   });
 
