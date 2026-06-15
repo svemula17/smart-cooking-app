@@ -6,18 +6,26 @@ Wires up the FastAPI app, configures the asyncpg pool lifecycle, and exposes
 
 from __future__ import annotations
 
+import os
+
 import sentry_sdk
 
 from app.config.settings import settings
 
 # Sentry init must run before FastAPI/asyncpg imports so the SDK can patch them.
-sentry_sdk.init(
-    dsn="https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
-    server_name="nutrition-service",
-    environment=settings.node_env,
-    enabled=not settings.is_test,
-    traces_sample_rate=0.1,
+# Only initialise when a DSN is explicitly provided; the `enabled` parameter is
+# not supported in current Sentry SDK versions and causes a TypeError at startup.
+_sentry_dsn = os.environ.get(
+    "SENTRY_DSN",
+    "https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
 )
+if _sentry_dsn and not settings.is_test:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        server_name="nutrition-service",
+        environment=settings.node_env,
+        traces_sample_rate=0.1,
+    )
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
