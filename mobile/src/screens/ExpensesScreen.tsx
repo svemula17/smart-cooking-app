@@ -8,6 +8,8 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +38,147 @@ const timeAgo = (iso: string): string => {
   if (days === 1) return 'Yesterday';
   return `${days}d ago`;
 };
+
+/**
+ * Grocery budget bar — set a monthly cap, see spend against it. Self-contained;
+ * backed by the live PUT/GET /budget endpoints. Colors shift green→amber→red as
+ * the house approaches/exceeds the cap.
+ */
+function BudgetBar({ houseId }: { houseId: string }) {
+  const c = useThemeColors();
+  const toast = useToast();
+  const [budget, setBudget] = useState<number | null>(null);
+  const [spent, setSpent] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const s = await houseService.getBudget(houseId);
+      setBudget(s.budget);
+      setSpent(s.spent ?? 0);
+    } catch {
+      /* non-fatal */
+    }
+  }, [houseId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const save = async () => {
+    const amount = parseFloat(draft);
+    if (!amount || amount <= 0) {
+      toast.show('Enter a valid amount', 'warning');
+      return;
+    }
+    setSaving(true);
+    try {
+      await houseService.setBudget(houseId, amount);
+      setEditing(false);
+      setDraft('');
+      await load();
+      toast.show('Budget updated', 'success');
+    } catch {
+      toast.show('Could not save budget', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const pct = budget && budget > 0 ? Math.min(spent / budget, 1) : 0;
+  const over = budget != null && spent > budget;
+  const barColor = over ? c.error : pct > 0.8 ? c.warning : c.success;
+
+  return (
+    <Card
+      surface="surface"
+      radius="2xl"
+      padding="lg"
+      elevation="card"
+      bordered
+      style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+        <Text style={[typography.overline, { color: c.textSecondary, flex: 1 }]}>
+          🛒 Grocery budget · this month
+        </Text>
+        {!editing ? (
+          <TouchableOpacity
+            onPress={() => {
+              setDraft(budget != null ? String(budget) : '');
+              setEditing(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Edit budget"
+          >
+            <Text style={[typography.button, { color: c.primary }]}>
+              {budget != null ? 'Edit' : 'Set'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {editing ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: c.border,
+              borderRadius: 10,
+              paddingHorizontal: spacing.md,
+            }}
+          >
+            <Text style={{ color: c.textSecondary, fontSize: 16 }}>₹</Text>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              keyboardType="numeric"
+              placeholder="500"
+              placeholderTextColor={c.textLight}
+              autoFocus
+              style={{ flex: 1, color: c.text, fontSize: 16, paddingVertical: spacing.sm, marginLeft: 4 }}
+            />
+          </View>
+          <Button label="Save" size="sm" loading={saving} onPress={save} />
+          <Button label="✕" size="sm" variant="ghost" onPress={() => setEditing(false)} />
+        </View>
+      ) : budget != null ? (
+        <>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>
+            ₹{spent.toFixed(0)}{' '}
+            <Text style={{ fontSize: 14, fontWeight: '600', color: c.textSecondary }}>
+              of ₹{budget.toFixed(0)}
+            </Text>
+          </Text>
+          <View style={[styles.budgetTrack, { backgroundColor: c.surfaceMuted }]}>
+            <View
+              style={{
+                width: `${pct * 100}%`,
+                height: '100%',
+                borderRadius: 6,
+                backgroundColor: barColor,
+              }}
+            />
+          </View>
+          <Text style={[typography.caption, { color: over ? c.error : c.textSecondary, marginTop: spacing.xs }]}>
+            {over
+              ? `₹${(spent - budget).toFixed(0)} over budget`
+              : `₹${(budget - spent).toFixed(0)} left`}
+          </Text>
+        </>
+      ) : (
+        <Text style={[typography.bodySmall, { color: c.textSecondary }]}>
+          Set a monthly grocery cap to track house spending against it.
+        </Text>
+      )}
+    </Card>
+  );
+}
 
 // Returns { ym: 'YYYY-MM', total, byCategory: { [key]: amount } } per month.
 // Keep the iteration cheap — expenses lists are paginated to 1 page (~20
@@ -275,6 +418,9 @@ export default function ExpensesScreen({ navigation }: { navigation: AppNavigati
         })}
       </Card>
 
+      {/* Grocery budget vs spend */}
+      {house ? <BudgetBar houseId={house.id} /> : null}
+
       {/* Monthly summary — totals + category breakdown + MoM trend */}
       {thisMonth ? (
         <Card
@@ -379,6 +525,12 @@ export default function ExpensesScreen({ navigation }: { navigation: AppNavigati
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  budgetTrack: {
+    height: 12,
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+  },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing['4xl'] },
   settleRow: {
     flexDirection: 'row',

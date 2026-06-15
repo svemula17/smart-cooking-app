@@ -172,6 +172,59 @@ export async function deleteExpense(houseId: string, expenseId: string): Promise
   await houseApi.delete(`/houses/${houseId}/expenses/${expenseId}`);
 }
 
+// ── Grocery budget ─────────────────────────────────────────────────────────────
+
+export interface BudgetStatus {
+  budget: number | null;       // monthly limit, or null if unset
+  spent: number;
+  month: string;               // "YYYY-MM"
+  remaining?: number | null;
+  percent_used?: number | null;
+}
+
+/** Set (or update) the grocery budget for a month (defaults to current month). */
+export async function setBudget(houseId: string, amount: number, month?: string): Promise<void> {
+  await houseApi.put(`/houses/${houseId}/budget`, month ? { amount, month } : { amount });
+}
+
+/** Current-month budget vs spend. */
+export async function getBudget(houseId: string): Promise<BudgetStatus> {
+  const { data } = await houseApi.get(`/houses/${houseId}/budget/current`);
+  return data.data;
+}
+
+// ── Meal ratings (rate the cook) ────────────────────────────────────────────────
+
+export interface MealRating {
+  id: string;
+  cook_schedule_id: string;
+  rated_by: string;
+  rating: number;            // 1–5
+  rater_name?: string;
+}
+
+/** Rate a past cook day's meal (1–5). Upserts the current user's rating. */
+export async function submitMealRating(
+  houseId: string,
+  scheduleId: string,
+  rating: number,
+): Promise<MealRating> {
+  const { data } = await houseApi.post(
+    `/houses/${houseId}/schedule/${scheduleId}/ratings`,
+    { rating },
+  );
+  return data.data.rating;
+}
+
+/** All ratings + average for a cook day. */
+export async function getMealRatings(
+  houseId: string,
+  scheduleId: string,
+): Promise<{ ratings: MealRating[]; average: number | null }> {
+  const { data } = await houseApi.get(`/houses/${houseId}/schedule/${scheduleId}/ratings`);
+  return data.data;
+}
+
 // ── Chore Types ──────────────────────────────────────────────────────────────
 
 export interface ChoreType {

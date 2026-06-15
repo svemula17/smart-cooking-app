@@ -7,6 +7,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,6 +34,95 @@ import {
   Header,
   useToast,
 } from '../components/ui';
+
+/**
+ * Rate-the-cook row, shown under a completed cook day. Loads the meal's
+ * ratings on mount; lets housemates tap 1–5 stars (the cook sees the average
+ * they earned). Backed by the live /schedule/:id/ratings endpoints.
+ */
+function MealRatingRow({
+  houseId,
+  scheduleId,
+  isMine,
+  cookName,
+}: {
+  houseId: string;
+  scheduleId: string;
+  isMine: boolean;
+  cookName: string;
+}) {
+  const c = useThemeColors();
+  const toast = useToast();
+  const [average, setAverage] = useState<number | null>(null);
+  const [count, setCount] = useState(0);
+  const [myRating, setMyRating] = useState(0);
+  const currentUser = useSelector((s: RootState) => s.auth.user);
+
+  const loadRatings = useCallback(async () => {
+    try {
+      const { ratings, average } = await houseService.getMealRatings(houseId, scheduleId);
+      setAverage(average);
+      setCount(ratings.length);
+      const mine = ratings.find((r) => r.rated_by === currentUser?.id);
+      if (mine) setMyRating(mine.rating);
+    } catch {
+      /* non-fatal */
+    }
+  }, [houseId, scheduleId, currentUser?.id]);
+
+  useEffect(() => {
+    loadRatings();
+  }, [loadRatings]);
+
+  const rate = async (stars: number) => {
+    setMyRating(stars); // optimistic
+    try {
+      await houseService.submitMealRating(houseId, scheduleId, stars);
+      await loadRatings();
+    } catch {
+      toast.show('Could not save rating', 'error');
+    }
+  };
+
+  return (
+    <View style={[styles.ratingRow, { borderTopColor: c.border }]}>
+      {isMine ? (
+        // Cook view: read-only — show what you earned.
+        <Text style={[typography.caption, { color: c.textSecondary }]}>
+          {average != null
+            ? `Your meal scored ${average.toFixed(1)} ★ (${count} rating${count === 1 ? '' : 's'})`
+            : 'No ratings yet'}
+        </Text>
+      ) : (
+        <>
+          <Text style={[typography.caption, { color: c.textSecondary, marginRight: spacing.sm }]}>
+            Rate {cookName.split(' ')[0]}’s meal
+          </Text>
+          <View style={{ flexDirection: 'row' }}>
+            {[1, 2, 3, 4, 5].map((s) => (
+              <TouchableOpacity
+                key={s}
+                onPress={() => rate(s)}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Rate ${s} star${s === 1 ? '' : 's'}`}
+              >
+                <Text style={{ fontSize: 20, color: s <= myRating ? '#F5A623' : c.border }}>
+                  {s <= myRating ? '★' : '☆'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {average != null ? (
+            <Text style={[typography.caption, { color: c.textLight, marginLeft: spacing.sm }]}>
+              avg {average.toFixed(1)}
+            </Text>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
+}
 
 const formatDate = (iso: string): string => {
   const d = new Date(iso + 'T00:00:00');
@@ -175,6 +265,16 @@ export default function CookScheduleScreen({ navigation }: { navigation: AppNavi
             ) : null}
           </View>
         </View>
+
+        {/* Rate the cook — only once the meal is done */}
+        {item.status === 'done' && house ? (
+          <MealRatingRow
+            houseId={house.id}
+            scheduleId={item.id}
+            isMine={isMe}
+            cookName={item.cook_name ?? 'the cook'}
+          />
+        ) : null}
       </Card>
     );
   };
@@ -215,4 +315,11 @@ export default function CookScheduleScreen({ navigation }: { navigation: AppNavi
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   list: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });
