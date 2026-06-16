@@ -12,11 +12,13 @@ from app.config.settings import settings
 
 # ─── Sentry MUST initialize before importing FastAPI/asyncpg so the SDK
 # can patch them at import time.
+# sentry-sdk 2.x has no `enabled` kwarg — passing it crashes the app on boot
+# (TypeError: Unknown option 'enabled'), which silently blocked every deploy.
+# Disable Sentry by passing dsn=None in test instead.
 sentry_sdk.init(
-    dsn="https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
+    dsn=None if settings.is_test else "https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
     server_name="ai-service",
     environment=settings.node_env,
-    enabled=not settings.is_test,
     traces_sample_rate=0.1,
 )
 

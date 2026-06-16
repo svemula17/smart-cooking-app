@@ -11,11 +11,15 @@ import sentry_sdk
 from app.config.settings import settings
 
 # Sentry init must run before FastAPI/asyncpg imports so the SDK can patch them.
+# sentry-sdk 2.x has no `enabled` kwarg — passing it raises
+# TypeError: Unknown option 'enabled' and crashes the app on startup (which
+# silently blocked EVERY nutrition-service deploy: build OK, boot crash,
+# healthcheck fails, Railway keeps the old image). Disable Sentry by passing
+# dsn=None in test instead.
 sentry_sdk.init(
-    dsn="https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
+    dsn=None if settings.is_test else "https://7e23c244e58c91bb1d45c60d7098997d@o4511403615387648.ingest.us.sentry.io/4511403620433920",
     server_name="nutrition-service",
     environment=settings.node_env,
-    enabled=not settings.is_test,
     traces_sample_rate=0.1,
 )
 
