@@ -22,6 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { clearAuth, setPreferences, toggleDarkMode, type RootState } from '../store';
 import { userService } from '../services/userService';
+import { authService } from '../services/authService';
 import type { UserPreferences, RootStackParamList } from '../types';
 
 import { useThemeColors } from '../theme/useThemeColors';
@@ -163,7 +164,17 @@ export function ProfileScreen(): React.JSX.Element {
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => dispatch(clearAuth()) },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          // authService.logout() clears the persisted tokens in AsyncStorage —
+          // clearAuth() alone only wipes Redux, leaving the stale token on disk
+          // to be restored on next launch (which traps you in a bad session).
+          await authService.logout().catch(() => {});
+          dispatch(clearAuth());
+        },
+      },
     ]);
   };
 
