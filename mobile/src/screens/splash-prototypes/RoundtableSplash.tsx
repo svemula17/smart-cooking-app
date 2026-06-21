@@ -9,10 +9,12 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { useThemeColors } from '../../theme/useThemeColors';
 import { spacing } from '../../theme/spacing';
 
 const { width: W, height: H } = Dimensions.get('window');
+const GLOW = Math.round(W * 0.95); // soft radial bloom diameter behind the plate
 
 interface Props {
   onDone?: () => void;
@@ -56,6 +58,8 @@ export function RoundtableSplash({ onDone, showWordmark = true }: Props) {
   const steam    = useRef(new Animated.Value(0)).current;
   const wordmark = useRef(new Animated.Value(0)).current;
   const orbit    = useRef(new Animated.Value(0)).current; // continuous ring rotation
+  const glow     = useRef(new Animated.Value(0)).current; // breathing bloom behind the plate
+  const pulse    = useRef(new Animated.Value(0)).current; // gentle plate scale pulse
 
   useEffect(() => {
     const entrance = Animated.stagger(
@@ -71,19 +75,34 @@ export function RoundtableSplash({ onDone, showWordmark = true }: Props) {
       Animated.timing(wordmark,{ toValue: 1, duration: 320, useNativeDriver: true }),
     ]);
 
-    // Slow, continuous orbit — one revolution every 3.6s. Loops until unmount.
+    // Slow, continuous orbit — one revolution every 4.2s. Loops until unmount.
     const spin = Animated.loop(
-      Animated.timing(orbit, { toValue: 1, duration: 3600, easing: Easing.linear, useNativeDriver: true }),
+      Animated.timing(orbit, { toValue: 1, duration: 4200, easing: Easing.linear, useNativeDriver: true }),
+    );
+    // Breathing bloom + plate pulse — gentle, never-ending, in sync.
+    const breathe = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glow,  { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(glow,  { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    );
+    const beat = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
     );
 
     const seq = Animated.sequence([entrance, settle]);
     seq.start();
-    const spinTimer = setTimeout(() => spin.start(), 650); // once they've roughly arrived
+    const spinTimer = setTimeout(() => { spin.start(); breathe.start(); beat.start(); }, 650);
     const doneTimer = setTimeout(() => onDone?.(), 2000);   // intro reads in ~2s
 
     return () => {
       seq.stop();
       spin.stop();
+      breathe.stop();
+      beat.stop();
       clearTimeout(spinTimer);
       clearTimeout(doneTimer);
     };
@@ -91,9 +110,44 @@ export function RoundtableSplash({ onDone, showWordmark = true }: Props) {
   }, []);
 
   const orbitRotate = orbit.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const glowOpacity = Animated.multiply(
+    plateIn,
+    glow.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.92] }),
+  );
+  const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.08] });
+  const plateScale = Animated.multiply(
+    plateIn,
+    pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }),
+  );
+  const wordmarkShift = wordmark.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
 
   return (
     <View style={[styles.fill, { backgroundColor: c.background }]}>
+      {/* Radial bloom glow behind the plate — blooms in with the plate, then breathes */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: W / 2 - GLOW / 2,
+          top: H / 2 - GLOW / 2,
+          width: GLOW,
+          height: GLOW,
+          opacity: glowOpacity,
+          transform: [{ scale: glowScale }],
+        }}
+      >
+        <Svg width={GLOW} height={GLOW}>
+          <Defs>
+            <RadialGradient id="bloom" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor={c.primary} stopOpacity="0.5" />
+              <Stop offset="55%" stopColor={c.primary} stopOpacity="0.12" />
+              <Stop offset="100%" stopColor={c.primary} stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={GLOW / 2} cy={GLOW / 2} r={GLOW / 2} fill="url(#bloom)" />
+        </Svg>
+      </Animated.View>
+
       {/* Table ring (static) */}
       <Animated.View
         style={{
@@ -109,9 +163,9 @@ export function RoundtableSplash({ onDone, showWordmark = true }: Props) {
         }}
       />
 
-      {/* Plate of food at center (static) */}
+      {/* Plate of food at center — pulses gently after settling */}
       <Animated.View
-        style={[styles.centerPoint, { opacity: plateIn, transform: [{ scale: plateIn }] }]}
+        style={[styles.centerPoint, { opacity: plateIn, transform: [{ scale: plateScale }] }]}
       >
         <Text style={{ fontSize: 56 }}>🍲</Text>
       </Animated.View>
@@ -170,7 +224,7 @@ export function RoundtableSplash({ onDone, showWordmark = true }: Props) {
 
       {/* Wordmark */}
       {showWordmark ? (
-        <Animated.View style={[styles.wordmarkWrap, { opacity: wordmark }]}>
+        <Animated.View style={[styles.wordmarkWrap, { opacity: wordmark, transform: [{ translateY: wordmarkShift }] }]}>
           <Text style={[styles.wordmark, { color: c.text }]}>
             Smart<Text style={{ color: c.primary }}>Cooking</Text>
           </Text>

@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
   Alert,
+  FlatList,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -34,10 +35,13 @@ import {
   EmptyState,
   Header,
   IconButton,
+  RecipeCardSkeleton,
   Sheet,
   TextField,
   useToast,
 } from '../components/ui';
+import { RecipeCard } from '../components/RecipeCard';
+import { useCookFromPantry } from '../hooks/useCookFromPantry';
 
 const CATEGORIES = ['produce', 'dairy', 'meat', 'seafood', 'grains', 'spices', 'canned', 'frozen', 'beverages', 'other'];
 const UNITS = ['g', 'kg', 'ml', 'L', 'cups', 'tbsp', 'tsp', 'units', 'oz', 'lb', 'pieces'];
@@ -95,6 +99,7 @@ export function PantryScreen() {
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
+  const [view, setView] = useState<'items' | 'cook'>('items');
 
   const openAdd = useCallback(() => {
     setEditing(null);
@@ -207,6 +212,15 @@ export function PantryScreen() {
         }
       />
 
+      {/* Segmented: My items | Cook now */}
+      <View style={styles.segment}>
+        <Chip label="🥫 My items" selected={view === 'items'} onPress={() => setView('items')} />
+        <Chip label="🍳 Cook now" selected={view === 'cook'} onPress={() => setView('cook')} />
+      </View>
+
+      {view === 'cook' ? (
+        <CookNowList onOpenRecipe={(id) => navigation.navigate('RecipeDetail', { recipeId: id })} />
+      ) : (
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cook from pantry toggle */}
         <Card
@@ -398,6 +412,7 @@ export function PantryScreen() {
         ) : null}
         <View style={{ height: spacing['3xl'] }} />
       </ScrollView>
+      )}
 
       {/* Add/Edit Sheet */}
       <Sheet
@@ -498,6 +513,70 @@ export function PantryScreen() {
   );
 }
 
+// "Cook now" view — dishes you can make from your current pantry. Reuses the
+// shared scoring hook + the same RecipeCard + match-badge UI as MakeNow.
+function CookNowList({ onOpenRecipe }: { onOpenRecipe: (id: string) => void }) {
+  const c = useThemeColors();
+  const { scored, isLoading, pantryCount } = useCookFromPantry();
+
+  if (pantryCount === 0) {
+    return (
+      <EmptyState
+        icon="🥫"
+        title="Pantry is empty"
+        body="Add ingredients to your pantry to see dishes you can cook right now."
+      />
+    );
+  }
+
+  return (
+    <FlatList
+      data={isLoading ? [] : scored}
+      keyExtractor={(s) => s.recipe.id}
+      contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }}
+      ListHeaderComponent={
+        <Text style={[typography.bodySmall, { color: c.textSecondary, marginBottom: spacing.md }]}>
+          {isLoading
+            ? 'Scanning your pantry…'
+            : scored.length > 0
+            ? `Dishes you can make right now (best ${Math.min(scored.length, 20)}).`
+            : ''}
+        </Text>
+      }
+      ListEmptyComponent={
+        isLoading ? (
+          <View>
+            <RecipeCardSkeleton />
+            <RecipeCardSkeleton />
+          </View>
+        ) : (
+          <EmptyState
+            icon="🤷"
+            title="No close matches"
+            body="Add a few more pantry ingredients to unlock dish suggestions."
+          />
+        )
+      }
+      renderItem={({ item }) => (
+        <View style={{ marginBottom: spacing.md, position: 'relative' }}>
+          <RecipeCard recipe={item.recipe} onPress={() => onOpenRecipe(item.recipe.id)} />
+          <View
+            style={[
+              styles.matchBadge,
+              {
+                backgroundColor:
+                  item.matchPct >= 0.85 ? c.success : item.matchPct >= 0.5 ? c.primary : c.warning,
+              },
+            ]}
+          >
+            <Text style={styles.matchText}>{Math.round(item.matchPct * 100)}% match</Text>
+          </View>
+        </View>
+      )}
+    />
+  );
+}
+
 function Stat({
   value,
   label,
@@ -528,6 +607,21 @@ function Stat({
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  segment: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+  },
+  matchBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  matchText: { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.4 },
   block: { marginHorizontal: spacing.xl, marginTop: spacing.md },
   expiryBanner: {
     marginHorizontal: spacing.xl,

@@ -112,6 +112,7 @@ export function AIChatScreen({ navigation }: { navigation: AppNavigation }): Rea
   const [conversationId, setConversationId] = useState<string | undefined>();
   const listRef = useRef<FlatList>(null);
   const user = useSelector((s: RootState) => s.auth.user);
+  const prefs = useSelector((s: RootState) => s.user.preferences);
 
   const scrollToEnd = useCallback(() => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
@@ -168,6 +169,15 @@ export function AIChatScreen({ navigation }: { navigation: AppNavigation }): Rea
 
   const isEmpty = messages.length === 0;
 
+  // Saved macro goals power the ✨ meal-prep planner prompt (fallbacks match
+  // the rest of the app when goals aren't set yet).
+  const calGoal = prefs?.calories_goal ?? 2000;
+  const proGoal = prefs?.protein_goal ?? 150;
+  const planMyWeek = () =>
+    send(
+      `Create a simple 7-day meal-prep plan I can batch-cook. Daily targets: about ${calGoal} kcal and at least ${proGoal}g protein each day. Give breakfast, lunch, and dinner for each day, reuse overlapping ingredients to keep the shopping list short, and finish with a consolidated grocery list.`,
+    );
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]} edges={['top']}>
       <ThemedStatusBar />
@@ -198,6 +208,25 @@ export function AIChatScreen({ navigation }: { navigation: AppNavigation }): Rea
               Meal ideas, ingredient swaps, cooking tips — I’m here to help.
             </Text>
             <View style={{ width: '100%', gap: spacing.sm }}>
+              {/* ✨ Meal-prep planner — featured action */}
+              <Card
+                surface="surface"
+                radius="lg"
+                padding="md"
+                elevation="card"
+                bordered
+                onPress={planMyWeek}
+                accessibilityLabel="Plan my week"
+                style={{ borderColor: c.primary, backgroundColor: c.primaryMuted }}
+              >
+                <Text style={{ color: c.text, fontSize: 15, fontWeight: '800' }}>
+                  ✨ Plan my week
+                </Text>
+                <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 2 }}>
+                  A 7-day meal prep for your {proGoal}g protein goal
+                </Text>
+              </Card>
+
               {SUGGESTIONS.map((s) => (
                 <Card
                   key={s}

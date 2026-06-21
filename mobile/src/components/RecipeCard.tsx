@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import type { Recipe } from '../types';
 import { colors } from '../theme/colors';
+import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { radii } from '../theme/radii';
 import { getRecipeImage } from '../utils/recipeImages';
@@ -29,13 +30,14 @@ const DIFFICULTY_BG: Record<string, string> = {
 };
 
 function StarRating({ rating, total }: { rating: number; total: number }) {
+  const c = useThemeColors();
   const safeRating = rating ?? 0;
-  if (!total) return <Text style={styles.noRating}>New</Text>;
+  if (!total) return <Text style={[styles.noRating, { color: c.textLight }]}>New</Text>;
   return (
     <View style={styles.starRow}>
-      <Text style={styles.stars}>★</Text>
-      <Text style={styles.starCount}>
-        {safeRating.toFixed(1)} <Text style={styles.starCountDim}>({total})</Text>
+      <Text style={[styles.stars, { color: c.warning }]}>★</Text>
+      <Text style={[styles.starCount, { color: c.textSecondary }]}>
+        {safeRating.toFixed(1)} <Text style={[styles.starCountDim, { color: c.textLight }]}>({total})</Text>
       </Text>
     </View>
   );
@@ -50,6 +52,7 @@ export interface RecipeCardProps {
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutrition, compact = false }) => {
+  const c = useThemeColors();
   const dispatch = useDispatch();
   const isFav = useSelector((s: RootState) => s.favorites.ids.includes(recipe.id));
   const totalTime = (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
@@ -61,12 +64,12 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
 
   return (
     <TouchableOpacity
-      style={[styles.card, compact && styles.cardCompact]}
+      style={[styles.card, compact && styles.cardCompact, { backgroundColor: c.surfaceElevated }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
       {/* Image */}
-      <View style={[styles.imageWrapper, compact && styles.imageWrapperCompact]}>
+      <View style={[styles.imageWrapper, compact && styles.imageWrapperCompact, { backgroundColor: c.surfaceMuted }]}>
         {imageSource ? (
           <Image
             source={imageSource}
@@ -77,7 +80,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
             recyclingKey={recipe.id}
           />
         ) : (
-          <View style={[styles.imageFallback, { backgroundColor: CUISINE_BG[recipe.cuisine_type] ?? colors.surfaceMuted }]}>
+          <View style={[styles.imageFallback, { backgroundColor: CUISINE_BG[recipe.cuisine_type] ?? c.surfaceMuted }]}>
             <Text style={styles.cuisineEmoji}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
           </View>
         )}
@@ -117,37 +120,37 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
 
       {/* Body */}
       <View style={[styles.body, compact && styles.bodyCompact]}>
-        <Text style={[styles.title, compact && styles.titleCompact]} numberOfLines={2}>
+        <Text style={[styles.title, compact && styles.titleCompact, { color: c.text }]} numberOfLines={2}>
           {recipe.name}
         </Text>
         <View style={styles.metaRow}>
           <Text style={styles.cuisineEmojiSmall}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
-          <Text style={styles.cuisine} numberOfLines={1}>
+          <Text style={[styles.cuisine, { color: c.textSecondary }]} numberOfLines={1}>
             {recipe.cuisine_type}
           </Text>
         </View>
 
         {/* Nutrition grid — full-width cards only */}
         {nutrition && !compact ? (
-          <View style={styles.nutritionGrid}>
+          <View style={[styles.nutritionGrid, { backgroundColor: c.surfaceMuted }]}>
             <View style={styles.nutritionItem}>
-              <Text style={[styles.nutritionValue, { color: colors.calories }]}>{nutrition.calories}</Text>
-              <Text style={styles.nutritionLabel}>cal</Text>
+              <Text style={[styles.nutritionValue, { color: c.calories }]}>{nutrition.calories}</Text>
+              <Text style={[styles.nutritionLabel, { color: c.textLight }]}>cal</Text>
             </View>
-            <View style={styles.nutritionDivider} />
+            <View style={[styles.nutritionDivider, { backgroundColor: c.border }]} />
             <View style={styles.nutritionItem}>
-              <Text style={[styles.nutritionValue, { color: colors.protein }]}>{nutrition.protein_g}g</Text>
-              <Text style={styles.nutritionLabel}>protein</Text>
+              <Text style={[styles.nutritionValue, { color: c.protein }]}>{nutrition.protein_g}g</Text>
+              <Text style={[styles.nutritionLabel, { color: c.textLight }]}>protein</Text>
             </View>
-            <View style={styles.nutritionDivider} />
+            <View style={[styles.nutritionDivider, { backgroundColor: c.border }]} />
             <View style={styles.nutritionItem}>
-              <Text style={[styles.nutritionValue, { color: colors.carbs }]}>{nutrition.carbs_g}g</Text>
-              <Text style={styles.nutritionLabel}>carbs</Text>
+              <Text style={[styles.nutritionValue, { color: c.carbs }]}>{nutrition.carbs_g}g</Text>
+              <Text style={[styles.nutritionLabel, { color: c.textLight }]}>carbs</Text>
             </View>
-            <View style={styles.nutritionDivider} />
+            <View style={[styles.nutritionDivider, { backgroundColor: c.border }]} />
             <View style={styles.nutritionItem}>
-              <Text style={[styles.nutritionValue, { color: colors.fat }]}>{nutrition.fat_g}g</Text>
-              <Text style={styles.nutritionLabel}>fat</Text>
+              <Text style={[styles.nutritionValue, { color: c.fat }]}>{nutrition.fat_g}g</Text>
+              <Text style={[styles.nutritionLabel, { color: c.textLight }]}>fat</Text>
             </View>
           </View>
         ) : null}

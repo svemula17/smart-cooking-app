@@ -6,6 +6,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,7 +24,6 @@ import { typography } from '../theme/typography';
 import {
   Badge,
   Card,
-  Chip,
   EmptyState,
   Skeleton,
 } from '../components/ui';
@@ -238,20 +238,34 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.md }}
           >
-            {macroTabs.map((t) => (
-              <Chip
-                key={t.key}
-                label={t.label}
-                selected={activeTab === t.key}
-                onPress={() => setActiveTab(t.key)}
-              />
-            ))}
+            {macroTabs.map((t) => {
+              const on = activeTab === t.key;
+              return (
+                <TouchableOpacity
+                  key={t.key}
+                  onPress={() => setActiveTab(t.key)}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.macroPill,
+                    { backgroundColor: on ? t.color : c.surface, borderColor: on ? t.color : c.border },
+                  ]}
+                >
+                  <View style={[styles.macroDot, { backgroundColor: on ? '#fff' : t.color }]} />
+                  <Text style={{ color: on ? '#fff' : c.text, fontWeight: '700', fontSize: 13 }}>
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           {/* Trend chart */}
-          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={{ marginBottom: spacing.lg }}>
-            <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
+          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: activeMeta.color }]}>
+            <Text style={[typography.h3, { color: c.text }]}>
               {activeMeta.label} trend
+            </Text>
+            <Text style={[typography.caption, { color: c.textSecondary, marginBottom: spacing.md }]}>
+              Avg {Math.round(displayData.averages[activeTab] ?? 0)}{activeMeta.unit} · goal {goals[activeTab]}{activeMeta.unit}
             </Text>
             <TrendChart
               daily={displayData.daily_data}
@@ -263,22 +277,26 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
           </Card>
 
           {/* Averages */}
-          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={{ marginBottom: spacing.lg }}>
+          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.primary }]}>
             <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
               📊 This month’s averages
             </Text>
             {macroTabs.map((m) => {
-              const avg = displayData.averages[m.key] ?? 0;
+              const avg = Math.round(displayData.averages[m.key] ?? 0);
               const goal = goals[m.key] ?? 1;
               const pct = Math.min(Math.round((avg / goal) * 100), 100);
               return (
                 <View key={m.key} style={{ marginBottom: spacing.md }}>
                   <View style={styles.rowSpread}>
-                    <Text style={[typography.body, { color: c.text, fontWeight: '600' }]}>
-                      {m.label}
-                    </Text>
-                    <Text style={[typography.bodySmall, { color: c.textSecondary }]}>
-                      {Math.round(avg)}{m.unit} / {goal}{m.unit}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={[styles.macroDot, { backgroundColor: m.color }]} />
+                      <Text style={[typography.body, { color: c.text, fontWeight: '700' }]}>{m.label}</Text>
+                    </View>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: m.color }}>
+                      {avg}
+                      <Text style={{ fontSize: 12, color: c.textLight, fontWeight: '600' }}>
+                        {' '}{m.unit} / {goal}
+                      </Text>
                     </Text>
                   </View>
                   <View style={[styles.track, { backgroundColor: c.surfaceMuted }]}>
@@ -290,7 +308,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
           </Card>
 
           {/* Week comparison */}
-          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={{ marginBottom: spacing.lg }}>
+          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.info }]}>
             <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
               📈 This week vs last week
             </Text>
@@ -298,7 +316,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
           </Card>
 
           {/* Adherence */}
-          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered>
+          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.success, marginBottom: 0 }]}>
             <Text style={[typography.h3, { color: c.text, marginBottom: spacing.sm }]}>
               🎯 Goal adherence
             </Text>
@@ -351,20 +369,22 @@ function WeekComparisonRows({ comparison }: { comparison: WeeklyComparison }) {
             <Text style={[typography.body, { color: c.text, flex: 1 }]}>{label}</Text>
             <Text
               style={{
-                fontSize: 14,
-                fontWeight: '700',
+                fontSize: 15,
+                fontWeight: '800',
                 color: c.text,
                 marginRight: 8,
-                width: 60,
+                width: 64,
                 textAlign: 'right',
               }}
             >
               {curr}
               {unit}
             </Text>
-            <Text style={{ fontSize: 13, fontWeight: '700', color, width: 110, textAlign: 'right' }}>
-              {arrow} {diff !== 0 ? `${diff > 0 ? '+' : ''}${diff}${unit} (${pct > 0 ? '+' : ''}${pct}%)` : '0%'}
-            </Text>
+            <View style={[styles.deltaPill, { backgroundColor: `${color}22` }]}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color }}>
+                {arrow} {diff !== 0 ? `${diff > 0 ? '+' : ''}${diff}${unit} (${pct > 0 ? '+' : ''}${pct}%)` : '0%'}
+              </Text>
+            </View>
           </View>
         );
       })}
@@ -377,6 +397,24 @@ export default MonthlyTrackingScreen;
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  accentCard: { marginBottom: spacing.lg, borderLeftWidth: 4 },
+  macroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  macroDot: { width: 8, height: 8, borderRadius: 4 },
+  deltaPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    minWidth: 110,
+    alignItems: 'center',
+  },
   legend: {
     flexDirection: 'row',
     gap: spacing.lg,
