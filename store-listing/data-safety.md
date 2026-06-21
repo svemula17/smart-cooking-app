@@ -69,8 +69,10 @@ For each type, you'll be asked:
 
 | Data type | Collected | Shared | Required? | Purpose | Linked? |
 |---|---|---|---|---|---|
-| Photos | No | — | — | — | — |
+| Photos | **Yes** (receipt photos for the Scan Receipt feature) | No | Optional | App functionality | Yes |
 | Videos | No | — | — | — | — |
+
+*Receipt photos are sent to our AI provider (OpenAI) for one-time text extraction and are **not stored** after processing — mark "processed ephemerally: Yes" for Photos. This row was added when the Scan Receipt feature shipped (the earlier draft predates it).*
 
 ### Audio files
 

@@ -5,7 +5,7 @@ title: Privacy Policy
 # Privacy Policy
 
 **Effective date:** May 17, 2026
-**Last updated:** May 17, 2026
+**Last updated:** June 16, 2026
 
 This Privacy Policy describes how the SmartCooking mobile application (the "App", "we", "us", or "our") collects, uses, and shares information when you use our service.
 
@@ -26,6 +26,8 @@ When you create an account or use the App, we collect:
 - **Shopping lists**: items, quantities, and check status
 - **Nutrition logs**: meals consumed, servings, and calculated macros
 - **Household data** (optional): household name, invited members, cooking schedules, chore assignments, and shared expenses
+- **AI Chef messages**: the questions and messages you send to the in-app AI cooking assistant
+- **Receipt photos** (optional): when you use the **Scan Receipt** feature, the photo you take is sent for one-time text extraction so we can pre-fill your pantry items. We do not keep the image after processing.
 
 ### 1.2 Information collected automatically
 - **Device information**: device type, OS version, app version
@@ -45,6 +47,7 @@ We use your information to:
 - Save your recipes, meal plans, pantry, shopping lists, and nutrition history
 - Personalize recipe recommendations based on your preferences
 - Calculate daily nutrition summaries
+- Power AI features: your AI Chef messages and scanned receipt photos are sent to our AI provider (OpenAI) to generate replies and extract pantry items
 - Coordinate household features (cook rotation, chores, expenses) with other members of your household
 - Send password reset emails (if you request one)
 - Diagnose and fix crashes and bugs
@@ -62,6 +65,7 @@ We share your information only with:
 - **Supabase, Inc.** — managed PostgreSQL database hosting (US-based). Stores your account, recipes, meal plans, and other content.
 - **Railway Corp.** — backend service hosting (US-based). Runs the API services that process your requests.
 - **Sentry, Inc.** — crash and error reporting (US-based). Receives anonymized stack traces if you opt in.
+- **OpenAI, L.L.C.** — AI processing (US-based). Receives the messages you send to the AI Chef and the receipt photos you scan, solely to generate replies and extract items. Per OpenAI's API terms, this content is **not** used to train their models.
 - **Apple, Inc.** and **Google LLC** — for push notifications and app store distribution.
 
 We require these providers to handle your data in line with this Privacy Policy and applicable law.

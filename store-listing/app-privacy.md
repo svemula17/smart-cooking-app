@@ -27,6 +27,9 @@ The flow: you declare each data **type** you collect, then for each type you say
 
 ### User Content
 
+- **Photos or Videos** — collected, linked, no tracking
+  - Description: "Receipt photos captured via Scan Receipt, sent to our AI provider for one-time text extraction. Not stored after processing."
+  - Purposes: App Functionality
 - **Other User Content** — collected, linked, no tracking
   - Description: "Recipes saved, meal plans, pantry inventory, shopping lists, AI Chef conversations, household memberships and shared expenses."
   - Purposes: App Functionality
@@ -61,7 +64,6 @@ The flow: you declare each data **type** you collect, then for each type you say
 - Location (we don't ask for it)
 - Sensitive Info (race, religion, sexual orientation, etc.)
 - Contacts (we don't read your phonebook)
-- Photos or Videos (we don't read your camera roll)
 - Audio Data
 - Gameplay Content
 - Search History
@@ -88,6 +90,7 @@ Apple expects us to mention each third party that processes user data on our beh
 | Supabase Inc. | All Postgres data | Section 3.1 |
 | Railway Corp. | Backend service hosting | Section 3.1 |
 | Sentry Inc. | Crash + performance data (anonymized) | Section 3.1 |
+| OpenAI L.L.C. | AI Chef messages + scanned receipt photos (not used for training) | Section 3.1 |
 
 These don't go in the App Privacy form directly — they're disclosed in your Privacy Policy text, which Apple links to.
 

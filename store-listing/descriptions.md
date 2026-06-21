@@ -26,9 +26,9 @@ Cook smarter. Eat better. SmartCooking is your AI-powered kitchen
 companion — a recipe browser, meal planner, household coordinator, and
 macro tracker rolled into one calm, fast app.
 
-273 RECIPES ACROSS 8 CUISINES
-Browse a hand-curated catalog spanning Indian (108), Mexican (30),
-Chinese (27), Italian (27), Thai (24), Mediterranean (20), Japanese (20),
+250 RECIPES ACROSS 8 CUISINES
+Browse a hand-curated catalog spanning Indian (102), Italian (25),
+Mexican (25), Chinese (24), Mediterranean (20), Thai (19), Japanese (18),
 and Indo-Chinese (17). Each recipe has step-by-step instructions, real
 food photos, a full ingredient list, and per-serving nutrition you can
 trust.
@@ -49,16 +49,19 @@ HOUSEHOLD COORDINATION
 Cooking with roommates or family? Create a household, invite members
 with a 6-character code, and the app handles:
   - A fair rotating cook schedule
-  - Shared chore tracking
-  - Expense splitting (with auto-calculated balances)
-  - Recipe voting when nobody can decide
-  - Cuisine variety scoring so dinners don't repeat
+  - Shared chore tracking and scheduling
+  - Expense splitting with auto-calculated balances, settle-up, and a
+    monthly grocery budget
+  - A household chat to coordinate
+  - Rate the cook after dinner
 
 SMART PANTRY + SHOPPING LISTS
 Track what you have, what's expiring soon, and what you need to buy.
-The app generates a tidy shopping list from any recipe — and from a
-whole week of meal plans — grouped by aisle so you're not zig-zagging
-through the store.
+Snap a photo of a grocery receipt and the app extracts the items into
+your pantry for you. See "Cook Now" dishes you can make from what's on
+hand. Generate a tidy shopping list from any recipe — or a whole week of
+meal plans — grouped by aisle, then check items off straight into your
+pantry.
 
 PRIVATE BY DESIGN
 - We don't sell your data. Period.
