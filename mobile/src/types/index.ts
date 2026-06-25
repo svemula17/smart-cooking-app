@@ -210,6 +210,7 @@ export type RootStackParamList = {
   ShoppingList: { listId: string };
   MealPlanner: undefined;
   SplashPrototypes: undefined;
+  DesignPrototypes: undefined;
 };
 
 export type TabParamList = {

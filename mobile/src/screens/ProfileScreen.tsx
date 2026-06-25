@@ -360,6 +360,16 @@ export function ProfileScreen(): React.JSX.Element {
             <Text style={[typography.body, { color: c.text, flex: 1 }]}>Splash animation prototypes</Text>
             <Text style={[typography.body, { color: c.textSecondary }]}>›</Text>
           </TouchableOpacity>
+          <Divider inset={spacing.sm} />
+          <TouchableOpacity
+            style={styles.row}
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('DesignPrototypes')}
+          >
+            <Text style={{ fontSize: 18, marginRight: spacing.sm }}>🎨</Text>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>App design themes</Text>
+            <Text style={[typography.body, { color: c.textSecondary }]}>›</Text>
+          </TouchableOpacity>
         </Card>
 
         {/* Legal */}
