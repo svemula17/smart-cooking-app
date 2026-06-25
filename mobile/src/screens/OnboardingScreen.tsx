@@ -22,7 +22,7 @@ import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { radii } from '../theme/radii';
 import { typography } from '../theme/typography';
-import { Button, Card, Chip, IconButton, TextField } from '../components/ui';
+import { Button, Card, Chip, Icon, IconButton, TextField } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
@@ -117,7 +117,7 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           <View style={{ width: 44 }}>
             {step > 0 ? (
               <IconButton
-                icon="‹"
+                icon={<Icon name="chevron-left" size={24} />}
                 size={40}
                 accessibilityLabel="Back"
                 onPress={() => setStep((s) => s - 1)}

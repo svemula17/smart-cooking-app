@@ -261,7 +261,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
 
           {/* Trend chart */}
           <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: activeMeta.color }]}>
-            <Text style={[typography.h3, { color: c.text }]}>
+            <Text style={[typography.overline, { color: c.textSecondary }]}>
               {activeMeta.label} trend
             </Text>
             <Text style={[typography.caption, { color: c.textSecondary, marginBottom: spacing.md }]}>
@@ -278,8 +278,8 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
 
           {/* Averages */}
           <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.primary }]}>
-            <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
-              📊 This month’s averages
+            <Text style={[typography.overline, { color: c.textSecondary, marginBottom: spacing.md }]}>
+              This month’s averages
             </Text>
             {macroTabs.map((m) => {
               const avg = Math.round(displayData.averages[m.key] ?? 0);
@@ -309,16 +309,16 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
 
           {/* Week comparison */}
           <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.primary }]}>
-            <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
-              📈 This week vs last week
+            <Text style={[typography.overline, { color: c.textSecondary, marginBottom: spacing.md }]}>
+              This week vs last week
             </Text>
             <WeekComparisonRows comparison={displayData.weekly_comparison} />
           </Card>
 
           {/* Adherence */}
           <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.primary, marginBottom: 0 }]}>
-            <Text style={[typography.h3, { color: c.text, marginBottom: spacing.sm }]}>
-              🎯 Goal adherence
+            <Text style={[typography.overline, { color: c.textSecondary, marginBottom: spacing.sm }]}>
+              Goal adherence
             </Text>
             <Text style={[typography.body, { color: c.text, marginBottom: spacing.md }]}>
               {Math.round(displayData.goal_adherence_percent)}% of days met goals

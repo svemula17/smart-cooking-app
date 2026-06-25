@@ -25,7 +25,7 @@ export const darkColors = {
 
   text: '#F5F5F7',
   textSecondary: '#9A9AA0',
-  textLight: '#6B6B72',
+  textLight: '#8E8E96',
   textInverse: '#111114',
   onPrimary: '#0B0B0F', // dark text on light accent
   onSecondary: '#0B0B0F',

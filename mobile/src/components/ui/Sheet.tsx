@@ -15,6 +15,7 @@ import { radii } from '../../theme/radii';
 import { typography } from '../../theme/typography';
 import { motion } from '../../theme/motion';
 import { IconButton } from './IconButton';
+import { Icon } from './Icon';
 
 interface SheetProps {
   visible: boolean;
@@ -88,7 +89,7 @@ export function Sheet({
         {title ? (
           <View style={styles.header}>
             <Text style={typography.h3}>{title}</Text>
-            <IconButton icon="✕" accessibilityLabel="Close" onPress={onClose} size={36} />
+            <IconButton icon={<Icon name="x" size={20} />} accessibilityLabel="Close" onPress={onClose} size={36} />
           </View>
         ) : null}
         <View style={styles.body}>{children}</View>

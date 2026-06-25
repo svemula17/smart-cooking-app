@@ -34,8 +34,10 @@ import {
   Chip,
   EmptyState,
   Header,
+  Icon,
   IconButton,
   RecipeCardSkeleton,
+  Segmented,
   Sheet,
   TextField,
   useToast,
@@ -214,8 +216,14 @@ export function PantryScreen() {
 
       {/* Segmented: My items | Cook now */}
       <View style={styles.segment}>
-        <Chip label="🥫 My items" selected={view === 'items'} onPress={() => setView('items')} />
-        <Chip label="🍳 Cook now" selected={view === 'cook'} onPress={() => setView('cook')} />
+        <Segmented
+          options={[
+            { key: 'items', label: 'My items' },
+            { key: 'cook', label: 'Cook now' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
       </View>
 
       {view === 'cook' ? (
@@ -379,13 +387,13 @@ export function PantryScreen() {
                       <Badge label="USE SOON" tone="warning" />
                     ) : null}
                     <IconButton
-                      icon="✏️"
+                      icon={<Icon name="edit-2" size={17} />}
                       size={36}
                       accessibilityLabel={`Edit ${item.name}`}
                       onPress={() => openEdit(item)}
                     />
                     <IconButton
-                      icon="🗑️"
+                      icon={<Icon name="trash-2" size={17} />}
                       size={36}
                       accessibilityLabel={`Delete ${item.name}`}
                       onPress={() => handleDelete(item)}
@@ -602,9 +610,7 @@ function Stat({
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   segment: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
   matchBadge: {
@@ -616,13 +622,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   matchText: { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.4 },
-  block: { marginHorizontal: spacing.xl, marginTop: spacing.md },
+  block: { marginHorizontal: spacing.lg, marginTop: spacing.md },
   expiryBanner: {
-    marginHorizontal: spacing.xl,
+    marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     padding: spacing.md,
     borderRadius: 12,
     borderWidth: 1,
   },
-  catScroll: { paddingHorizontal: spacing.xl, gap: spacing.sm, paddingBottom: spacing.md },
+  catScroll: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.md },
 });

@@ -27,6 +27,7 @@ import {
   Button,
   Card,
   ErrorState,
+  Icon,
   IconButton,
   Skeleton,
   useHaptics,
@@ -84,7 +85,7 @@ function ServingsStepper({
   return (
     <View style={[styles.stepper, { backgroundColor: c.surfaceMuted, borderColor: c.border }]}>
       <IconButton
-        icon="−"
+        icon={<Icon name="minus" size={16} />}
         size={28}
         accessibilityLabel="Decrease servings"
         onPress={() => onChange(Math.max(1, value - 1))}
@@ -100,7 +101,7 @@ function ServingsStepper({
         ) : null}
       </View>
       <IconButton
-        icon="+"
+        icon={<Icon name="plus" size={16} />}
         size={28}
         accessibilityLabel="Increase servings"
         onPress={() => onChange(Math.min(20, value + 1))}
@@ -263,7 +264,7 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
         <IconButton
-          icon="✕"
+          icon={<Icon name="x" size={20} />}
           size={36}
           accessibilityLabel="Close cooking mode"
           onPress={() => navigation.goBack()}

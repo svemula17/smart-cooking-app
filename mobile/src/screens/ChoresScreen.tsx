@@ -28,6 +28,7 @@ import {
   Chip,
   EmptyState,
   Header,
+  Icon,
   IconButton,
   Sheet,
   Skeleton,
@@ -674,14 +675,14 @@ export default function ChoresScreen({ navigation }: { navigation: AppNavigation
         right={
           <View style={{ flexDirection: 'row', gap: spacing.xs, alignItems: 'center' }}>
             <IconButton
-              icon="📅"
+              icon={<Icon name="calendar" size={18} />}
               size={36}
               accessibilityLabel="Schedule a chore"
               onPress={() => setShowSchedule(true)}
             />
             {isAdmin ? (
               <IconButton
-                icon="+"
+                icon={<Icon name="plus" size={20} color={c.onPrimary} />}
                 size={36}
                 variant="filled"
                 accessibilityLabel="Add chore type"

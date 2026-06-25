@@ -10,7 +10,7 @@ import * as houseService from '../services/houseService';
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { Button, IconButton, TextField, useToast } from '../components/ui';
+import { Button, Icon, IconButton, TextField, useToast } from '../components/ui';
 
 type Mode = 'choose' | 'create' | 'join';
 
@@ -72,7 +72,7 @@ export default function HouseOnboardingScreen() {
       <View style={styles.topBar}>
         {mode !== 'choose' ? (
           <IconButton
-            icon="‹"
+            icon={<Icon name="chevron-left" size={24} />}
             size={40}
             accessibilityLabel="Back"
             onPress={() => setMode('choose')}

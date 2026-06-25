@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Button, Chip, IconButton, Sheet, useToast } from './ui';
+import { Button, Chip, Icon, IconButton, Sheet, useToast } from './ui';
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -104,7 +104,7 @@ export function LogMealSheet({ visible, onClose, recipe }: LogMealSheetProps): R
         </Text>
         <View style={styles.servingRow}>
           <IconButton
-            icon="−"
+            icon={<Icon name="minus" size={18} />}
             size={44}
             accessibilityLabel="Less"
             onPress={() => setServings((s) => prevServing(s))}
@@ -114,7 +114,7 @@ export function LogMealSheet({ visible, onClose, recipe }: LogMealSheetProps): R
             <Text style={[typography.caption, { color: c.textSecondary }]}>servings</Text>
           </View>
           <IconButton
-            icon="+"
+            icon={<Icon name="plus" size={18} />}
             size={44}
             accessibilityLabel="More"
             onPress={() => setServings((s) => nextServing(s))}

@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
-import { Badge, IconButton } from '../ui';
+import { Badge, Icon, IconButton } from '../ui';
 import { useThemeColors } from '../../theme/useThemeColors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -55,7 +55,7 @@ export function RecipeHero({ recipe, isFav, onBack, onToggleFav }: RecipeHeroPro
 
       <View style={styles.heroOverlayBtns}>
         <IconButton
-          icon="‹"
+          icon={<Icon name="chevron-left" size={24} />}
           size={40}
           variant="tinted"
           accessibilityLabel="Go back"
