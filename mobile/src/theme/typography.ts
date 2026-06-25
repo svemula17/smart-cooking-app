@@ -1,25 +1,26 @@
 import { StyleSheet, TextStyle } from 'react-native';
 import { colors } from './colors';
 
-// Clean modern type scale — heavy display weights, tight tracking, neutral body.
+// Minimal Mono type scale — refined display weights, tight tracking, neutral
+// body, uppercase micro-labels.
 export const typography = StyleSheet.create({
   display: {
-    fontSize: 38,
-    fontWeight: '900',
-    lineHeight: 44,
-    letterSpacing: -1,
+    fontSize: 36,
+    fontWeight: '800',
+    lineHeight: 42,
+    letterSpacing: -0.8,
     color: colors.text,
   },
   h1: {
-    fontSize: 30,
-    fontWeight: '800',
-    lineHeight: 36,
-    letterSpacing: -0.7,
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 34,
+    letterSpacing: -0.6,
     color: colors.text,
   },
   h2: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 28,
     letterSpacing: -0.4,
     color: colors.text,

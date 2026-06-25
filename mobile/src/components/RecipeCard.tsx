@@ -23,11 +23,8 @@ const CUISINE_BG: Record<string, string> = {
   'Indo-Chinese': colors.indoChinese,
 };
 
-const DIFFICULTY_BG: Record<string, string> = {
-  Easy: 'rgba(0, 176, 80, 0.92)',
-  Medium: 'rgba(255, 138, 0, 0.92)',
-  Hard: 'rgba(229, 20, 26, 0.92)',
-};
+// Minimal Mono: one neutral dark pill for all difficulties (no decorative color).
+const DIFFICULTY_BG = 'rgba(17, 17, 20, 0.78)';
 
 function StarRating({ rating, total }: { rating: number; total: number }) {
   const c = useThemeColors();
@@ -35,7 +32,7 @@ function StarRating({ rating, total }: { rating: number; total: number }) {
   if (!total) return <Text style={[styles.noRating, { color: c.textLight }]}>New</Text>;
   return (
     <View style={styles.starRow}>
-      <Text style={[styles.stars, { color: c.warning }]}>★</Text>
+      <Text style={[styles.stars, { color: c.text }]}>★</Text>
       <Text style={[styles.starCount, { color: c.textSecondary }]}>
         {safeRating.toFixed(1)} <Text style={[styles.starCountDim, { color: c.textLight }]}>({total})</Text>
       </Text>
@@ -64,7 +61,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
 
   return (
     <TouchableOpacity
-      style={[styles.card, compact && styles.cardCompact, { backgroundColor: c.surfaceElevated }]}
+      style={[styles.card, compact && styles.cardCompact, { backgroundColor: c.surfaceElevated, borderColor: c.border }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
@@ -89,7 +86,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
         <View style={styles.imageOverlay} pointerEvents="none" />
 
         {/* Difficulty pill (bottom-left over image) */}
-        <View style={[styles.diffBadge, { backgroundColor: DIFFICULTY_BG[recipe.difficulty] ?? 'rgba(0,0,0,0.55)' }]}>
+        <View style={[styles.diffBadge, { backgroundColor: DIFFICULTY_BG }]}>
           <Text style={styles.diffText}>{recipe.difficulty || 'Easy'}</Text>
         </View>
 
@@ -164,19 +161,16 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.xl,
+    borderRadius: radii.lg,
     marginBottom: spacing.lg,
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardCompact: {
     flex: 1,
     marginBottom: spacing.md,
-    borderRadius: 18,
+    borderRadius: radii.lg,
   },
   imageWrapper: {
     height: 180,
@@ -212,7 +206,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     left: 10,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -226,7 +220,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     right: 10,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
     paddingHorizontal: 10,
     paddingVertical: 4,
     backgroundColor: 'rgba(255,255,255,0.95)',
@@ -247,18 +241,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    elevation: 4,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   heartBtnActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.45,
   },
   heartIcon: {
     fontSize: 19,

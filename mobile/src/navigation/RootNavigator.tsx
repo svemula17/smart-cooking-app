@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -98,15 +98,8 @@ function TabNavigator() {
           paddingBottom: Math.max(insets.bottom, spacing.sm),
           paddingTop: spacing.xs,
           height: 56 + Math.max(insets.bottom, spacing.sm),
-          ...Platform.select({
-            ios: {
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.04,
-              shadowRadius: 8,
-            },
-            android: { elevation: 8 },
-          }),
+          // Minimal Mono: flat bar — depth from the hairline border only.
+          elevation: 0,
         },
         tabBarLabelStyle: {
           fontSize: 11,

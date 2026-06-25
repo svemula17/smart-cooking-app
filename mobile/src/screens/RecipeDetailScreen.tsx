@@ -549,7 +549,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                           </Text>
                         ) : null}
                       </View>
-                      {inPantry ? <Badge label="IN" tone="success" /> : null}
+                      {inPantry ? <Badge label="IN" tone="neutral" /> : null}
                       <Text style={[typography.bodySmall, { color: c.textSecondary, fontWeight: '600' }]}>
                         {ing.quantity != null
                           ? `${+(ing.quantity * servingScale).toFixed(1)} ${ing.unit}`
@@ -634,7 +634,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         {formatDate(rev.created_at)}
                       </Text>
                     </View>
-                    <Text style={{ color: c.warning, letterSpacing: 1, marginBottom: spacing.xs }}>
+                    <Text style={{ color: c.text, letterSpacing: 1, marginBottom: spacing.xs }}>
                       {stars(rev.rating)}
                     </Text>
                     {rev.comment ? (
@@ -716,7 +716,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               accessibilityRole="button"
               accessibilityLabel={`${s} stars`}
               onPress={() => setRatingStars(s)}
-              style={{ fontSize: 36, color: s <= ratingStars ? c.warning : c.borderStrong }}
+              style={{ fontSize: 36, color: s <= ratingStars ? c.text : c.borderStrong }}
             >
               {s <= ratingStars ? '★' : '☆'}
             </Text>
@@ -782,7 +782,9 @@ function FitMetric({ value, label }: { value: string; label: string }) {
       style={{
         flex: 1,
         backgroundColor: c.surface,
-        borderRadius: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: c.border,
         paddingVertical: spacing.md,
         paddingHorizontal: spacing.md,
       }}
@@ -831,10 +833,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radii.lg,
     gap: spacing.md,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 5,
   },
   stickyBar: {
     position: 'absolute',

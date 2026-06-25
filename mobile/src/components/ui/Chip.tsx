@@ -29,8 +29,8 @@ export function Chip({
   const c = useThemeColors();
   const haptics = useHaptics();
 
-  const bg = selected ? c.primary : c.surface;
-  const fg = selected ? c.onPrimary : c.text;
+  const bg = selected ? c.primary : c.surfaceMuted;
+  const fg = selected ? c.onPrimary : c.textSecondary;
   const borderColor = selected ? c.primary : c.border;
 
   return (
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
     borderWidth: 1,
   },
 });

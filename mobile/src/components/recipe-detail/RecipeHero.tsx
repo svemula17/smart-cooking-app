@@ -79,21 +79,15 @@ export function RecipeHero({ recipe, isFav, onBack, onToggleFav }: RecipeHeroPro
         <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
           <Badge
             label={recipe.difficulty}
-            tone={
-              recipe.difficulty === 'Easy'
-                ? 'success'
-                : recipe.difficulty === 'Medium'
-                ? 'warning'
-                : 'error'
-            }
+            tone="neutral"
           />
-          <Badge label={recipe.cuisine_type} tone="info" />
+          <Badge label={recipe.cuisine_type} tone="neutral" />
         </View>
         <Text style={[typography.h2, { color: c.text }]} numberOfLines={2}>
           {recipe.name}
         </Text>
         <View style={styles.starRow}>
-          <Text style={{ fontSize: 14, color: c.warning, letterSpacing: 1 }}>
+          <Text style={{ fontSize: 14, color: c.text, letterSpacing: 1 }}>
             {stars(recipe.average_rating)}
           </Text>
           <Text style={[typography.bodySmall, { color: c.textSecondary }]}>

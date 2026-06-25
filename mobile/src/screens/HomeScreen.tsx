@@ -202,7 +202,7 @@ const HomeScreen: React.FC = () => {
             elevation="card"
             bordered
             accessibilityLabel="Respond to dinner attendance"
-            style={[styles.block, { borderColor: c.info, backgroundColor: c.infoMuted }]}
+            style={[styles.block, { borderColor: c.borderStrong, backgroundColor: c.surfaceMuted }]}
           >
             <View style={styles.row}>
               <Text style={styles.bigEmoji}>🍽️</Text>
@@ -325,7 +325,7 @@ const HomeScreen: React.FC = () => {
                 isMyTurn
                   ? { borderColor: c.primary, backgroundColor: c.primaryMuted }
                   : todayEntry
-                  ? { borderColor: c.success, backgroundColor: c.successMuted }
+                  ? { borderColor: c.borderStrong, backgroundColor: c.surfaceMuted }
                   : undefined,
               ]}
               onPress={() => navigation.navigate('House' as any)}
@@ -514,7 +514,7 @@ const HomeScreen: React.FC = () => {
         style={[
           styles.aiFab,
           {
-            backgroundColor: c.secondary,
+            backgroundColor: c.primary,
             shadowColor: '#000',
           },
         ]}
@@ -554,10 +554,10 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 4,
   },
   aiFabEmoji: { fontSize: 26 },
   header: {

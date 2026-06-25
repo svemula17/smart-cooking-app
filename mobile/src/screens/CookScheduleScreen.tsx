@@ -107,7 +107,7 @@ function MealRatingRow({
                 accessibilityRole="button"
                 accessibilityLabel={`Rate ${s} star${s === 1 ? '' : 's'}`}
               >
-                <Text style={{ fontSize: 20, color: s <= myRating ? '#F5A623' : c.border }}>
+                <Text style={{ fontSize: 20, color: s <= myRating ? c.text : c.border }}>
                   {s <= myRating ? '★' : '☆'}
                 </Text>
               </TouchableOpacity>
@@ -197,9 +197,9 @@ export default function CookScheduleScreen({ navigation }: { navigation: AppNavi
     const statusBadge = (() => {
       switch (item.status) {
         case 'cooking':
-          return <Badge label="🍳 Cooking" tone="warning" />;
+          return <Badge label="🍳 Cooking" tone="neutral" />;
         case 'done':
-          return <Badge label="✅ Done" tone="success" />;
+          return <Badge label="✅ Done" tone="neutral" />;
         case 'skipped':
           return <Badge label="⏭ Skipped" tone="neutral" />;
         default:

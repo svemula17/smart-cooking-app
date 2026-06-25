@@ -133,7 +133,7 @@ function MealSlot({
         <Text style={[typography.label, { color: c.textSecondary, fontWeight: '700', flex: 1 }]}>
           {label}
         </Text>
-        {hasPrep ? <Badge label="PREP" tone="warning" /> : null}
+        {hasPrep ? <Badge label="PREP" tone="neutral" /> : null}
       </View>
 
       {plan ? (
@@ -250,7 +250,7 @@ function DayCard({
           </Text>
           <Text style={[typography.caption, { color: c.textSecondary }]}>{head.line2}</Text>
         </View>
-        {goalMet && plans.length > 0 ? <Badge label="GOAL" tone="success" /> : null}
+        {goalMet && plans.length > 0 ? <Badge label="GOAL" tone="neutral" /> : null}
       </View>
 
       {MEAL_TYPES.map((mt) => (

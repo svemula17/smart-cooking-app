@@ -89,7 +89,7 @@ function BudgetBar({ houseId }: { houseId: string }) {
 
   const pct = budget && budget > 0 ? Math.min(spent / budget, 1) : 0;
   const over = budget != null && spent > budget;
-  const barColor = over ? c.error : pct > 0.8 ? c.warning : c.success;
+  const barColor = over ? c.error : c.primary;
 
   return (
     <Card
@@ -338,7 +338,7 @@ export default function ExpensesScreen({ navigation }: { navigation: AppNavigati
             style={{
               fontSize: 16,
               fontWeight: '800',
-              color: isPaidByMe ? c.success : c.error,
+              color: c.text,
             }}
           >
             ₹{parseFloat(item.amount).toFixed(2)}
@@ -373,7 +373,7 @@ export default function ExpensesScreen({ navigation }: { navigation: AppNavigati
             style={{
               fontSize: 24,
               fontWeight: '800',
-              color: myBalance.net >= 0 ? c.success : c.error,
+              color: myBalance.net >= 0 ? c.text : c.error,
               marginTop: spacing.xs,
               marginBottom: spacing.md,
             }}
@@ -446,7 +446,7 @@ export default function ExpensesScreen({ navigation }: { navigation: AppNavigati
                   style={{
                     fontSize: 13,
                     fontWeight: '700',
-                    color: monthDelta > 0 ? c.error : c.success,
+                    color: monthDelta > 0 ? c.error : c.text,
                   }}
                 >
                   {monthDelta > 0 ? '▲' : '▼'} {Math.abs(monthDelta).toFixed(0)}%

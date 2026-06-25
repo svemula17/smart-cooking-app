@@ -198,7 +198,7 @@ export default function ScanReceiptScreen({ navigation }: Props) {
               <Image source={{ uri: imageUri }} style={styles.previewImg} resizeMode="contain" />
             </View>
             <View style={styles.previewActions}>
-              {parserUsed === false ? <Badge label="MANUAL" tone="warning" /> : null}
+              {parserUsed === false ? <Badge label="MANUAL" tone="neutral" /> : null}
               {store ? (
                 <Text style={[typography.caption, { color: c.textSecondary }]} numberOfLines={1}>
                   Store: {store}

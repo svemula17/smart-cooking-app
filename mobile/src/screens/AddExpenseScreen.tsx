@@ -208,7 +208,7 @@ export default function AddExpenseScreen({ navigation }: { navigation: AppNaviga
             <Text style={[typography.label, { color: c.textSecondary }]}>Split with</Text>
             <Text
               style={{
-                color: c.success,
+                color: c.textSecondary,
                 fontSize: 13,
                 fontWeight: '700',
                 marginTop: 2,
@@ -240,8 +240,8 @@ export default function AddExpenseScreen({ navigation }: { navigation: AppNaviga
                       style={[
                         styles.checkbox,
                         {
-                          backgroundColor: checked ? c.success : 'transparent',
-                          borderColor: checked ? c.success : c.borderStrong,
+                          backgroundColor: checked ? c.primary : 'transparent',
+                          borderColor: checked ? c.primary : c.borderStrong,
                         },
                       ]}
                     >

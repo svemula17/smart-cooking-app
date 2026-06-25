@@ -80,7 +80,7 @@ function MakeNowScreen({ navigation }: Props): React.JSX.Element {
                   navigation.navigate('RecipeDetail', { recipeId: item.recipe.id })
                 }
               />
-              <View style={[styles.matchBadge, { backgroundColor: badgeColor(item.matchPct, c) }]}>
+              <View style={[styles.matchBadge, { backgroundColor: c.primary }]}>
                 <Text style={styles.matchText}>
                   {Math.round(item.matchPct * 100)}% match
                 </Text>
@@ -90,7 +90,7 @@ function MakeNowScreen({ navigation }: Props): React.JSX.Element {
               <Text style={[typography.caption, { color: c.textSecondary, marginBottom: 2 }]}>
                 You have ({item.matched.length})
               </Text>
-              <Text style={[typography.bodySmall, { color: c.success }]} numberOfLines={2}>
+              <Text style={[typography.bodySmall, { color: c.text }]} numberOfLines={2}>
                 {item.matched.slice(0, 6).join(', ')}
                 {item.matched.length > 6 ? ` +${item.matched.length - 6} more` : ''}
               </Text>
@@ -99,13 +99,13 @@ function MakeNowScreen({ navigation }: Props): React.JSX.Element {
                   <Text style={[typography.caption, { color: c.textSecondary, marginTop: spacing.sm, marginBottom: 2 }]}>
                     Missing ({item.missing.length})
                   </Text>
-                  <Text style={[typography.bodySmall, { color: c.warning }]} numberOfLines={2}>
+                  <Text style={[typography.bodySmall, { color: c.textSecondary }]} numberOfLines={2}>
                     {item.missing.slice(0, 6).join(', ')}
                     {item.missing.length > 6 ? ` +${item.missing.length - 6} more` : ''}
                   </Text>
                 </>
               ) : (
-                <Badge label="Full pantry match!" tone="success" />
+                <Badge label="Full pantry match!" tone="neutral" />
               )}
             </Card>
           </View>
@@ -113,12 +113,6 @@ function MakeNowScreen({ navigation }: Props): React.JSX.Element {
       />
     </SafeAreaView>
   );
-}
-
-function badgeColor(pct: number, c: ReturnType<typeof useThemeColors>): string {
-  if (pct >= 0.85) return c.success;
-  if (pct >= 0.5) return c.primary;
-  return c.warning;
 }
 
 const styles = StyleSheet.create({
@@ -129,7 +123,7 @@ const styles = StyleSheet.create({
     left: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 8,
   },
   matchText: {
     color: '#fff',

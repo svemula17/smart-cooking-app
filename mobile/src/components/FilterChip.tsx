@@ -27,15 +27,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
     borderColor: colors.border,
     marginRight: 8,
   },
   chipSelected: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   emoji: {
@@ -44,11 +44,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.textSecondary,
   },
   labelSelected: {
-    color: colors.primary,
+    color: colors.onPrimary,
     fontWeight: '700',
   },
 });

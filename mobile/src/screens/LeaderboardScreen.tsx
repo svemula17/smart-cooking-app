@@ -57,7 +57,7 @@ export default function LeaderboardScreen({ navigation }: { navigation: AppNavig
       <Header
         title="Leaderboard"
         onBack={() => navigation.goBack()}
-        right={streak > 0 ? <Badge label={`🔥 ${streak}d`} tone="warning" size="md" /> : null}
+        right={streak > 0 ? <Badge label={`🔥 ${streak}d`} tone="neutral" size="md" /> : null}
         border
       />
       <ScrollView
@@ -86,9 +86,9 @@ export default function LeaderboardScreen({ navigation }: { navigation: AppNavig
                 bordered
                 style={{
                   marginBottom: spacing.sm,
-                  borderColor: isMe ? c.primary : isFirst ? c.warning : c.border,
+                  borderColor: isMe ? c.primary : isFirst ? c.borderStrong : c.border,
                   borderWidth: isMe || isFirst ? 2 : 1,
-                  backgroundColor: isFirst ? c.warningMuted : c.surface,
+                  backgroundColor: isFirst ? c.surfaceMuted : c.surface,
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>

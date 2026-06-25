@@ -41,7 +41,7 @@ export function Badge({ label, tone = 'neutral', size = 'sm', style }: BadgeProp
           backgroundColor: palette.bg,
           paddingHorizontal: size === 'md' ? spacing.md : spacing.sm,
           paddingVertical: size === 'md' ? 6 : 3,
-          borderRadius: radii.pill,
+          borderRadius: radii.sm,
           alignSelf: 'flex-start',
         },
         style,

@@ -97,7 +97,7 @@ export default function HouseReportScreen({ navigation }: { navigation: AppNavig
               padding="2xl"
               elevation="card"
               style={{
-                backgroundColor: c.success,
+                backgroundColor: c.primary,
                 alignItems: 'center',
                 marginBottom: spacing.lg,
               }}

@@ -277,8 +277,8 @@ export function CookingModeScreen({ route, navigation }: Props): React.JSX.Eleme
       </View>
 
       {isOffline ? (
-        <View style={[styles.offlineBanner, { backgroundColor: c.warningMuted }]}>
-          <Text style={{ color: c.warning, fontWeight: '700', fontSize: 12 }}>
+        <View style={[styles.offlineBanner, { backgroundColor: c.surfaceMuted }]}>
+          <Text style={{ color: c.textSecondary, fontWeight: '700', fontSize: 12 }}>
             Offline — using cached recipe
           </Text>
         </View>
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 24,
+    borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,

@@ -116,9 +116,9 @@ export default function AttendanceSheet({ visible, onClose }: Props) {
       )}
 
       <View style={styles.summaryRow}>
-        <SummaryChip num={summary.attending} label="eating" tone="success" />
+        <SummaryChip num={summary.attending} label="eating" tone="neutral" />
         <SummaryChip num={summary.declined} label="skipping" tone="neutral" />
-        <SummaryChip num={summary.pending} label="no response" tone="warning" />
+        <SummaryChip num={summary.pending} label="no response" tone="neutral" />
       </View>
 
       <ScrollView style={{ marginTop: spacing.md }} showsVerticalScrollIndicator={false}>
@@ -157,7 +157,7 @@ function SummaryChip({
   const bg =
     tone === 'success' ? c.successMuted : tone === 'warning' ? c.warningMuted : c.surfaceMuted;
   return (
-    <View style={[styles.summaryChip, { backgroundColor: bg }]}>
+    <View style={[styles.summaryChip, { backgroundColor: bg, borderWidth: 1, borderColor: c.border }]}>
       <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>{num}</Text>
       <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>{label}</Text>
     </View>

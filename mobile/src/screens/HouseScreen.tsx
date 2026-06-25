@@ -328,7 +328,7 @@ export default function HouseScreen({ navigation }: { navigation: AppNavigation 
               !myBalance || myBalance.net === 0
                 ? c.text
                 : myBalance.net > 0
-                ? c.success
+                ? c.text
                 : c.error,
             fontSize: 16,
             fontWeight: '800',

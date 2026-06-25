@@ -247,7 +247,7 @@ export function ProfileScreen(): React.JSX.Element {
                 setEditSheet('name');
               }}
             />
-            {user?.is_admin ? <Badge label="ADMIN" tone="warning" size="md" /> : null}
+            {user?.is_admin ? <Badge label="ADMIN" tone="neutral" size="md" /> : null}
           </View>
         </View>
 

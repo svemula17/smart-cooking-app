@@ -115,8 +115,8 @@ export default function RecipeVoteScreen({
                 onPress={votingOpen ? () => handleVote(recipe.id) : undefined}
                 style={{
                   marginBottom: spacing.md,
-                  borderColor: isWinner ? c.success : isMyPick ? c.primary : c.border,
-                  backgroundColor: isWinner ? c.successMuted : isMyPick ? c.primaryMuted : c.surface,
+                  borderColor: isWinner || isMyPick ? c.primary : c.border,
+                  backgroundColor: isWinner || isMyPick ? c.primaryMuted : c.surface,
                   borderWidth: isWinner || isMyPick ? 2 : 1,
                 }}
               >
@@ -129,7 +129,7 @@ export default function RecipeVoteScreen({
                     </Text>
                   </View>
                   {isWinner ? (
-                    <Badge label="🏆 Winner" tone="success" />
+                    <Badge label="🏆 Winner" tone="neutral" />
                   ) : isMyPick ? (
                     <Badge label="✓ My vote" tone="primary" />
                   ) : null}

@@ -27,18 +27,9 @@ const CUISINE_BG_IMAGE: Record<string, string> = {
   Mediterranean: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&q=80',
 };
 
-// Tint colour overlaid on top of the bg image — gives each card its own
-// accent without losing the photo underneath.
-const CUISINE_TINT: Record<string, string> = {
-  Indian:        'rgba(214, 73, 56, 0.42)',   // saffron-red
-  Chinese:       'rgba(196, 30, 58, 0.42)',   // crimson
-  'Indo-Chinese':'rgba(244, 110, 51, 0.42)',  // tangerine
-  Italian:       'rgba(0, 100, 60, 0.45)',    // basil green
-  Mexican:       'rgba(255, 142, 13, 0.45)',  // taco orange
-  Thai:          'rgba(50, 130, 130, 0.45)',  // lemongrass teal
-  Japanese:      'rgba(96, 38, 99, 0.45)',    // plum
-  Mediterranean: 'rgba(38, 92, 138, 0.45)',   // aegean blue
-};
+// Minimal Mono: one neutral dark scrim over every photo (no decorative tint),
+// keeps the food photo readable behind white text.
+const CUISINE_SCRIM = 'rgba(17, 17, 20, 0.42)';
 
 export interface CuisineCardProps {
   cuisine: string;
@@ -51,7 +42,7 @@ export interface CuisineCardProps {
 export const CuisineCard: React.FC<CuisineCardProps> = ({ cuisine, emoji, onPress }) => {
   const haptics = useHaptics();
   const bgUri = CUISINE_BG_IMAGE[cuisine];
-  const tint = CUISINE_TINT[cuisine] ?? 'rgba(0,0,0,0.45)';
+  const tint = CUISINE_SCRIM;
 
   return (
     <Pressable
@@ -93,14 +84,11 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: 120,
-    borderRadius: radii.xl,
+    borderRadius: radii.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   bg: {
     flex: 1,

@@ -416,7 +416,7 @@ function ChoreScheduleTab({
             </Text>
           </View>
           {item.status === 'done' ? (
-            <Badge label="✅ Done" tone="success" />
+            <Badge label="✅ Done" tone="neutral" />
           ) : item.status === 'skipped' ? (
             <Badge label="⏭ Skipped" tone="neutral" />
           ) : (isMe || isAdmin) && item.status === 'pending' ? (

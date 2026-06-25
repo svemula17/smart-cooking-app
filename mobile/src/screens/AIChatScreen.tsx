@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     maxHeight: 120,
-    borderRadius: 22,
+    borderRadius: 12,
     paddingHorizontal: spacing.lg,
     paddingTop: 12,
     paddingBottom: 12,

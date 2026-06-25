@@ -124,7 +124,9 @@ export default function PrepMealsScreen({ navigation }: { navigation: AppNavigat
                   </View>
                   <View
                     style={{
-                      backgroundColor: c.successMuted,
+                      backgroundColor: c.surfaceMuted,
+                      borderWidth: 1,
+                      borderColor: c.border,
                       borderRadius: 10,
                       paddingHorizontal: spacing.md,
                       paddingVertical: spacing.sm,
@@ -132,10 +134,10 @@ export default function PrepMealsScreen({ navigation }: { navigation: AppNavigat
                       minWidth: 56,
                     }}
                   >
-                    <Text style={{ fontSize: 22, fontWeight: '800', color: c.success }}>
+                    <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>
                       {meal.remaining_portions}
                     </Text>
-                    <Text style={{ fontSize: 11, color: c.success }}>left</Text>
+                    <Text style={{ fontSize: 11, color: c.textSecondary }}>left</Text>
                   </View>
                 </View>
                 <View

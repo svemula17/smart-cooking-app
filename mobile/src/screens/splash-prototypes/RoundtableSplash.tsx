@@ -41,12 +41,13 @@ const SEATS = [
   { x: -TABLE_RADIUS, y: 0            }, // west
 ];
 
-// One pillar per seat — emoji + theme color key.
+// One pillar per seat — emoji on a neutral bubble (Minimal Mono: no decorative
+// color; identity comes from the emoji + seat position).
 const PILLARS = [
-  { emoji: '🍳', color: 'primary' },
-  { emoji: '📅', color: 'info' },
-  { emoji: '🏡', color: 'success' },
-  { emoji: '📊', color: 'warning' },
+  { emoji: '🍳', color: 'surface' },
+  { emoji: '📅', color: 'surface' },
+  { emoji: '🏡', color: 'surface' },
+  { emoji: '📊', color: 'surface' },
 ] as const;
 
 export function RoundtableSplash({ onDone, showWordmark = true }: Props) {
@@ -211,6 +212,8 @@ export function RoundtableSplash({ onDone, showWordmark = true }: Props) {
                 styles.avatar,
                 {
                   backgroundColor: color,
+                  borderColor: c.border,
+                  borderWidth: 1,
                   transform: [{ translateX: tx }, { translateY: ty }, { scale }],
                   opacity: op,
                 },
@@ -256,10 +259,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   avatarEmoji: { fontSize: 24 },
   wordmarkWrap: { position: 'absolute', bottom: H * 0.18, alignSelf: 'center', alignItems: 'center', width: '100%' },

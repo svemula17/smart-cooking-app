@@ -229,7 +229,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
         >
           {isMock ? (
             <View style={{ marginBottom: spacing.md, alignItems: 'center' }}>
-              <Badge label="📋 Sample data — log meals to see real stats" tone="warning" size="md" />
+              <Badge label="📋 Sample data — log meals to see real stats" tone="neutral" size="md" />
             </View>
           ) : null}
 
@@ -308,7 +308,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
           </Card>
 
           {/* Week comparison */}
-          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.info }]}>
+          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.primary }]}>
             <Text style={[typography.h3, { color: c.text, marginBottom: spacing.md }]}>
               📈 This week vs last week
             </Text>
@@ -316,7 +316,7 @@ export function MonthlyTrackingScreen(): React.JSX.Element {
           </Card>
 
           {/* Adherence */}
-          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.success, marginBottom: 0 }]}>
+          <Card surface="surface" radius="2xl" padding="lg" elevation="card" bordered style={[styles.accentCard, { borderLeftColor: c.primary, marginBottom: 0 }]}>
             <Text style={[typography.h3, { color: c.text, marginBottom: spacing.sm }]}>
               🎯 Goal adherence
             </Text>
@@ -404,14 +404,14 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 999,
+    borderRadius: 10,
     borderWidth: 1,
   },
   macroDot: { width: 8, height: 8, borderRadius: 4 },
   deltaPill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 8,
     minWidth: 110,
     alignItems: 'center',
   },

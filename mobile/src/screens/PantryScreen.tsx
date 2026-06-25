@@ -560,15 +560,7 @@ function CookNowList({ onOpenRecipe }: { onOpenRecipe: (id: string) => void }) {
       renderItem={({ item }) => (
         <View style={{ marginBottom: spacing.md, position: 'relative' }}>
           <RecipeCard recipe={item.recipe} onPress={() => onOpenRecipe(item.recipe.id)} />
-          <View
-            style={[
-              styles.matchBadge,
-              {
-                backgroundColor:
-                  item.matchPct >= 0.85 ? c.success : item.matchPct >= 0.5 ? c.primary : c.warning,
-              },
-            ]}
-          >
+          <View style={[styles.matchBadge, { backgroundColor: c.primary }]}>
             <Text style={styles.matchText}>{Math.round(item.matchPct * 100)}% match</Text>
           </View>
         </View>
@@ -593,7 +585,9 @@ function Stat({
       style={{
         flex: 1,
         backgroundColor: c.surface,
-        borderRadius: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: c.border,
         padding: spacing.md,
       }}
     >
@@ -619,7 +613,7 @@ const styles = StyleSheet.create({
     left: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 8,
   },
   matchText: { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.4 },
   block: { marginHorizontal: spacing.xl, marginTop: spacing.md },

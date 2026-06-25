@@ -27,12 +27,14 @@ const make = (
     default: ios(shadowColor, opacity, radius, offsetY),
   }) as Elevation;
 
-// Crisp neutral shadows.
+// Minimal Mono — depth comes from hairline borders + whitespace, not shadows.
+// `card` is intentionally flat; only true overlays (sheets/modals) cast a
+// subtle shadow.
 export const elevation = {
   flat: { shadowColor: 'transparent', elevation: 0 } as Elevation,
-  card: make('#000000', 0.05, 10, 3, 2),
-  raised: make('#000000', 0.09, 18, 8, 6),
-  overlay: make('#000000', 0.18, 28, 14, 12),
+  card: { shadowColor: 'transparent', elevation: 0 } as Elevation,
+  raised: make('#000000', 0.06, 14, 5, 3),
+  overlay: make('#000000', 0.16, 26, 12, 10),
 } as const;
 
 export type ElevationKey = keyof typeof elevation;
