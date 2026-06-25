@@ -32,7 +32,7 @@ export const colors = {
   // Text / on-surface
   text: '#111114',
   textSecondary: '#6B6B70',
-  textLight: '#8A8A8E',
+  textLight: '#6E6E73',
   textInverse: '#FFFFFF',
   onPrimary: '#FFFFFF',
   onSecondary: '#FFFFFF',

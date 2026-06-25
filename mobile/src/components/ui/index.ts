@@ -1,6 +1,8 @@
 export { Button } from './Button';
 export type { ButtonProps } from './Button';
 export { IconButton } from './IconButton';
+export { Icon } from './Icon';
+export type { IconName } from './Icon';
 export { TextField } from './TextField';
 export type { TextFieldProps } from './TextField';
 export { Card } from './Card';
@@ -8,6 +10,7 @@ export { Sheet } from './Sheet';
 export { Header } from './Header';
 export { Badge } from './Badge';
 export { Chip } from './Chip';
+export { Segmented } from './Segmented';
 export { Divider } from './Divider';
 export { Avatar } from './Avatar';
 export { Skeleton, RecipeCardSkeleton, ListRowSkeleton } from './Skeleton';

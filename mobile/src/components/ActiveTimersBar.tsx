@@ -13,7 +13,7 @@ import type { ActiveTimer } from '../hooks/useCookingTimers';
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { IconButton } from './ui';
+import { Icon, IconButton } from './ui';
 
 interface Props {
   timers: ActiveTimer[];
@@ -89,20 +89,20 @@ export function ActiveTimersBar({ timers, onToggle, onReset, onRemove }: Props) 
               <View style={styles.chipBtns}>
                 {t.remaining > 0 ? (
                   <IconButton
-                    icon={t.running ? '⏸' : '▶'}
+                    icon={<Icon name={t.running ? 'pause' : 'play'} size={16} />}
                     size={32}
                     accessibilityLabel={t.running ? 'Pause' : 'Resume'}
                     onPress={() => onToggle(t.id)}
                   />
                 ) : null}
                 <IconButton
-                  icon="↺"
+                  icon={<Icon name="rotate-ccw" size={16} />}
                   size={32}
                   accessibilityLabel="Reset"
                   onPress={() => onReset(t.id)}
                 />
                 <IconButton
-                  icon="✕"
+                  icon={<Icon name="x" size={16} />}
                   size={32}
                   accessibilityLabel="Dismiss"
                   onPress={() => onRemove(t.id)}

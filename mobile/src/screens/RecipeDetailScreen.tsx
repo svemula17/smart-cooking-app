@@ -32,7 +32,9 @@ import {
   Card,
   Chip,
   ErrorState,
+  Icon,
   IconButton,
+  Segmented,
   Sheet,
   Skeleton,
   useToast,
@@ -398,7 +400,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={{ flex: 1, alignItems: 'center' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 <IconButton
-                  icon="−"
+                  icon={<Icon name="minus" size={16} />}
                   size={28}
                   variant="tinted"
                   accessibilityLabel="Decrease servings"
@@ -408,7 +410,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   {currentServings}
                 </Text>
                 <IconButton
-                  icon="+"
+                  icon={<Icon name="plus" size={16} />}
                   size={28}
                   variant="tinted"
                   accessibilityLabel="Increase servings"
@@ -474,15 +476,16 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null}
 
         {/* Tabs */}
-        <View style={[styles.block, { flexDirection: 'row', gap: spacing.sm }]}>
-          {(['Need', 'Flow', 'Review'] as TabKey[]).map((tab) => (
-            <Chip
-              key={tab}
-              label={tab}
-              selected={activeTab === tab}
-              onPress={() => setActiveTab(tab)}
-            />
-          ))}
+        <View style={styles.block}>
+          <Segmented
+            options={[
+              { key: 'Need', label: 'Need' },
+              { key: 'Flow', label: 'Flow' },
+              { key: 'Review', label: 'Review' },
+            ]}
+            value={activeTab}
+            onChange={setActiveTab}
+          />
         </View>
 
         <View style={[styles.block, { gap: spacing.md }]}>
@@ -683,7 +686,7 @@ const RecipeDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </View>
           <IconButton
-            icon="✕"
+            icon={<Icon name="x" size={18} />}
             size={32}
             accessibilityLabel="Stop timer"
             onPress={stopTimer}

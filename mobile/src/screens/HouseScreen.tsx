@@ -45,6 +45,7 @@ import {
   Badge,
   Button,
   Card,
+  Icon,
   IconButton,
   Skeleton,
   useToast,
@@ -411,13 +412,13 @@ export default function HouseScreen({ navigation }: { navigation: AppNavigation 
             </View>
           </View>
           <IconButton
-            icon="↗"
+            icon={<Icon name="arrow-up-right" size={20} />}
             size={40}
             accessibilityLabel="Share invite code"
             onPress={shareInvite}
           />
           <IconButton
-            icon="⚙"
+            icon={<Icon name="settings" size={20} />}
             size={40}
             accessibilityLabel="Manage members"
             onPress={() => navigation.navigate('HouseMembers')}

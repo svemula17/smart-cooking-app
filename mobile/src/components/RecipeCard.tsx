@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { Pressable, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import type { Recipe } from '../types';
@@ -53,6 +53,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
   const dispatch = useDispatch();
   const isFav = useSelector((s: RootState) => s.favorites.ids.includes(recipe.id));
   const totalTime = (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
+  const diffLevel = recipe.difficulty === 'Hard' ? 3 : recipe.difficulty === 'Medium' ? 2 : 1;
 
   // Image source preference: remote URL from DB → bundled local asset → cuisine emoji fallback
   const remoteUrl = recipe.image_url && /^https?:\/\//i.test(recipe.image_url) ? recipe.image_url : null;
@@ -60,10 +61,15 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
   const imageSource = remoteUrl ? { uri: remoteUrl } : localImage ?? null;
 
   return (
-    <TouchableOpacity
-      style={[styles.card, compact && styles.cardCompact, { backgroundColor: c.surfaceElevated, borderColor: c.border }]}
+    <Pressable
+      style={({ pressed }) => [
+        styles.card,
+        compact && styles.cardCompact,
+        { backgroundColor: c.surfaceElevated, borderColor: c.border },
+        pressed && { transform: [{ scale: 0.985 }], opacity: 0.96 },
+      ]}
       onPress={onPress}
-      activeOpacity={0.85}
+      accessibilityRole="button"
     >
       {/* Image */}
       <View style={[styles.imageWrapper, compact && styles.imageWrapperCompact, { backgroundColor: c.surfaceMuted }]}>
@@ -85,9 +91,20 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
         {/* Subtle gradient overlay along bottom for legibility (using a dimmed view) */}
         <View style={styles.imageOverlay} pointerEvents="none" />
 
-        {/* Difficulty pill (bottom-left over image) */}
-        <View style={[styles.diffBadge, { backgroundColor: DIFFICULTY_BG }]}>
-          <Text style={styles.diffText}>{recipe.difficulty || 'Easy'}</Text>
+        {/* Difficulty meter (bottom-left over image) — mono 3-dot level */}
+        <View
+          style={[styles.diffBadge, { backgroundColor: DIFFICULTY_BG }]}
+          accessibilityLabel={`Difficulty: ${recipe.difficulty || 'Easy'}`}
+        >
+          {[0, 1, 2].map((i) => (
+            <View
+              key={i}
+              style={[
+                styles.diffDot,
+                { backgroundColor: i < diffLevel ? '#fff' : 'rgba(255,255,255,0.38)' },
+              ]}
+            />
+          ))}
         </View>
 
         {/* Time pill (bottom-right over image) */}
@@ -154,7 +171,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
 
         <StarRating rating={recipe.average_rating ?? 0} total={recipe.total_ratings ?? 0} />
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -206,9 +223,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     borderRadius: radii.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  diffDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
   diffText: {
     fontSize: 11,

@@ -35,7 +35,7 @@ export function IconButton({
     <Pressable
       onPress={() => {
         if (disabled) return;
-        haptics.selection();
+        haptics.impact();
         onPress?.();
       }}
       disabled={disabled}

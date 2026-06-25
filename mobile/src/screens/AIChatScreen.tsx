@@ -26,6 +26,7 @@ import {
   Card,
   Chip,
   Header,
+  Icon,
   IconButton,
 } from '../components/ui';
 
@@ -280,7 +281,7 @@ export function AIChatScreen({ navigation }: { navigation: AppNavigation }): Rea
             accessibilityLabel="Message"
           />
           <IconButton
-            icon="↑"
+            icon={<Icon name="arrow-up" size={20} color={c.onPrimary} />}
             size={44}
             variant="filled"
             disabled={!input.trim() || isLoading}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,10 +35,12 @@ import MakeNowScreen from '../screens/MakeNowScreen';
 import ScanReceiptScreen from '../screens/ScanReceiptScreen';
 import SplashPrototypesScreen from '../screens/SplashPrototypesScreen';
 import DesignPrototypesScreen from '../screens/DesignPrototypesScreen';
+import TapFeedbackScreen from '../screens/TapFeedbackScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
+import { pressFeedback } from '../utils/feedback';
 
 // React 19 expands ReactNode to include bigint, which breaks @react-navigation
 // v7's ScreenComponentType. Cast all screen components to bypass this.
@@ -47,24 +50,24 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 interface TabIconConfig {
-  emoji: string;
+  icon: React.ComponentProps<typeof Feather>['name'];
   label: string;
   a11y: string;
 }
 
 const TAB_CONFIG: Record<string, TabIconConfig> = {
-  Home: { emoji: '🏡', label: 'Home', a11y: 'Home tab' },
-  House: { emoji: '👨‍👩‍👧', label: 'House', a11y: 'Household tab' },
-  Pantry: { emoji: '🥫', label: 'Pantry', a11y: 'Pantry tab' },
-  Stats: { emoji: '📊', label: 'Stats', a11y: 'Stats tab' },
-  Profile: { emoji: '👤', label: 'You', a11y: 'Profile tab' },
+  Home: { icon: 'home', label: 'Home', a11y: 'Home tab' },
+  House: { icon: 'users', label: 'House', a11y: 'Household tab' },
+  Pantry: { icon: 'archive', label: 'Pantry', a11y: 'Pantry tab' },
+  Stats: { icon: 'bar-chart-2', label: 'Stats', a11y: 'Stats tab' },
+  Profile: { icon: 'user', label: 'You', a11y: 'Profile tab' },
 };
 
 function TabIcon({ name, focused, color }: { name: string; focused: boolean; color: string }) {
-  const cfg = TAB_CONFIG[name] ?? { emoji: '●', label: name, a11y: name };
+  const cfg = TAB_CONFIG[name] ?? { icon: 'circle' as const, label: name, a11y: name };
   return (
     <View style={tabIconStyles.container}>
-      <Text style={[tabIconStyles.emoji, { opacity: focused ? 1 : 0.55 }]}>{cfg.emoji}</Text>
+      <Feather name={cfg.icon} size={22} color={color} />
       <View
         style={[
           tabIconStyles.dot,
@@ -77,7 +80,6 @@ function TabIcon({ name, focused, color }: { name: string; focused: boolean; col
 
 const tabIconStyles = StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'center', width: 48, height: 36 },
-  emoji: { fontSize: 22 },
   dot: { width: 4, height: 4, borderRadius: 2, marginTop: 3 },
 });
 
@@ -87,6 +89,7 @@ function TabNavigator() {
 
   return (
     <Tab.Navigator
+      screenListeners={{ tabPress: () => pressFeedback() }}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: c.primary,
@@ -248,6 +251,11 @@ export function RootNavigator(): React.JSX.Element {
       <Stack.Screen
         name="DesignPrototypes"
         component={DesignPrototypesScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="TapFeedback"
+        component={TapFeedbackScreen as AnyComponent}
         options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>

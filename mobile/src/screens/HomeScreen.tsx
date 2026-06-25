@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ThemedStatusBar } from "../components/ThemedStatusBar";
 import {
+  Animated,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -23,7 +24,7 @@ import AttendanceSheet from './AttendanceSheet';
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { Avatar, Badge, Card, IconButton } from '../components/ui';
+import { Avatar, Badge, Card, Icon, IconButton } from '../components/ui';
 import { CuisineCard } from '../components/CuisineCard';
 
 type HomeNav = AppNavigation;
@@ -126,6 +127,18 @@ const HomeScreen: React.FC = () => {
   const [showAttendance, setShowAttendance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Gentle entrance for the Chef-AI FAB.
+  const fabIn = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(fabIn, {
+      toValue: 1,
+      delay: 350,
+      useNativeDriver: true,
+      speed: 12,
+      bounciness: 8,
+    }).start();
+  }, [fabIn]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 600);
@@ -150,13 +163,6 @@ const HomeScreen: React.FC = () => {
 
   const userName = user?.name ? user.name.split(' ')[0] : 'Chef';
   const pantryCount = pantryItems.length;
-  const expiringSoon = pantryItems.filter((item) => {
-    if (!item.expiry_date) return false;
-    const ms = new Date(item.expiry_date).getTime() - Date.now();
-    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
-    return days >= 0 && days <= 3;
-  });
-  const urgentCount = expiringSoon.length;
 
   const goals = {
     calories: preferences?.calories_goal ?? 2000,
@@ -184,7 +190,7 @@ const HomeScreen: React.FC = () => {
             </Text>
           </View>
           <IconButton
-            icon="🔍"
+            icon={<Icon name="search" size={20} />}
             accessibilityLabel="Search recipes"
             onPress={() => navigation.navigate('Search')}
             size={40}
@@ -213,7 +219,7 @@ const HomeScreen: React.FC = () => {
                 </Text>
               </View>
               <IconButton
-                icon="›"
+                icon={<Icon name="chevron-right" size={20} />}
                 accessibilityLabel="Open attendance sheet"
                 onPress={() => setShowAttendance(true)}
                 size={32}
@@ -269,50 +275,7 @@ const HomeScreen: React.FC = () => {
           snapToInterval={284} // card width 268 + gap 16
           snapToAlignment="start"
         >
-          {/* 1) Use first tonight — expiring pantry items */}
-          <Card
-            surface="surface"
-            radius="xl"
-            elevation="card"
-            padding="lg"
-            style={styles.rectCard}
-            onPress={() =>
-              navigation.navigate('RecipeBrowser', {
-                cuisine: 'all',
-                intent: 'use-soon',
-              } as any)
-            }
-            accessibilityLabel="Use first tonight"
-          >
-            <View style={styles.rectHeader}>
-              <Text style={styles.bigEmoji}>⏳</Text>
-              <Text style={[typography.h4, { color: c.text }]}>Use first tonight</Text>
-            </View>
-            {expiringSoon.length > 0 ? (
-              <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
-                {expiringSoon.slice(0, 3).map((item) => (
-                  <View key={item.id} style={styles.useRow}>
-                    <View style={[styles.dot, { backgroundColor: c.warning }]} />
-                    <Text
-                      style={[typography.bodySmall, { color: c.text, flex: 1, fontWeight: '600' }]}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.sm }]}>
-                Nothing expiring soon.
-              </Text>
-            )}
-            <Text style={[styles.rectCta, { color: c.primary }]}>
-              {expiringSoon.length > 0 ? 'Find a dinner →' : 'Add pantry items →'}
-            </Text>
-          </Card>
-
-          {/* 2) Today in the house — cook, cleaner, dish */}
+          {/* Today in the house — cook, cleaner, dish */}
           {house ? (
             <Card
               surface="surface"
@@ -395,40 +358,7 @@ const HomeScreen: React.FC = () => {
             </Card>
           )}
 
-          {/* 3) Pantry quick picks */}
-          <Card
-            surface="surface"
-            radius="xl"
-            elevation="card"
-            padding="lg"
-            style={styles.rectCard}
-            onPress={() => navigation.navigate('Pantry')}
-            accessibilityLabel="Open pantry"
-          >
-            <View style={styles.rectHeader}>
-              <Text style={styles.bigEmoji}>🥫</Text>
-              <Text style={[typography.h4, { color: c.text }]}>Your pantry</Text>
-            </View>
-            <View style={styles.pantryStatsRow}>
-              <View style={styles.pantryStat}>
-                <Text style={[typography.h2, { color: c.text }]}>{pantryCount}</Text>
-                <Text style={[typography.caption, { color: c.textSecondary, fontWeight: '600' }]}>
-                  In pantry
-                </Text>
-              </View>
-              <View style={styles.pantryStat}>
-                <Text style={[typography.h2, { color: urgentCount > 0 ? c.warning : c.text }]}>
-                  {urgentCount}
-                </Text>
-                <Text style={[typography.caption, { color: c.textSecondary, fontWeight: '600' }]}>
-                  Use soon
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.rectCta, { color: c.primary }]}>Manage pantry →</Text>
-          </Card>
-
-          {/* 4) What can I make now? — AI-style pantry matcher */}
+          {/* What can I make now? — AI-style pantry matcher */}
           <Card
             surface="surface"
             radius="xl"
@@ -506,21 +436,27 @@ const HomeScreen: React.FC = () => {
       </ScrollView>
 
       {/* Chef AI floating action button — was a tab, demoted to FAB on Home */}
-      <TouchableOpacity
-        accessibilityRole="button"
-        accessibilityLabel="Open Chef AI assistant"
-        onPress={() => navigation.navigate('AIChat')}
-        activeOpacity={0.85}
+      <Animated.View
         style={[
-          styles.aiFab,
+          styles.aiFabWrap,
           {
-            backgroundColor: c.primary,
-            shadowColor: '#000',
+            opacity: fabIn,
+            transform: [
+              { scale: fabIn.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) },
+            ],
           },
         ]}
       >
-        <Text style={styles.aiFabEmoji}>🧑‍🍳</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Open Chef AI assistant"
+          onPress={() => navigation.navigate('AIChat')}
+          activeOpacity={0.85}
+          style={[styles.aiFab, { backgroundColor: c.primary, shadowColor: '#000' }]}
+        >
+          <Text style={styles.aiFabEmoji}>🧑‍🍳</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       <AttendanceSheet visible={showAttendance} onClose={() => setShowAttendance(false)} />
     </SafeAreaView>
@@ -544,11 +480,13 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { paddingBottom: spacing['4xl'] },
-  aiFab: {
+  aiFabWrap: {
     position: 'absolute',
-    right: spacing.xl,
+    right: spacing.lg,
     // Sits above the bottom tab bar (~56pt) + a margin
     bottom: 80,
+  },
+  aiFab: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -563,23 +501,23 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     gap: spacing.md,
   },
-  block: { marginHorizontal: spacing.xl, marginBottom: spacing.md },
+  block: { marginHorizontal: spacing.lg, marginBottom: spacing.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   bigEmoji: { fontSize: 22 },
   miniEmoji: { fontSize: 14, width: 18, textAlign: 'center' },
   ringRow: { flexDirection: 'row', justifyContent: 'space-between' },
   sectionHeader: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
     marginTop: spacing.sm,
   },
   rectRow: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     gap: spacing.md,
   },

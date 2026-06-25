@@ -118,8 +118,8 @@ export type { TrackingState } from './slices/trackingSlice';
 export { toggleFavorite, clearFavorites } from './slices/favoritesSlice';
 export type { FavoritesState } from './slices/favoritesSlice';
 
-export { toggleDarkMode } from './slices/settingsSlice';
-export type { SettingsState } from './slices/settingsSlice';
+export { toggleDarkMode, setTapSound, setTapHaptic } from './slices/settingsSlice';
+export type { SettingsState, TapSound, TapHaptic } from './slices/settingsSlice';
 
 export {
   setPantryItems,

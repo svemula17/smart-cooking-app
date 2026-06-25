@@ -5,6 +5,7 @@ import { useThemeColors } from '../../theme/useThemeColors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { IconButton } from './IconButton';
+import { Icon } from './Icon';
 
 interface HeaderProps {
   title?: string;
@@ -50,7 +51,7 @@ export function Header({
         {left
           ? left
           : showBack
-          ? <IconButton icon="‹" accessibilityLabel="Go back" onPress={handleBack} size={40} />
+          ? <IconButton icon={<Icon name="chevron-left" size={24} />} accessibilityLabel="Go back" onPress={handleBack} size={40} />
           : null}
       </View>
       <View style={[styles.center, align === 'center' && { alignItems: 'center' }]}>

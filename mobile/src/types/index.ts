@@ -211,6 +211,7 @@ export type RootStackParamList = {
   MealPlanner: undefined;
   SplashPrototypes: undefined;
   DesignPrototypes: undefined;
+  TapFeedback: undefined;
 };
 
 export type TabParamList = {

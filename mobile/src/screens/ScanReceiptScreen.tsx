@@ -30,7 +30,7 @@ import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { radii } from '../theme/radii';
-import { Badge, Button, Card, Header, IconButton, useToast } from '../components/ui';
+import { Badge, Button, Card, Header, Icon, IconButton, useToast } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ScanReceipt'>;
 
@@ -303,7 +303,7 @@ export default function ScanReceiptScreen({ navigation }: Props) {
                   </View>
                 </View>
                 <IconButton
-                  icon="✕"
+                  icon={<Icon name="x" size={16} />}
                   size={28}
                   accessibilityLabel="Remove row"
                   onPress={() =>
