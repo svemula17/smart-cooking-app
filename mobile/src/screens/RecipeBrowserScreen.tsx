@@ -13,7 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
-import { RootStackParamList, Recipe } from '../types';
+import { RootStackParamList, Recipe, MealType } from '../types';
 import { RootState } from '../store';
 import { recipeService } from '../services/recipeService';
 import { RecipeCard } from '../components/RecipeCard';
@@ -41,9 +41,15 @@ const FILTERS: { label: FilterKey; emoji: string }[] = [
   { label: 'High Protein', emoji: '💪' },
 ];
 
+const MEALS: MealType[] = ['breakfast', 'lunch', 'dinner'];
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { cuisine, intent } = route.params;
+  const { cuisine, intent, mealType } = route.params;
   const c = useThemeColors();
+
+  // Meal-type filter (passed from Home; switchable here).
+  const [meal, setMeal] = useState<MealType | undefined>(mealType);
 
   // Map incoming intent → one of our three remaining filters (or none = "all")
   const initialFilter: FilterKey | null =
@@ -71,12 +77,13 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
   const isDefaultView = cuisine !== 'all' && !debouncedQuery && activeFilter === null;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['recipes', cuisine, debouncedQuery, activeFilter],
+    queryKey: ['recipes', cuisine, debouncedQuery, activeFilter, meal],
     queryFn: async () => {
-      if (isDefaultView) return recipeService.getByCuisine(cuisine, { limit: 100 });
+      if (isDefaultView) return recipeService.getByCuisine(cuisine, { limit: 100, meal_type: meal });
       return recipeService.search({
         q: debouncedQuery || undefined,
         cuisine_type: cuisine !== 'all' ? cuisine : undefined,
+        meal_type: meal,
         difficulty: activeFilter === 'Low Effort' ? 'Easy' : undefined,
         min_protein: activeFilter === 'High Protein' ? 25 : undefined,
         max_cook_time: activeFilter === 'Fastest' ? 25 : undefined,
@@ -97,7 +104,14 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
   };
   const recipes = [...allRecipes].sort((a, b) => recipePriority(b) - recipePriority(a));
 
-  const headerTitle = cuisine === 'all' ? 'Dinner options' : `${cuisine} tonight`;
+  const headerTitle =
+    cuisine === 'all'
+      ? meal
+        ? cap(meal)
+        : 'Dinner options'
+      : meal
+      ? `${cuisine} ${meal}`
+      : `${cuisine} tonight`;
 
   // Pantry-driven suggestion strip — show items expiring soon as quick "cook
   // with these" prompts. Tapping fires a search.
@@ -148,6 +162,23 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
                 accessibilityLabel="Search recipes"
               />
             </View>
+
+            {/* Meal-type switcher */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}
+            >
+              {MEALS.map((m) => (
+                <Chip
+                  key={m}
+                  label={cap(m)}
+                  selected={meal === m}
+                  // Tapping the active meal clears it (back to all meals)
+                  onPress={() => setMeal((curr) => (curr === m ? undefined : m))}
+                />
+              ))}
+            </ScrollView>
 
             {/* Pantry suggestions — chips of items expiring soon */}
             {pantrySuggestions.length > 0 ? (

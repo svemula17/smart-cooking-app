@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 
-import type { AppNavigation } from '../types';
+import type { AppNavigation, MealType } from '../types';
 import { RootState, type AppDispatch, setPreferences } from '../store';
 import { userService } from '../services/userService';
 import type { CookScheduleEntry } from '../services/houseService';
@@ -24,7 +24,7 @@ import AttendanceSheet from './AttendanceSheet';
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { Avatar, Badge, Card, Icon, IconButton } from '../components/ui';
+import { Avatar, Badge, Card, Chip, Icon, IconButton } from '../components/ui';
 import { CuisineCard } from '../components/CuisineCard';
 
 type HomeNav = AppNavigation;
@@ -38,6 +38,12 @@ const CUISINES = [
   { cuisine: 'Thai', emoji: '🍲' },
   { cuisine: 'Japanese', emoji: '🍱' },
   { cuisine: 'Mediterranean', emoji: '🫒' },
+];
+
+const MEALS: { key: MealType; label: string }[] = [
+  { key: 'breakfast', label: 'Breakfast' },
+  { key: 'lunch', label: 'Lunch' },
+  { key: 'dinner', label: 'Dinner' },
 ];
 
 const greeting = () => {
@@ -126,6 +132,8 @@ const HomeScreen: React.FC = () => {
 
   const [showAttendance, setShowAttendance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Optional meal-type filter; when set, tapping a cuisine opens it filtered.
+  const [meal, setMeal] = useState<MealType | undefined>(undefined);
 
   // Gentle entrance for the Chef-AI FAB.
   const fabIn = useRef(new Animated.Value(0)).current;
@@ -409,8 +417,23 @@ const HomeScreen: React.FC = () => {
         {/* Cuisines */}
         <SectionHeader
           title="Cook by cuisine"
-          subtitle="Browse what you’re craving tonight."
+          subtitle={meal ? `Pick a cuisine for ${meal}.` : undefined}
         />
+        {/* Meal-type filter — pick one, then tap a cuisine to see those dishes */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.mealRow}
+        >
+          {MEALS.map((m) => (
+            <Chip
+              key={m.key}
+              label={m.label}
+              selected={meal === m.key}
+              onPress={() => setMeal((curr) => (curr === m.key ? undefined : m.key))}
+            />
+          ))}
+        </ScrollView>
         <View style={styles.cuisineGrid}>
           {CUISINES.map((item) => (
             <CuisineCard
@@ -418,13 +441,15 @@ const HomeScreen: React.FC = () => {
               cuisine={item.cuisine}
               emoji={item.emoji}
               color={(c as any)[item.cuisine.toLowerCase().replace('-', '')] ?? c.surfaceMuted}
-              onPress={() => navigation.navigate('RecipeBrowser', { cuisine: item.cuisine })}
+              onPress={() =>
+                navigation.navigate('RecipeBrowser', { cuisine: item.cuisine, mealType: meal })
+              }
             />
           ))}
         </View>
         <Text
           accessibilityRole="button"
-          onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all' })}
+          onPress={() => navigation.navigate('RecipeBrowser', { cuisine: 'all', mealType: meal })}
           style={[
             typography.button,
             { color: c.primary, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
@@ -544,6 +569,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  mealRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
   cuisineGrid: {
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',

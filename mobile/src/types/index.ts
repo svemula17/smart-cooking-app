@@ -36,6 +36,7 @@ export interface Recipe {
   image_url: string | null;
   average_rating: number;
   total_ratings: number;
+  meal_types?: MealType[];
   created_at: string;
 }
 
@@ -187,7 +188,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Login: { initialMode?: 'login' | 'register'; pendingGoals?: PendingGoals } | undefined;
   Tabs: undefined;
-  RecipeBrowser: { cuisine: string; intent?: 'rescue' | 'fast' | 'low-effort' | 'high-protein' | 'use-soon' };
+  RecipeBrowser: { cuisine: string; mealType?: MealType; intent?: 'rescue' | 'fast' | 'low-effort' | 'high-protein' | 'use-soon' };
   RecipeDetail: { recipeId: string };
   CookingMode: { recipeId: string };
   HouseMembers: undefined;

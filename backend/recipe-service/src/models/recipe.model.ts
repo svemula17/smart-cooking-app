@@ -6,6 +6,7 @@ const RECIPE_COLUMNS = `
   id, name, cuisine_type, difficulty,
   prep_time_minutes, cook_time_minutes, servings,
   instructions, image_url, verified_by_dietitian,
+  meal_types,
   created_at, deleted_at
 `;
 
@@ -13,6 +14,7 @@ const RECIPE_COLUMNS_ALIASED_R = `
   r.id, r.name, r.cuisine_type, r.difficulty,
   r.prep_time_minutes, r.cook_time_minutes, r.servings,
   r.instructions, r.image_url, r.verified_by_dietitian,
+  r.meal_types,
   r.created_at, r.deleted_at
 `;
 
@@ -20,6 +22,7 @@ export interface ListFilters {
   cuisine_type?: string;
   difficulty?: string;
   max_cook_time?: number;
+  meal_type?: string;
 }
 
 export interface SearchFilters extends ListFilters {
@@ -39,6 +42,10 @@ export const RecipeModel = {
     if (filters.cuisine_type) {
       params.push(filters.cuisine_type);
       conditions.push(`cuisine_type = $${params.length}`);
+    }
+    if (filters.meal_type) {
+      params.push(filters.meal_type);
+      conditions.push(`$${params.length} = ANY(meal_types)`);
     }
     if (filters.difficulty) {
       params.push(filters.difficulty);
@@ -94,6 +101,10 @@ export const RecipeModel = {
     if (filters.cuisine_type) {
       params.push(filters.cuisine_type);
       conditions.push(`r.cuisine_type = $${params.length}`);
+    }
+    if (filters.meal_type) {
+      params.push(filters.meal_type);
+      conditions.push(`$${params.length} = ANY(r.meal_types)`);
     }
     if (filters.difficulty) {
       params.push(filters.difficulty);

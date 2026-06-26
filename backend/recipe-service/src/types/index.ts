@@ -37,6 +37,7 @@ export interface Recipe {
   instructions: RecipeStep[];
   image_url: string | null;
   verified_by_dietitian: boolean;
+  meal_types: string[];
   created_at: Date;
   deleted_at?: Date | null;
 }

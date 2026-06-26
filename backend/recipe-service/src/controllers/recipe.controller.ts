@@ -35,14 +35,15 @@ async function hydrateRecipe(recipe: Recipe): Promise<RecipeWithDetails> {
 /**
  * @route   GET /recipes
  * @access  public
- * @query   page, limit, cuisine_type, difficulty, max_cook_time
+ * @query   page, limit, cuisine_type, meal_type, difficulty, max_cook_time
  * @returns 200 paginated recipe list
  */
 export async function listRecipes(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { page, limit, offset } = req.pagination!;
-    const { cuisine_type, difficulty, max_cook_time } = req.query as {
+    const { cuisine_type, meal_type, difficulty, max_cook_time } = req.query as {
       cuisine_type?: string;
+      meal_type?: string;
       difficulty?: string;
       max_cook_time?: string | number;
     };
@@ -50,6 +51,7 @@ export async function listRecipes(req: Request, res: Response, next: NextFunctio
     const { rows, total } = await RecipeModel.list(
       {
         cuisine_type,
+        meal_type,
         difficulty,
         max_cook_time: max_cook_time != null ? Number(max_cook_time) : undefined,
       },
@@ -77,7 +79,7 @@ export async function listRecipes(req: Request, res: Response, next: NextFunctio
 /**
  * @route   GET /recipes/search
  * @access  public
- * @query   q, cuisine_type, difficulty, max_cook_time, min_protein, page, limit
+ * @query   q, cuisine_type, meal_type, difficulty, max_cook_time, min_protein, page, limit
  * @returns 200 matching recipes (paginated)
  */
 export async function searchRecipes(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -85,12 +87,13 @@ export async function searchRecipes(req: Request, res: Response, next: NextFunct
     const { page, limit, offset } = req.pagination!;
     const q = typeof req.query.q === 'string' ? req.query.q : undefined;
     const cuisine_type = typeof req.query.cuisine_type === 'string' ? req.query.cuisine_type : undefined;
+    const meal_type = typeof req.query.meal_type === 'string' ? req.query.meal_type : undefined;
     const difficulty = typeof req.query.difficulty === 'string' ? req.query.difficulty : undefined;
     const max_cook_time = req.query.max_cook_time != null ? Number(req.query.max_cook_time) : undefined;
     const min_protein = req.query.min_protein != null ? Number(req.query.min_protein) : undefined;
 
     const { rows, total } = await RecipeModel.search(
-      { q, cuisine_type, difficulty, max_cook_time, min_protein },
+      { q, cuisine_type, meal_type, difficulty, max_cook_time, min_protein },
       { limit, offset },
     );
 
@@ -119,10 +122,11 @@ export async function searchRecipes(req: Request, res: Response, next: NextFunct
 export async function listByCuisine(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { cuisineType } = req.params as { cuisineType: string };
+    const meal_type = typeof req.query.meal_type === 'string' ? req.query.meal_type : undefined;
     const { page, limit, offset } = req.pagination!;
 
     const { rows, total } = await RecipeModel.list(
-      { cuisine_type: cuisineType },
+      { cuisine_type: cuisineType, meal_type },
       { limit, offset },
     );
 
