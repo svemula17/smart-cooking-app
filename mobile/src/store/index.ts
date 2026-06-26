@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 
+import { storage, STORAGE_KEYS } from '../utils/storage';
 import authReducer  from './slices/authSlice';
 import userReducer  from './slices/userSlice';
 import recipeReducer from './slices/recipeSlice';
@@ -45,6 +46,18 @@ export const store = configureStore({
 
 export type RootState   = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+// ─── Persist settings (dark mode + tap feedback) across launches ──────────────
+// RTK returns a new `settings` object only when a settings reducer runs, so a
+// cheap reference check avoids writing on every unrelated dispatch.
+let lastSettings = store.getState().settings;
+store.subscribe(() => {
+  const next = store.getState().settings;
+  if (next !== lastSettings) {
+    lastSettings = next;
+    storage.setJSON(STORAGE_KEYS.SETTINGS, next).catch(() => {});
+  }
+});
 
 // ─── Re-export all slice actions for convenience ──────────────────────────────
 
@@ -118,7 +131,7 @@ export type { TrackingState } from './slices/trackingSlice';
 export { toggleFavorite, clearFavorites } from './slices/favoritesSlice';
 export type { FavoritesState } from './slices/favoritesSlice';
 
-export { toggleDarkMode, setTapSound, setTapHaptic } from './slices/settingsSlice';
+export { toggleDarkMode, setTapSound, setTapHaptic, hydrateSettings } from './slices/settingsSlice';
 export type { SettingsState, TapSound, TapHaptic } from './slices/settingsSlice';
 
 export {

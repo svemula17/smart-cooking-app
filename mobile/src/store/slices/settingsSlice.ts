@@ -30,8 +30,17 @@ const settingsSlice = createSlice({
     setTapHaptic(state, action: PayloadAction<TapHaptic>) {
       state.tapHaptic = action.payload;
     },
+    // Restore persisted settings on launch. Merges only known fields so an
+    // old/partial payload can't inject junk.
+    hydrateSettings(state, action: PayloadAction<Partial<SettingsState>>) {
+      const p = action.payload;
+      if (typeof p.isDark === 'boolean') state.isDark = p.isDark;
+      if (p.tapSound) state.tapSound = p.tapSound;
+      if (p.tapHaptic) state.tapHaptic = p.tapHaptic;
+    },
   },
 });
 
-export const { toggleDarkMode, setTapSound, setTapHaptic } = settingsSlice.actions;
+export const { toggleDarkMode, setTapSound, setTapHaptic, hydrateSettings } =
+  settingsSlice.actions;
 export default settingsSlice.reducer;

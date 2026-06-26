@@ -6,7 +6,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Provider as ReduxProvider, useSelector } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
-import { store, type RootState } from './src/store';
+import { store, hydrateSettings, type RootState, type SettingsState } from './src/store';
+import { storage, STORAGE_KEYS } from './src/utils/storage';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/ui';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -39,6 +40,13 @@ const queryClient = new QueryClient({
 function ThemedApp() {
   const isDark = useSelector((s: RootState) => s.settings.isDark);
   useEffect(() => {
+    // Restore persisted settings (dark mode + tap feedback) on launch.
+    storage
+      .getJSON<Partial<SettingsState>>(STORAGE_KEYS.SETTINGS)
+      .then((saved) => {
+        if (saved) store.dispatch(hydrateSettings(saved));
+      })
+      .catch(() => {});
     Notifications.requestPermissionsAsync().catch(() => {});
   }, []);
   return (

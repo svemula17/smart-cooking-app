@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   MACRO_PROGRESS:      'macroProgress',
   LAST_SYNC_DATE:      'lastSyncDate',
   THEME:               'theme',
+  SETTINGS:            'settings',
 } as const;
 
 type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
