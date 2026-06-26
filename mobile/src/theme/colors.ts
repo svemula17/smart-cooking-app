@@ -51,12 +51,12 @@ export const colors = {
   info: '#2563EB',
   infoMuted: '#E8EEFE',
 
-  // Macro colors (the ONE pop of color — vibrant data viz)
+  // Macro colors (the ONE pop of color — full, saturated data viz)
   calories: '#FF3D2E',
-  protein: '#FF8A00',
-  carbs: '#FFC107',
-  fat: '#9C27B0',
-  fiber: '#00B050',
+  protein: '#F97316',
+  carbs: '#E0A100',
+  fat: '#9333EA',
+  fiber: '#16A34A',
 
   // Difficulty badges — mono ramp (light = easy → dark = hard)
   easy: '#F4F4F5',

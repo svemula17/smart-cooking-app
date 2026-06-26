@@ -65,7 +65,7 @@ interface RingProps {
 
 function GoalRing({ label, emoji, current, goal, color, trackColor, size = 56 }: RingProps) {
   const c = useThemeColors();
-  const stroke = 8;
+  const stroke = 6;
   const r = (size - stroke) / 2;
   const circumference = 2 * Math.PI * r;
   const pct = goal > 0 ? Math.min(current / goal, 1) : 0;
@@ -134,6 +134,29 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   // Optional meal-type filter; when set, tapping a cuisine opens it filtered.
   const [meal, setMeal] = useState<MealType | undefined>(undefined);
+
+  // Auto-scrolling carousel for the 3 quick-action cards. Stops once the user
+  // takes over by dragging.
+  const stripRef = useRef<ScrollView>(null);
+  const stripTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stripIdx = useRef(0);
+  const STRIP_STEP = 284; // card width 268 + gap 16
+  const STRIP_COUNT = 3;
+  useEffect(() => {
+    stripTimer.current = setInterval(() => {
+      stripIdx.current = (stripIdx.current + 1) % STRIP_COUNT;
+      stripRef.current?.scrollTo({ x: stripIdx.current * STRIP_STEP, animated: true });
+    }, 3500);
+    return () => {
+      if (stripTimer.current) clearInterval(stripTimer.current);
+    };
+  }, []);
+  const stopAutoScroll = useCallback(() => {
+    if (stripTimer.current) {
+      clearInterval(stripTimer.current);
+      stripTimer.current = null;
+    }
+  }, []);
 
   // Gentle entrance for the Chef-AI FAB.
   const fabIn = useRef(new Animated.Value(0)).current;
@@ -245,7 +268,7 @@ const HomeScreen: React.FC = () => {
               current={macroProgress.calories}
               goal={goals.calories}
               color={c.calories}
-              trackColor={c.surfaceMuted}
+              trackColor={`${c.calories}26`}
             />
             <GoalRing
               label="Protein"
@@ -253,7 +276,7 @@ const HomeScreen: React.FC = () => {
               current={macroProgress.protein}
               goal={goals.protein}
               color={c.protein}
-              trackColor={c.surfaceMuted}
+              trackColor={`${c.protein}26`}
             />
             <GoalRing
               label="Carbs"
@@ -261,7 +284,7 @@ const HomeScreen: React.FC = () => {
               current={macroProgress.carbs}
               goal={goals.carbs}
               color={c.carbs}
-              trackColor={c.surfaceMuted}
+              trackColor={`${c.carbs}26`}
             />
             <GoalRing
               label="Fat"
@@ -269,20 +292,47 @@ const HomeScreen: React.FC = () => {
               current={macroProgress.fat}
               goal={goals.fat}
               color={c.fat}
-              trackColor={c.surfaceMuted}
+              trackColor={`${c.fat}26`}
             />
           </View>
         </Card>
 
-        {/* 3 rectangle sections — horizontal scroll */}
+        {/* 3 quick-action cards — auto-scrolling carousel */}
         <ScrollView
+          ref={stripRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.rectRow}
           decelerationRate="fast"
-          snapToInterval={284} // card width 268 + gap 16
+          snapToInterval={STRIP_STEP}
           snapToAlignment="start"
+          onScrollBeginDrag={stopAutoScroll}
         >
+          {/* What can I make now? — AI-style pantry matcher */}
+          <Card
+            surface="surface"
+            radius="xl"
+            elevation="card"
+            padding="lg"
+            bordered
+            style={[styles.rectCard, { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
+            onPress={() => navigation.navigate('MakeNow')}
+            accessibilityLabel="What can I make right now"
+          >
+            <View style={styles.rectHeader}>
+              <Text style={styles.bigEmoji}>✨</Text>
+              <Text style={[typography.h4, { color: c.text }]}>What can I make?</Text>
+            </View>
+            <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.xs }]}>
+              {pantryCount === 0
+                ? 'Add pantry items to see dishes you can cook right now.'
+                : `Match ${pantryCount} pantry items against every recipe to find dinners you can make tonight.`}
+            </Text>
+            <Text style={[styles.rectCta, { color: c.primary, marginTop: spacing.sm }]}>
+              Find recipes →
+            </Text>
+          </Card>
+
           {/* Today in the house — cook, cleaner, dish */}
           {house ? (
             <Card
@@ -366,32 +416,7 @@ const HomeScreen: React.FC = () => {
             </Card>
           )}
 
-          {/* What can I make now? — AI-style pantry matcher */}
-          <Card
-            surface="surface"
-            radius="xl"
-            elevation="card"
-            padding="lg"
-            bordered
-            style={[styles.rectCard, { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
-            onPress={() => navigation.navigate('MakeNow')}
-            accessibilityLabel="What can I make right now"
-          >
-            <View style={styles.rectHeader}>
-              <Text style={styles.bigEmoji}>✨</Text>
-              <Text style={[typography.h4, { color: c.text }]}>What can I make?</Text>
-            </View>
-            <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.xs }]}>
-              {pantryCount === 0
-                ? 'Add pantry items to see dishes you can cook right now.'
-                : `Match ${pantryCount} pantry items against every recipe to find dinners you can make tonight.`}
-            </Text>
-            <Text style={[styles.rectCta, { color: c.primary, marginTop: spacing.md }]}>
-              Find recipes →
-            </Text>
-          </Card>
-
-          {/* 5) Plan your week — meal planner (moved out of the tab bar) */}
+          {/* Plan your week — meal planner (moved out of the tab bar) */}
           <Card
             surface="surface"
             radius="xl"
@@ -408,7 +433,7 @@ const HomeScreen: React.FC = () => {
             <Text style={[typography.bodySmall, { color: c.textSecondary, marginTop: spacing.xs }]}>
               Schedule meals for the next 7 days, then build a shopping list in one tap.
             </Text>
-            <Text style={[styles.rectCta, { color: c.primary, marginTop: spacing.md }]}>
+            <Text style={[styles.rectCta, { color: c.primary, marginTop: spacing.sm }]}>
               Open meal plan →
             </Text>
           </Card>
@@ -548,14 +573,14 @@ const styles = StyleSheet.create({
   },
   rectCard: {
     width: 268,
-    minHeight: 168,
+    minHeight: 124,
     marginBottom: spacing.sm,
   },
   rectHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rectCta: {
     fontWeight: '700',
     fontSize: 13,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   pantryStatsRow: {
     flexDirection: 'row',
