@@ -89,14 +89,18 @@ function makeClient(baseURL: string): AxiosInstance {
     async (error: AxiosError) => {
       const cfg = error.config as RetryableConfig | undefined;
 
-      // 401 → try refreshing the access token ONCE before giving up.
+      // An expired/invalid access token surfaces as 401 OR 403 'INVALID_TOKEN'
+      // (the services map invalidToken → 403). Treat both as "needs refresh",
+      // otherwise an expired token (403) would dead-end the session.
+      const errCode = (error.response?.data as { error?: { code?: string } } | undefined)?.error
+        ?.code;
+      const isAuthExpired =
+        error.response?.status === 401 ||
+        (error.response?.status === 403 && errCode === 'INVALID_TOKEN');
+
+      // → try refreshing the access token ONCE before giving up.
       // Skip refresh attempts on /auth/* itself to avoid loops.
-      if (
-        error.response?.status === 401 &&
-        cfg &&
-        !cfg._refreshAttempted &&
-        !cfg.url?.startsWith('/auth/')
-      ) {
+      if (isAuthExpired && cfg && !cfg._refreshAttempted && !cfg.url?.startsWith('/auth/')) {
         cfg._refreshAttempted = true;
         const newToken = await attemptRefresh();
         if (newToken) {
@@ -109,8 +113,8 @@ function makeClient(baseURL: string): AxiosInstance {
         return Promise.reject(error);
       }
 
-      // 401 we couldn't (or shouldn't) refresh — fall through to clear auth.
-      if (error.response?.status === 401) {
+      // Couldn't (or shouldn't) refresh — clear auth.
+      if (isAuthExpired) {
         _token = null;
         await storage.clearAuth();
         return Promise.reject(error);

@@ -157,18 +157,19 @@ security-headers middleware (FastAPI ships none by default).
 
 # Prioritized bug list
 
-### 🔴 Critical
-1. **Token expiry is unrecoverable in-app.** Backend returns **403 `INVALID_TOKEN`**
-   for expired/invalid access tokens (`*/src/middleware/error.middleware.ts`,
-   `invalidToken → AppError(403)`), but the mobile refresh interceptor fires **only on
-   401** (`mobile/src/services/api.ts:95`). Result: after 15 min the session can't
-   silently refresh → user stuck on "token is invalid or expired" (observed earlier).
-   **Fix:** make `invalidToken` → 401 across services, *or* also refresh on
-   `403 && code==='INVALID_TOKEN'` in `api.ts`.
-2. **[Prod/deploy] Recipes 500 in production.** Migration **041 (`recipes.meal_types`)**
-   isn't applied to prod, but the deployed recipe-service selects that column → every
-   recipe query 500s (verified via prod `/recipes` this session). **Fix:** apply 041 to
-   prod Supabase (SQL already provided).
+### 🔴 Critical — ✅ BOTH FIXED
+1. ✅ **FIXED — Token expiry is unrecoverable in-app.** Backend returns **403
+   `INVALID_TOKEN`** for expired tokens, but the mobile interceptor refreshed **only on
+   401** (`mobile/src/services/api.ts`). Was the root cause of the "token is invalid or
+   expired" dead-end. **Fix applied (mobile, uncommitted):** the response interceptor now
+   treats `401` **and** `403 && code==='INVALID_TOKEN'` as "needs refresh" → refresh +
+   retry once, then clear auth. No backend redeploy needed; `tsc` clean. _(Optional
+   follow-up: also change backend `invalidToken` → 401 for REST correctness.)_
+2. ✅ **RESOLVED — prod recipes outage.** Migration **041 (`recipes.meal_types`)** is now
+   applied to prod and **verified live**: `GET /recipes` → 200, and
+   `GET /recipes/cuisine/Indian?meal_type=breakfast` correctly returns breakfast dishes
+   (e.g. Uttapam). The lowercase `nutrition_logs` CHECK (**109**) is also present in prod
+   → meal-logging healthy.
 
 ### 🟠 High
 3. **DB migration drift / verify prod.** Local `smart_cooking_app` was missing 018, 019,
@@ -177,11 +178,13 @@ security-headers middleware (FastAPI ships none by default).
    `nutrition_logs` CHECK silently breaks all meal-logging (it did before).
 
 ### 🟡 Medium
-4. **Meal-plan schedule → 500 on bad `recipe_id`.**
-   `recipe-service/src/controllers/mealPlan.controller.ts` (~L72–82) runs the
-   FK-bearing `INSERT` *before* the recipe-existence check, so an invalid `recipe_id`
-   throws an unhandled FK violation (23503) → 500 instead of 404. (nutrition-service
-   does this correctly.) **Fix:** check recipe existence / catch 23503 before insert.
+4. ✅ **FIXED — Meal-plan schedule → 500 on bad `recipe_id`.**
+   `recipe-service/src/controllers/mealPlan.controller.ts` ran the FK-bearing `INSERT`
+   before the recipe-existence check. **Fixed:** moved the recipe lookup *before* the
+   insert → now returns a clean **404**. Regression test added
+   (`recipe-service/tests/mealPlan.test.ts`, 4 tests incl. the 404-not-500 case);
+   recipe-service now **27/27** green, tsc clean. _(Needs a recipe-service redeploy to
+   reach prod.)_
 5. **Seed `database/seeds/109_unify_meal_type_to_lowercase.sql` not partial-DB safe** —
    references `meal_plans` in the same transaction, so on a DB lacking that table the
    whole migration (incl. the `nutrition_logs` fix) rolls back. **Fix:** split per table.
@@ -203,16 +206,21 @@ security-headers middleware (FastAPI ships none by default).
 
 # Ship-readiness verdict
 
-**Not ship-ready yet — two blockers, both small fixes:**
-1. 🔴 The **403-vs-401 token-refresh** bug — sessions silently break after 15 min for
-   every user. This is the single most important fix and is one line on either side.
-2. 🔴 **Prod recipe outage** — apply migration **041** (and verify **109**) to prod.
+**✅ Shippable — both 🔴 blockers are now cleared:**
+1. ✅ Token-refresh fix applied in `mobile/src/services/api.ts` (refreshes on 403
+   `INVALID_TOKEN` too) — **commit + ship the mobile bundle** to land it.
+2. ✅ Prod recipes verified healthy (meal_types + 109 applied; `/recipes` 200, meal-type
+   filter live).
 
-**Everything else is in good shape:** all unit suites pass (6 services), all 7
-integration flows pass, edge/empty/boundary/FK/auth handling is sound (one Medium FK→500
-to tidy), the mobile app type-checks and bundles cleanly, and the security posture is
-solid (no secrets, bcrypt, parameterized SQL, rate-limit, helmet/CORS).
-**After fixing the two 🔴 items, this is shippable.**
+**Quality bar is strong:** all unit suites pass (6 services), all 7 integration flows
+pass, edge/empty/boundary/FK/auth handling sound, mobile type-checks + bundles cleanly,
+security solid (no secrets, bcrypt, parameterized SQL, rate-limit, helmet/CORS).
+
+**Recommended before/just-after ship (non-blocking):**
+- ✅ Medium meal-plan FK→500 — **fixed + regression-tested** (recipe-service 27/27);
+  deploy recipe-service to land it in prod.
+- 🟢 Grow house-service coverage beyond the 13 core tests (37 routes still untested).
+- Commit the token fix, the FK fix + test, and this report.
 
 ---
 

@@ -67,6 +67,11 @@ export async function scheduleMeal(req: Request, res: Response, next: NextFuncti
       return next(Errors.validationError('meal_type must be breakfast, lunch or dinner'));
     }
 
+    // Validate the recipe exists BEFORE inserting — otherwise a bad recipe_id
+    // trips the meal_plans→recipes FK and surfaces as a 500 instead of a 404.
+    const recipeRow = await pool.query('SELECT * FROM recipes WHERE id = $1', [recipe_id]);
+    if (!recipeRow.rows[0]) return next(Errors.notFound('Recipe not found'));
+
     // Upsert — replace existing slot for same user/date/meal_type
     const { rows } = await pool.query(
       `INSERT INTO meal_plans (user_id, recipe_id, scheduled_date, meal_type, cooking_time)
@@ -77,11 +82,7 @@ export async function scheduleMeal(req: Request, res: Response, next: NextFuncti
       [user_id, recipe_id, scheduled_date, meal_type, cooking_time ?? '18:00'],
     );
 
-    const row = rows[0];
-    const recipeRow = await pool.query('SELECT * FROM recipes WHERE id = $1', [recipe_id]);
-    if (!recipeRow.rows[0]) return next(Errors.notFound('Recipe not found'));
-
-    const planRow = { ...row, recipe: recipeRow.rows[0] };
+    const planRow = { ...rows[0], recipe: recipeRow.rows[0] };
     const plan = await hydratePlan(planRow);
 
     const body: ApiSuccess<{ meal_plan: typeof plan }> = { success: true, data: { meal_plan: plan } };
