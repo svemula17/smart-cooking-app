@@ -106,14 +106,14 @@ async def test_log_and_daily_summary(app_client, test_user, today):
             "user_id": test_user["id"],
             "recipe_id": SEEDED_BIRYANI,
             "servings_consumed": 1,
-            "meal_type": "Lunch",
+            "meal_type": "lunch",
             "date": today.isoformat(),
             "auto_logged": True,
         },
     )
     assert res.status_code == 201, res.text
     log = res.json()["data"]
-    assert log["meal_type"] == "Lunch"
+    assert log["meal_type"] == "lunch"
     assert log["auto_logged"] is True
     assert log["calories"] > 0
 
@@ -141,7 +141,7 @@ async def test_log_rejects_cross_user_access(app_client, test_user, today):
             "user_id": other_user_id,
             "recipe_id": SEEDED_BIRYANI,
             "servings_consumed": 1,
-            "meal_type": "Lunch",
+            "meal_type": "lunch",
             "date": today.isoformat(),
         },
     )
@@ -157,7 +157,7 @@ async def test_log_rejects_unknown_recipe(app_client, test_user, today):
             "user_id": test_user["id"],
             "recipe_id": "00000000-0000-0000-0000-000000000000",
             "servings_consumed": 1,
-            "meal_type": "Lunch",
+            "meal_type": "lunch",
             "date": today.isoformat(),
         },
     )
@@ -179,7 +179,7 @@ async def test_list_logs_with_date_filter(app_client, test_user, today, yesterda
                 "user_id": test_user["id"],
                 "recipe_id": recipe,
                 "servings_consumed": 1,
-                "meal_type": "Dinner",
+                "meal_type": "dinner",
                 "date": d.isoformat(),
             },
         )
@@ -218,7 +218,7 @@ async def test_delete_log(app_client, test_user, today):
             "user_id": test_user["id"],
             "recipe_id": SEEDED_BIRYANI,
             "servings_consumed": 1,
-            "meal_type": "Snack",
+            "meal_type": "snack",
             "date": today.isoformat(),
         },
     )

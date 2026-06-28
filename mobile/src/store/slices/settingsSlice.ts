@@ -9,12 +9,14 @@ export interface SettingsState {
   isDark: boolean;
   tapSound: TapSound;
   tapHaptic: TapHaptic;
+  cookReminders: boolean;
 }
 
 const initialState: SettingsState = {
   isDark: false,
   tapSound: 'none', // buttons use a light haptic only by default
   tapHaptic: 'light',
+  cookReminders: true, // morning-of cook nudge + prep reminders when it's your turn
 };
 
 const settingsSlice = createSlice({
@@ -30,6 +32,9 @@ const settingsSlice = createSlice({
     setTapHaptic(state, action: PayloadAction<TapHaptic>) {
       state.tapHaptic = action.payload;
     },
+    toggleCookReminders(state) {
+      state.cookReminders = !state.cookReminders;
+    },
     // Restore persisted settings on launch. Merges only known fields so an
     // old/partial payload can't inject junk.
     hydrateSettings(state, action: PayloadAction<Partial<SettingsState>>) {
@@ -37,10 +42,16 @@ const settingsSlice = createSlice({
       if (typeof p.isDark === 'boolean') state.isDark = p.isDark;
       if (p.tapSound) state.tapSound = p.tapSound;
       if (p.tapHaptic) state.tapHaptic = p.tapHaptic;
+      if (typeof p.cookReminders === 'boolean') state.cookReminders = p.cookReminders;
     },
   },
 });
 
-export const { toggleDarkMode, setTapSound, setTapHaptic, hydrateSettings } =
-  settingsSlice.actions;
+export const {
+  toggleDarkMode,
+  setTapSound,
+  setTapHaptic,
+  toggleCookReminders,
+  hydrateSettings,
+} = settingsSlice.actions;
 export default settingsSlice.reducer;

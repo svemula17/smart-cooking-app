@@ -1,4 +1,5 @@
 import { houseApi } from './api';
+import type { PrepInstructions } from '../types';
 
 export interface House {
   id: string;
@@ -32,6 +33,11 @@ export interface CookScheduleEntry {
   recipe_cuisine?: string;
   recipe_prep_time?: number;
   recipe_cook_time?: number;
+  // Prep timing for cook reminders (populated by the house schedule query once
+  // deployed; optional so the cook nudge works even before then).
+  marination_time_minutes?: number | null;
+  soaking_time_minutes?: number | null;
+  prep_instructions?: PrepInstructions | null;
 }
 
 export interface Expense {

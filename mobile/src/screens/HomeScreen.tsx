@@ -18,6 +18,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import type { AppNavigation, MealType } from '../types';
 import { RootState, type AppDispatch, setPreferences } from '../store';
 import { userService } from '../services/userService';
+import { scheduleCookReminders } from '../services/reminderService';
 import type { CookScheduleEntry } from '../services/houseService';
 import AttendanceSheet from './AttendanceSheet';
 
@@ -129,6 +130,7 @@ const HomeScreen: React.FC = () => {
   const house = useSelector((s: RootState) => s.house.house);
   const schedule = useSelector((s: RootState) => s.cookSchedule.schedule);
   const attendance = useSelector((s: RootState) => s.attendance);
+  const cookReminders = useSelector((s: RootState) => s.settings.cookReminders);
 
   const [showAttendance, setShowAttendance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -157,6 +159,12 @@ const HomeScreen: React.FC = () => {
       stripTimer.current = null;
     }
   }, []);
+
+  // Schedule the morning-of cook nudge + prep reminders whenever the schedule,
+  // the signed-in user, or the toggle changes. Idempotent (clears + reschedules).
+  useEffect(() => {
+    scheduleCookReminders(schedule, user?.id, cookReminders).catch(() => {});
+  }, [schedule, user?.id, cookReminders]);
 
   // Gentle entrance for the Chef-AI FAB.
   const fabIn = useRef(new Animated.Value(0)).current;

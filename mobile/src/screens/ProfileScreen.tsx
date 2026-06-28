@@ -20,10 +20,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { clearAuth, setPreferences, toggleDarkMode, type RootState } from '../store';
+import { clearAuth, setPreferences, toggleDarkMode, toggleCookReminders, type RootState } from '../store';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
-import type { UserPreferences, RootStackParamList } from '../types';
+import type { UserPreferences, RootStackParamList, AppNavigation } from '../types';
 
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
@@ -103,6 +103,7 @@ export function ProfileScreen(): React.JSX.Element {
   const storePrefs = useSelector((s: RootState) => s.user.preferences);
   const favoriteIds = useSelector((s: RootState) => s.favorites.ids);
   const isDark = useSelector((s: RootState) => s.settings.isDark);
+  const cookReminders = useSelector((s: RootState) => s.settings.cookReminders);
 
   const [editSheet, setEditSheet] = useState<null | 'name' | 'goals'>(null);
   const [draftName, setDraftName] = useState('');
@@ -161,6 +162,15 @@ export function ProfileScreen(): React.JSX.Element {
     fat: prefs?.fat_goal ?? 65,
   };
 
+  // Clearing auth alone doesn't move the user — there's no reactive auth guard,
+  // so the stack must be reset to Login or you stay on the (now logged-out)
+  // Tabs screen and sign-out looks like it "did nothing". getParent() targets
+  // the root stack (we're nested inside the Tab navigator).
+  const resetToLogin = () => {
+    const root = navigation.getParent<AppNavigation>() ?? (navigation as unknown as AppNavigation);
+    root.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -173,6 +183,7 @@ export function ProfileScreen(): React.JSX.Element {
           // to be restored on next launch (which traps you in a bad session).
           await authService.logout().catch(() => {});
           dispatch(clearAuth());
+          resetToLogin();
         },
       },
     ]);
@@ -201,6 +212,7 @@ export function ProfileScreen(): React.JSX.Element {
                     try {
                       await userService.deleteAccount();
                       dispatch(clearAuth());
+                      resetToLogin();
                     } catch (err: any) {
                       const msg =
                         err?.response?.data?.error?.message ??
@@ -332,6 +344,24 @@ export function ProfileScreen(): React.JSX.Element {
               }}
               trackColor={{ false: c.borderStrong, true: c.primary }}
               accessibilityLabel="Toggle dark mode"
+            />
+          </View>
+          <Divider inset={spacing.sm} />
+          <View style={styles.row}>
+            <Text style={{ fontSize: 18, marginRight: spacing.sm }}>🔔</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.body, { color: c.text }]}>Cook reminders</Text>
+              <Text style={[typography.caption, { color: c.textSecondary, marginTop: 2 }]}>
+                Morning nudge + prep alerts when it’s your turn
+              </Text>
+            </View>
+            <Switch
+              value={cookReminders}
+              onValueChange={() => {
+                dispatch(toggleCookReminders());
+              }}
+              trackColor={{ false: c.borderStrong, true: c.primary }}
+              accessibilityLabel="Toggle cook reminders"
             />
           </View>
           <Divider inset={spacing.sm} />

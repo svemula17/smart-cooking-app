@@ -89,7 +89,10 @@ export async function getSchedule(req: Request, res: Response, next: NextFunctio
               r.name AS recipe_name,
               r.cuisine_type AS recipe_cuisine,
               r.prep_time_minutes AS recipe_prep_time,
-              r.cook_time_minutes AS recipe_cook_time
+              r.cook_time_minutes AS recipe_cook_time,
+              r.marination_time_minutes,
+              r.soaking_time_minutes,
+              r.prep_instructions
        FROM cook_schedule cs
        JOIN users u ON u.id = cs.user_id
        LEFT JOIN recipes r ON r.id = cs.recipe_id
