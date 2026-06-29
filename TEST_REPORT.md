@@ -15,7 +15,7 @@ on port 4006 is the sixth).
 | Service | Framework | Result | Coverage (stmts) |
 |---|---|---|---|
 | user-service | Jest+supertest | **19/19 ✓** | 83% |
-| recipe-service | Jest+supertest | **23/23 ✓** | 60% |
+| recipe-service | Jest+supertest (recipe + mealPlan suites) | **27/27 ✓** | 60% |
 | shopping-service | Jest+supertest | **30/30 ✓** | 82% |
 | ai-service | pytest | **17/17 ✓** | 83% |
 | nutrition-service | pytest | **13/13 ✓** (was 5 failing) | ~62% |
@@ -97,17 +97,17 @@ Probed the live stack. **11/12 functional checks pass**; 1 real bug + 1 design f
 | Boundary: duplicate meal-plan slot (same user/date/meal_type) → upsert (201/201) | ✅ |
 | Boundary: SQL-ish + 200-char + emoji name → no 500 | ✅ (handled) |
 | FK: nutrition log w/ non-existent recipe → **404** | ✅ |
-| FK: **meal-plan schedule w/ non-existent recipe → 500** | 🐞 **BUG** |
+| FK: meal-plan schedule w/ non-existent recipe → 404 | ✅ **FIXED + verified** |
 | Concurrency: double-check same shopping item → 200/200, no 500 | ✅ |
 | Auth: deleted-user token → 404 | ✅ |
 | Auth: expired / malformed / wrong-type token → **403** (expected 401) | ⚠️ design finding |
 
 ### 🐞 Findings
-- **[Medium] Meal-plan FK → 500.** `recipe-service/src/controllers/mealPlan.controller.ts`
-  runs the `INSERT INTO meal_plans` (FK → recipes) at ~line 72 **before** the
-  recipe-existence check at ~line 81-82, so a bad `recipe_id` throws an unhandled FK
-  violation (23503) → 500 instead of a clean 404. **Fix:** check recipe existence (or
-  catch 23503) *before* the insert. (nutrition-service handles this correctly → 404.)
+- ✅ **[Medium] FIXED — Meal-plan FK → 500.** `recipe-service/.../mealPlan.controller.ts`
+  now checks recipe existence **before** the `INSERT` → returns **404** (verified live:
+  bad `recipe_id` → 404, was 500). Regression-guarded in
+  `recipe-service/tests/mealPlan.test.ts` ("404 not 500 for a non-existent recipe_id").
+  Needs a recipe-service redeploy to ship to prod.
 - **[High — verify in Phase 4] Invalid/expired tokens return 403, not 401.** All
   services map `Errors.invalidToken` → **AppError(403, 'INVALID_TOKEN')**
   (`*/src/middleware/error.middleware.ts`). Consistent, but if the mobile axios
