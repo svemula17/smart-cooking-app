@@ -19,7 +19,7 @@ on port 4006 is the sixth).
 | shopping-service | Jest+supertest | **30/30 ✓** | 82% |
 | ai-service | pytest | **17/17 ✓** | 83% |
 | nutrition-service | pytest | **13/13 ✓** (was 5 failing) | ~62% |
-| **house-service** | Jest+supertest (NEW) | **13/13 ✓** (was 0 tests) | 39% |
+| **house-service** | Jest+supertest (NEW) | **54/54 ✓** (was 0 tests) | 70% |
 
 ### New tests written (prioritized)
 - **house-service** — stood up the entire harness (`jest.config.js`, `tests/setup.ts`,
@@ -30,9 +30,13 @@ on port 4006 is the sixth).
 - **nutrition-service** — repaired stale `meal_type` fixtures (see bugs).
 
 ### Gap list (endpoints still untested — tracked TODO)
-- **house-service**: ~37 of ~50 routes still uncovered — chores, chore-types,
-  attendance, proposals/voting, ratings, swap-requests, prep-meals, waste, budget,
-  shopping-rotation, achievements, leaderboard, cuisine-passport, weekly report.
+- **house-service** (now 68%, 51 tests): covered — create/get/join/members (+remove),
+  schedule generate/get, expenses/balances, budget get/set/breakdown, chore-types,
+  chores generate/update/assign, attendance, prep-meals, waste, leaderboard,
+  achievements, cuisine-passport, weekly report, **proposals propose/vote/close**,
+  **meal ratings (incl. status-gate 409)**, invite refresh, + authz (401/403).
+  swap-request create + self-swap→400, shopping-rotation generate/read.
+  **Still uncovered:** a few deep error branches only (≈70% lines).
 - **recipe-service** (60%): `/recipes/macro-match`, `/recipes/deduct`,
   `POST /recipes/schedule`, soft-delete branch, the new `meal_type` filter.
 - **nutrition-service** (62%): monthly-stats endpoint, `nutritionix_service` (22%).
