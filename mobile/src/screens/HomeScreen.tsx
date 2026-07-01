@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -27,6 +26,8 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { Avatar, Badge, Card, Chip, Icon, IconButton } from '../components/ui';
 import { CuisineCard } from '../components/CuisineCard';
+import { GoalRing } from '../components/GoalRing';
+import { RING_PALETTES } from '../theme/ringPalettes';
 
 type HomeNav = AppNavigation;
 
@@ -54,69 +55,6 @@ const greeting = () => {
   return 'Good evening';
 };
 
-interface RingProps {
-  label: string;
-  emoji: string;
-  current: number;
-  goal: number;
-  color: string;
-  trackColor: string;
-  size?: number;
-}
-
-function GoalRing({ label, emoji, current, goal, color, trackColor, size = 56 }: RingProps) {
-  const c = useThemeColors();
-  const stroke = 6;
-  const r = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * r;
-  const pct = goal > 0 ? Math.min(current / goal, 1) : 0;
-  const dash = circumference * pct;
-  const cx = size / 2;
-
-  return (
-    <View
-      style={{ alignItems: 'center', flex: 1 }}
-      accessibilityLabel={`${label}: ${Math.round(pct * 100)} percent of goal`}
-    >
-      <View style={{ width: size, height: size }}>
-        <Svg width={size} height={size}>
-          <Circle cx={cx} cy={cx} r={r} stroke={trackColor} strokeWidth={stroke} fill="none" />
-          <Circle
-            cx={cx}
-            cy={cx}
-            r={r}
-            stroke={color}
-            strokeWidth={stroke}
-            fill="none"
-            strokeDasharray={`${dash} ${circumference}`}
-            strokeLinecap="round"
-            rotation="-90"
-            origin={`${cx},${cx}`}
-          />
-        </Svg>
-        <View style={StyleSheet.absoluteFill as any}>
-          <View style={ringCenter}>
-            <Text style={{ fontSize: 11, fontWeight: '800', color }}>
-              {Math.round(pct * 100)}%
-            </Text>
-          </View>
-        </View>
-      </View>
-      <Text
-        style={[typography.caption, { color: c.textSecondary, marginTop: 2, fontWeight: '600', fontSize: 10 }]}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-const ringCenter = {
-  flex: 1,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-};
-
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNav>();
   const c = useThemeColors();
@@ -131,6 +69,13 @@ const HomeScreen: React.FC = () => {
   const schedule = useSelector((s: RootState) => s.cookSchedule.schedule);
   const attendance = useSelector((s: RootState) => s.attendance);
   const cookReminders = useSelector((s: RootState) => s.settings.cookReminders);
+  const ringPalette = useSelector((s: RootState) => s.settings.ringPalette);
+  // 'classic' keeps the theme-tuned macro colors (incl. dark mode); other
+  // palettes use their fixed colors.
+  const ringColors =
+    ringPalette === 'classic'
+      ? { calories: c.calories, protein: c.protein, carbs: c.carbs, fat: c.fat }
+      : RING_PALETTES[ringPalette].colors;
 
   const [showAttendance, setShowAttendance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -272,35 +217,31 @@ const HomeScreen: React.FC = () => {
           <View style={styles.ringRow}>
             <GoalRing
               label="Calories"
-              emoji="🔥"
               current={macroProgress.calories}
               goal={goals.calories}
-              color={c.calories}
-              trackColor={`${c.calories}26`}
+              color={ringColors.calories}
+              trackColor={`${ringColors.calories}26`}
             />
             <GoalRing
               label="Protein"
-              emoji="💪"
               current={macroProgress.protein}
               goal={goals.protein}
-              color={c.protein}
-              trackColor={`${c.protein}26`}
+              color={ringColors.protein}
+              trackColor={`${ringColors.protein}26`}
             />
             <GoalRing
               label="Carbs"
-              emoji="🌾"
               current={macroProgress.carbs}
               goal={goals.carbs}
-              color={c.carbs}
-              trackColor={`${c.carbs}26`}
+              color={ringColors.carbs}
+              trackColor={`${ringColors.carbs}26`}
             />
             <GoalRing
               label="Fat"
-              emoji="🫒"
               current={macroProgress.fat}
               goal={goals.fat}
-              color={c.fat}
-              trackColor={`${c.fat}26`}
+              color={ringColors.fat}
+              trackColor={`${ringColors.fat}26`}
             />
           </View>
         </Card>

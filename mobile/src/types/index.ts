@@ -217,6 +217,7 @@ export type RootStackParamList = {
   SplashPrototypes: undefined;
   DesignPrototypes: undefined;
   TapFeedback: undefined;
+  NutritionRingLab: undefined;
 };
 
 export type TabParamList = {

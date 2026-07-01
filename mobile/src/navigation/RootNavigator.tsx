@@ -36,6 +36,7 @@ import ScanReceiptScreen from '../screens/ScanReceiptScreen';
 import SplashPrototypesScreen from '../screens/SplashPrototypesScreen';
 import DesignPrototypesScreen from '../screens/DesignPrototypesScreen';
 import TapFeedbackScreen from '../screens/TapFeedbackScreen';
+import NutritionRingLabScreen from '../screens/NutritionRingLabScreen';
 
 import type { RootStackParamList, TabParamList } from '../types';
 import { useThemeColors } from '../theme/useThemeColors';
@@ -256,6 +257,11 @@ export function RootNavigator(): React.JSX.Element {
       <Stack.Screen
         name="TapFeedback"
         component={TapFeedbackScreen as AnyComponent}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="NutritionRingLab"
+        component={NutritionRingLabScreen as AnyComponent}
         options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>

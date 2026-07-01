@@ -410,6 +410,16 @@ export function ProfileScreen(): React.JSX.Element {
             <Text style={[typography.body, { color: c.text, flex: 1 }]}>Tap feedback</Text>
             <Text style={[typography.body, { color: c.textSecondary }]}>›</Text>
           </TouchableOpacity>
+          <Divider inset={spacing.sm} />
+          <TouchableOpacity
+            style={styles.row}
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('NutritionRingLab')}
+          >
+            <Text style={{ fontSize: 18, marginRight: spacing.sm }}>⭕</Text>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>Nutrition rings</Text>
+            <Text style={[typography.body, { color: c.textSecondary }]}>›</Text>
+          </TouchableOpacity>
         </Card>
 
         {/* Legal */}
