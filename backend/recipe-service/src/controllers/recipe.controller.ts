@@ -41,9 +41,11 @@ async function hydrateRecipe(recipe: Recipe): Promise<RecipeWithDetails> {
 export async function listRecipes(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { page, limit, offset } = req.pagination!;
-    const { cuisine_type, meal_type, difficulty, max_cook_time } = req.query as {
+    const { cuisine_type, meal_type, diet, region, difficulty, max_cook_time } = req.query as {
       cuisine_type?: string;
       meal_type?: string;
+      diet?: string;
+      region?: string;
       difficulty?: string;
       max_cook_time?: string | number;
     };
@@ -52,6 +54,8 @@ export async function listRecipes(req: Request, res: Response, next: NextFunctio
       {
         cuisine_type,
         meal_type,
+        diet,
+        region,
         difficulty,
         max_cook_time: max_cook_time != null ? Number(max_cook_time) : undefined,
       },
@@ -88,12 +92,14 @@ export async function searchRecipes(req: Request, res: Response, next: NextFunct
     const q = typeof req.query.q === 'string' ? req.query.q : undefined;
     const cuisine_type = typeof req.query.cuisine_type === 'string' ? req.query.cuisine_type : undefined;
     const meal_type = typeof req.query.meal_type === 'string' ? req.query.meal_type : undefined;
+    const diet = typeof req.query.diet === 'string' ? req.query.diet : undefined;
+    const region = typeof req.query.region === 'string' ? req.query.region : undefined;
     const difficulty = typeof req.query.difficulty === 'string' ? req.query.difficulty : undefined;
     const max_cook_time = req.query.max_cook_time != null ? Number(req.query.max_cook_time) : undefined;
     const min_protein = req.query.min_protein != null ? Number(req.query.min_protein) : undefined;
 
     const { rows, total } = await RecipeModel.search(
-      { q, cuisine_type, meal_type, difficulty, max_cook_time, min_protein },
+      { q, cuisine_type, meal_type, diet, region, difficulty, max_cook_time, min_protein },
       { limit, offset },
     );
 
@@ -123,10 +129,12 @@ export async function listByCuisine(req: Request, res: Response, next: NextFunct
   try {
     const { cuisineType } = req.params as { cuisineType: string };
     const meal_type = typeof req.query.meal_type === 'string' ? req.query.meal_type : undefined;
+    const diet = typeof req.query.diet === 'string' ? req.query.diet : undefined;
+    const region = typeof req.query.region === 'string' ? req.query.region : undefined;
     const { page, limit, offset } = req.pagination!;
 
     const { rows, total } = await RecipeModel.list(
-      { cuisine_type: cuisineType, meal_type },
+      { cuisine_type: cuisineType, meal_type, diet, region },
       { limit, offset },
     );
 

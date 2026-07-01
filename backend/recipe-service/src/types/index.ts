@@ -38,6 +38,8 @@ export interface Recipe {
   image_url: string | null;
   verified_by_dietitian: boolean;
   meal_types: string[];
+  diet: string | null;
+  region: string | null;
   created_at: Date;
   deleted_at?: Date | null;
 }
