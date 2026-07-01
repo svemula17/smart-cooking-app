@@ -61,6 +61,9 @@ export const listQuerySchema = Joi.object({
   // while still preventing pathological queries.
   limit: Joi.number().integer().min(1).max(500).optional(),
   cuisine_type: Joi.string().valid(...CUISINE_TYPES).optional(),
+  meal_type: Joi.string().valid('breakfast', 'lunch', 'dinner').optional(),
+  diet: Joi.string().valid('veg', 'egg', 'nonveg').optional(),
+  region: Joi.string().max(60).optional(),
   difficulty: Joi.string().valid('Easy', 'Medium', 'Hard').optional(),
   max_cook_time: Joi.number().integer().min(1).max(600).optional(),
 });
@@ -68,6 +71,9 @@ export const listQuerySchema = Joi.object({
 export const searchQuerySchema = Joi.object({
   q: Joi.string().min(1).max(200).optional(),
   cuisine_type: Joi.string().valid(...CUISINE_TYPES).optional(),
+  meal_type: Joi.string().valid('breakfast', 'lunch', 'dinner').optional(),
+  diet: Joi.string().valid('veg', 'egg', 'nonveg').optional(),
+  region: Joi.string().max(60).optional(),
   difficulty: Joi.string().valid('Easy', 'Medium', 'Hard').optional(),
   max_cook_time: Joi.number().integer().min(1).max(600).optional(),
   min_protein: Joi.number().min(0).max(500).optional(),
