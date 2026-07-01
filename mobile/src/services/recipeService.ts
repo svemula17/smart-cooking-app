@@ -20,7 +20,7 @@ export const recipeService = {
 
   async getByCuisine(
     cuisine: string,
-    params?: { page?: number; limit?: number; meal_type?: string },
+    params?: { page?: number; limit?: number; meal_type?: string; diet?: string; region?: string },
   ): Promise<ListResponse> {
     const res = await recipeApi.get(`/recipes/cuisine/${encodeURIComponent(cuisine)}`, { params });
     return res.data.data;
@@ -30,6 +30,8 @@ export const recipeService = {
     q?: string;
     cuisine_type?: string;
     meal_type?: string;
+    diet?: string;
+    region?: string;
     difficulty?: string;
     min_protein?: number;
     max_cook_time?: number;

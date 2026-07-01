@@ -13,10 +13,11 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 
-import { RootStackParamList, Recipe, MealType } from '../types';
+import { RootStackParamList, Recipe, MealType, Diet } from '../types';
 import { RootState } from '../store';
 import { recipeService } from '../services/recipeService';
 import { RecipeCard } from '../components/RecipeCard';
+import { DietDot } from '../components/DietDot';
 
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
@@ -42,14 +43,26 @@ const FILTERS: { label: FilterKey; emoji: string }[] = [
 ];
 
 const MEALS: MealType[] = ['breakfast', 'lunch', 'dinner'];
+const DIETS: { key: Diet; label: string }[] = [
+  { key: 'veg', label: 'Veg' },
+  { key: 'nonveg', label: 'Non-veg' },
+  { key: 'egg', label: 'Egg' },
+];
+const REGIONS = [
+  'North Indian', 'South Indian', 'Punjabi', 'Hyderabadi', 'Bengali',
+  'Gujarati', 'Kashmiri', 'Maharashtrian', 'Rajasthani', 'Goan',
+];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
   const { cuisine, intent, mealType } = route.params;
   const c = useThemeColors();
 
-  // Meal-type filter (passed from Home; switchable here).
+  // Meal-type / diet / region filters (some passed from Home; all switchable here).
   const [meal, setMeal] = useState<MealType | undefined>(mealType);
+  const [diet, setDiet] = useState<Diet | undefined>(route.params.diet);
+  const [region, setRegion] = useState<string | undefined>(route.params.region);
+  const isIndian = cuisine === 'Indian';
 
   // Map incoming intent → one of our three remaining filters (or none = "all")
   const initialFilter: FilterKey | null =
@@ -77,13 +90,16 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
   const isDefaultView = cuisine !== 'all' && !debouncedQuery && activeFilter === null;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['recipes', cuisine, debouncedQuery, activeFilter, meal],
+    queryKey: ['recipes', cuisine, debouncedQuery, activeFilter, meal, diet, region],
     queryFn: async () => {
-      if (isDefaultView) return recipeService.getByCuisine(cuisine, { limit: 100, meal_type: meal });
+      if (isDefaultView)
+        return recipeService.getByCuisine(cuisine, { limit: 100, meal_type: meal, diet, region });
       return recipeService.search({
         q: debouncedQuery || undefined,
         cuisine_type: cuisine !== 'all' ? cuisine : undefined,
         meal_type: meal,
+        diet,
+        region,
         difficulty: activeFilter === 'Low Effort' ? 'Easy' : undefined,
         min_protein: activeFilter === 'High Protein' ? 25 : undefined,
         max_cook_time: activeFilter === 'Fastest' ? 25 : undefined,
@@ -163,6 +179,23 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
               />
             </View>
 
+            {/* Diet switcher (Veg / Non-veg / Egg) */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}
+            >
+              {DIETS.map((d) => (
+                <Chip
+                  key={d.key}
+                  label={d.label}
+                  leading={<DietDot diet={d.key} />}
+                  selected={diet === d.key}
+                  onPress={() => setDiet((curr) => (curr === d.key ? undefined : d.key))}
+                />
+              ))}
+            </ScrollView>
+
             {/* Meal-type switcher */}
             <ScrollView
               horizontal
@@ -179,6 +212,24 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
                 />
               ))}
             </ScrollView>
+
+            {/* Region switcher — Indian cuisine only */}
+            {isIndian ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterRow}
+              >
+                {REGIONS.map((rg) => (
+                  <Chip
+                    key={rg}
+                    label={rg}
+                    selected={region === rg}
+                    onPress={() => setRegion((curr) => (curr === rg ? undefined : rg))}
+                  />
+                ))}
+              </ScrollView>
+            ) : null}
 
             {/* Pantry suggestions — chips of items expiring soon */}
             {pantrySuggestions.length > 0 ? (

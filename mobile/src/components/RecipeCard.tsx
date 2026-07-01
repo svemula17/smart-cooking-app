@@ -8,6 +8,7 @@ import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
 import { radii } from '../theme/radii';
 import { getRecipeImage } from '../utils/recipeImages';
+import { DietDot } from './DietDot';
 import { toggleFavorite, type RootState } from '../store';
 
 const CUISINE_EMOJI: Record<string, string> = {
@@ -138,6 +139,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onPress, nutriti
           {recipe.name}
         </Text>
         <View style={styles.metaRow}>
+          {recipe.diet ? <DietDot diet={recipe.diet} size={13} /> : null}
           <Text style={styles.cuisineEmojiSmall}>{CUISINE_EMOJI[recipe.cuisine_type] ?? '🍽️'}</Text>
           <Text style={[styles.cuisine, { color: c.textSecondary }]} numberOfLines={1}>
             {recipe.cuisine_type}

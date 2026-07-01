@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Badge, Icon, IconButton } from '../ui';
+import { DietDot } from '../DietDot';
 import { useThemeColors } from '../../theme/useThemeColors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -76,12 +77,14 @@ export function RecipeHero({ recipe, isFav, onBack, onToggleFav }: RecipeHeroPro
           { backgroundColor: 'rgba(255,255,255,0.94)' },
         ]}
       >
-        <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm }}>
+          {recipe.diet ? <DietDot diet={recipe.diet} size={16} /> : null}
           <Badge
             label={recipe.difficulty}
             tone="neutral"
           />
           <Badge label={recipe.cuisine_type} tone="neutral" />
+          {recipe.region ? <Badge label={recipe.region} tone="neutral" /> : null}
         </View>
         <Text style={[typography.h2, { color: c.text }]} numberOfLines={2}>
           {recipe.name}

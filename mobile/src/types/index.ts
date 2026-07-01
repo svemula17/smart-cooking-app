@@ -37,8 +37,12 @@ export interface Recipe {
   average_rating: number;
   total_ratings: number;
   meal_types?: MealType[];
+  diet?: Diet | null;
+  region?: string | null;
   created_at: string;
 }
+
+export type Diet = 'veg' | 'egg' | 'nonveg';
 
 export interface Ingredient {
   id: string;
@@ -188,7 +192,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Login: { initialMode?: 'login' | 'register'; pendingGoals?: PendingGoals } | undefined;
   Tabs: undefined;
-  RecipeBrowser: { cuisine: string; mealType?: MealType; intent?: 'rescue' | 'fast' | 'low-effort' | 'high-protein' | 'use-soon' };
+  RecipeBrowser: { cuisine: string; mealType?: MealType; diet?: Diet; region?: string; intent?: 'rescue' | 'fast' | 'low-effort' | 'high-protein' | 'use-soon' };
   RecipeDetail: { recipeId: string };
   CookingMode: { recipeId: string };
   HouseMembers: undefined;
