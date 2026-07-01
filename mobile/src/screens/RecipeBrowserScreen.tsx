@@ -18,6 +18,7 @@ import { RootState } from '../store';
 import { recipeService } from '../services/recipeService';
 import { RecipeCard } from '../components/RecipeCard';
 import { DietDot } from '../components/DietDot';
+import { FilterPill } from '../components/FilterPill';
 
 import { useThemeColors } from '../theme/useThemeColors';
 import { spacing } from '../theme/spacing';
@@ -179,57 +180,40 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
               />
             </View>
 
-            {/* Diet switcher (Veg / Non-veg / Egg) */}
+            {/* Filters — compact dropdown pills (one row instead of stacked chip rows) */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.filterRow}
             >
-              {DIETS.map((d) => (
-                <Chip
-                  key={d.key}
-                  label={d.label}
-                  leading={<DietDot diet={d.key} />}
-                  selected={diet === d.key}
-                  onPress={() => setDiet((curr) => (curr === d.key ? undefined : d.key))}
+              <FilterPill
+                label="Diet"
+                value={diet}
+                options={DIETS.map((d) => ({ key: d.key, label: d.label }))}
+                onChange={(k) => setDiet(k as Diet | undefined)}
+                leadingFor={(k) => <DietDot diet={k as Diet} size={12} />}
+              />
+              <FilterPill
+                label="Meal"
+                value={meal}
+                options={MEALS.map((m) => ({ key: m, label: cap(m) }))}
+                onChange={(k) => setMeal(k as MealType | undefined)}
+              />
+              {isIndian ? (
+                <FilterPill
+                  label="Region"
+                  value={region}
+                  options={REGIONS.map((rg) => ({ key: rg, label: rg }))}
+                  onChange={(k) => setRegion(k)}
                 />
-              ))}
+              ) : null}
+              <FilterPill
+                label="Quick"
+                value={activeFilter ?? undefined}
+                options={FILTERS.map((f) => ({ key: f.label, label: `${f.emoji}  ${f.label}` }))}
+                onChange={(k) => setActiveFilter((k as FilterKey) ?? null)}
+              />
             </ScrollView>
-
-            {/* Meal-type switcher */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRow}
-            >
-              {MEALS.map((m) => (
-                <Chip
-                  key={m}
-                  label={cap(m)}
-                  selected={meal === m}
-                  // Tapping the active meal clears it (back to all meals)
-                  onPress={() => setMeal((curr) => (curr === m ? undefined : m))}
-                />
-              ))}
-            </ScrollView>
-
-            {/* Region switcher — Indian cuisine only */}
-            {isIndian ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRow}
-              >
-                {REGIONS.map((rg) => (
-                  <Chip
-                    key={rg}
-                    label={rg}
-                    selected={region === rg}
-                    onPress={() => setRegion((curr) => (curr === rg ? undefined : rg))}
-                  />
-                ))}
-              </ScrollView>
-            ) : null}
 
             {/* Pantry suggestions — chips of items expiring soon */}
             {pantrySuggestions.length > 0 ? (
@@ -258,24 +242,6 @@ const RecipeBrowserScreen: React.FC<Props> = ({ route, navigation }) => {
                 </ScrollView>
               </Card>
             ) : null}
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRow}
-            >
-              {FILTERS.map(({ label, emoji }) => (
-                <Chip
-                  key={label}
-                  label={`${emoji}  ${label}`}
-                  selected={activeFilter === label}
-                  // Tapping the active chip clears the filter (acts as "reset")
-                  onPress={() =>
-                    setActiveFilter((curr) => (curr === label ? null : label))
-                  }
-                />
-              ))}
-            </ScrollView>
           </View>
         }
         ListEmptyComponent={
